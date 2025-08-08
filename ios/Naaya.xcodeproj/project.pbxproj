@@ -27,6 +27,10 @@
 		AAB101005B00000000000005 /* FlashController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001005B00000000000005 /* FlashController.cpp */; };
 		AAB101006B00000000000006 /* ZoomController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001006B00000000000006 /* ZoomController.cpp */; };
 		AAB101007B00000000000007 /* PermissionManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001007B00000000000007 /* PermissionManager.cpp */; };
+		AAB101008B00000000000008 /* NativeCameraFiltersModule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001008B00000000000008 /* NativeCameraFiltersModule.cpp */; };
+		AAB101009B00000000000009 /* FilterManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001009B00000000000009 /* FilterManager.cpp */; };
+		AAB10100AB0000000000000A /* FFmpegFilterProcessor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */; };
+		AAB10100BB0000000000000B /* FilterFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB00100BB0000000000000B /* FilterFactory.cpp */; };
 		AAC096ADA7142E7CE3F08237 /* libPods-Naaya.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */; };
 /* End PBXBuildFile section */
 
@@ -64,6 +68,10 @@
 		AAB001005B00000000000005 /* FlashController.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FlashController.cpp; path = ../shared/Camera/controls/FlashController.cpp; sourceTree = "<group>"; };
 		AAB001006B00000000000006 /* ZoomController.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ZoomController.cpp; path = ../shared/Camera/controls/ZoomController.cpp; sourceTree = "<group>"; };
 		AAB001007B00000000000007 /* PermissionManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PermissionManager.cpp; path = ../shared/Camera/utils/PermissionManager.cpp; sourceTree = "<group>"; };
+		AAB001008B00000000000008 /* NativeCameraFiltersModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NativeCameraFiltersModule.cpp; path = ../shared/NativeCameraFiltersModule.cpp; sourceTree = "<group>"; };
+		AAB001009B00000000000009 /* FilterManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FilterManager.cpp; path = ../shared/Camera/filters/FilterManager.cpp; sourceTree = "<group>"; };
+		AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FFmpegFilterProcessor.cpp; path = ../shared/Camera/filters/FFmpegFilterProcessor.cpp; sourceTree = "<group>"; };
+		AAB00100BB0000000000000B /* FilterFactory.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FilterFactory.cpp; path = ../shared/Camera/filters/FilterFactory.cpp; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Naaya.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -101,6 +109,10 @@
 				AAB001005B00000000000005 /* FlashController.cpp */,
 				AAB001006B00000000000006 /* ZoomController.cpp */,
 				AAB001007B00000000000007 /* PermissionManager.cpp */,
+				AAB001008B00000000000008 /* NativeCameraFiltersModule.cpp */,
+				AAB001009B00000000000009 /* FilterManager.cpp */,
+				AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */,
+				AAB00100BB0000000000000B /* FilterFactory.cpp */,
 				AA4445555B00000000000001 /* PermissionManagerIOS.h */,
 				AA4445555C00000000000001 /* PermissionManagerIOS.mm */,
 				AA4445555B00000000000002 /* PhotoCaptureIOS.h */,
@@ -323,6 +335,10 @@
 				AAB101005B00000000000005 /* FlashController.cpp in Sources */,
 				AAB101006B00000000000006 /* ZoomController.cpp in Sources */,
 				AAB101007B00000000000007 /* PermissionManager.cpp in Sources */,
+				AAB101008B00000000000008 /* NativeCameraFiltersModule.cpp in Sources */,
+				AAB101009B00000000000009 /* FilterManager.cpp in Sources */,
+				AAB10100AB0000000000000A /* FFmpegFilterProcessor.cpp in Sources */,
+				AAB10100BB0000000000000B /* FilterFactory.cpp in Sources */,
 				AA4445555A00000000000001 /* PermissionManagerIOS.mm in Sources */,
 				AA4445555A00000000000002 /* PhotoCaptureIOS.mm in Sources */,
 				AA4445555A00000000000003 /* VideoCaptureIOS.mm in Sources */,

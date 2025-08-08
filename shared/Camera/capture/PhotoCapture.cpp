@@ -103,7 +103,16 @@ bool PhotoCapture::capturePhoto(const PhotoCaptureOptions& options) {
 
 PhotoResult PhotoCapture::capturePhotoSync(const PhotoCaptureOptions& options) {
     if (!initialized_.load()) {
-        throw std::runtime_error("PhotoCapture non initialisé");
+        // Initialisation paresseuse pour éviter les exceptions côté JSI
+        bool initOk = initialize();
+        if (!initOk || !initialized_.load()) {
+            PhotoResult result;
+            result.uri = "";
+            result.width = 0;
+            result.height = 0;
+            result.fileSize = 0;
+            return result;
+        }
     }
     
     if (isCapturing_.load()) {

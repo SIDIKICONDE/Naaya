@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
+#import <TargetConditionals.h>
 
 #if __has_include(<UIKit/UIKit.h>)
 #import <UIKit/UIKit.h>
@@ -25,6 +26,13 @@ protected:
 
   CameraPermissions checkPermissionsPlatform() override {
     CameraPermissions p;
+#if TARGET_OS_SIMULATOR
+    // En simulateur, accorder tout par défaut
+    p.camera = PermissionStatus::GRANTED;
+    p.microphone = PermissionStatus::GRANTED;
+    p.storage = PermissionStatus::GRANTED;
+    return p;
+#else
     // Caméra
     AVAuthorizationStatus cam = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
     p.camera = mapStatus(cam);
@@ -34,10 +42,15 @@ protected:
     // Stockage: iOS ne requiert pas de permission générique pour écrire dans le sandbox
     p.storage = PermissionStatus::GRANTED;
     return p;
+#endif
   }
 
   CameraPermissions requestPermissionsPlatform() override {
     CameraPermissions result = checkPermissionsPlatform();
+#if TARGET_OS_SIMULATOR
+    // Rien à demander en simulateur
+    return result;
+#else
     // Demander caméra si nécessaire (synchrone via sémaphore GCD)
     if (result.camera == PermissionStatus::NOT_DETERMINED) {
       __block AVAuthorizationStatus st = AVAuthorizationStatusNotDetermined;
@@ -62,9 +75,14 @@ protected:
     }
     result.storage = PermissionStatus::GRANTED;
     return result;
+#endif
   }
 
   PermissionStatus requestPermissionPlatform(const std::string& permission) override {
+#if TARGET_OS_SIMULATOR
+    (void)permission;
+    return PermissionStatus::GRANTED;
+#else
     if (permission == "camera") {
       (void)requestPermissionsPlatform();
       return checkPermissionsPlatform().camera;
@@ -74,6 +92,7 @@ protected:
       return checkPermissionsPlatform().microphone;
     }
     return PermissionStatus::GRANTED;
+#endif
   }
 
   void showPermissionAlertPlatform(const CameraPermissions& /*permissions*/) override {

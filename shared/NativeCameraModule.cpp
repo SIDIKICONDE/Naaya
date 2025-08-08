@@ -366,21 +366,31 @@ jsi::Object NativeCameraModule::capturePhoto(jsi::Runtime& rt, jsi::Object optio
         if (v.isString()) optDeviceId = v.asString(rt).utf8(rt);
     }
 
+    auto makeEmpty = [&]() {
+        jsi::Object empty(rt);
+        empty.setProperty(rt, "uri", jsi::String::createFromUtf8(rt, ""));
+        empty.setProperty(rt, "width", jsi::Value(0));
+        empty.setProperty(rt, "height", jsi::Value(0));
+        empty.setProperty(rt, "size", jsi::Value(0));
+        return empty;
+    };
+
     Camera::PhotoResult photo;
-    {
+    try {
         std::lock_guard<std::mutex> lock(stateMutex_);
         if (!photoCapture_) {
-            jsi::Object err = jsi::Object(rt);
-            err.setProperty(rt, "uri", jsi::String::createFromUtf8(rt, ""));
-            err.setProperty(rt, "width", jsi::Value(0));
-            err.setProperty(rt, "height", jsi::Value(0));
-            return err;
+            return makeEmpty();
         }
         // Sélectionner le device demandé si fourni
         if (!optDeviceId.empty() && cameraManager_) {
             cameraManager_->selectDevice(optDeviceId);
         }
         photo = photoCapture_->capturePhotoSync(opts);
+    } catch (const std::exception& e) {
+        (void)e; // éviter warning si log désactivé
+        return makeEmpty();
+    } catch (...) {
+        return makeEmpty();
     }
 
     jsi::Object result = jsi::Object(rt);
@@ -430,6 +440,26 @@ bool NativeCameraModule::startRecording(jsi::Runtime& rt, jsi::Object options) {
         auto v = options.getProperty(rt, "codec");
         if (v.isString()) opts.codec = v.asString(rt).utf8(rt);
     }
+  if (options.hasProperty(rt, "container")) {
+    auto v = options.getProperty(rt, "container");
+    if (v.isString()) opts.container = v.asString(rt).utf8(rt);
+  }
+  if (options.hasProperty(rt, "audioCodec")) {
+    auto v = options.getProperty(rt, "audioCodec");
+    if (v.isString()) opts.audioCodec = v.asString(rt).utf8(rt);
+  }
+  if (options.hasProperty(rt, "width")) {
+    auto v = options.getProperty(rt, "width");
+    if (v.isNumber()) opts.width = static_cast<int>(v.asNumber());
+  }
+  if (options.hasProperty(rt, "height")) {
+    auto v = options.getProperty(rt, "height");
+    if (v.isNumber()) opts.height = static_cast<int>(v.asNumber());
+  }
+  if (options.hasProperty(rt, "fps")) {
+    auto v = options.getProperty(rt, "fps");
+    if (v.isNumber()) opts.fps = static_cast<int>(v.asNumber());
+  }
     if (options.hasProperty(rt, "deviceId")) {
         auto v = options.getProperty(rt, "deviceId");
         if (v.isString()) optDeviceId = v.asString(rt).utf8(rt);

@@ -3,21 +3,21 @@
  * Interface moderne et performante pour Naaya
  */
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  Alert,
   ActivityIndicator,
+  Alert,
   Animated,
   SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { NativeCamera } from '../camera/components/NativeCamera';
-import type { NativeCameraRef } from '../camera/components/NativeCamera';
 import type { VideoResult } from '../../specs/NativeCameraModule';
 import CameraEngine from '../camera';
+import type { NativeCameraRef } from '../camera/components/NativeCamera';
+import { NativeCamera } from '../camera/components/NativeCamera';
 
 // Types pour l'état d'enregistrement
 type RecordingState = 'idle' | 'recording' | 'processing';
@@ -104,23 +104,22 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Démarrer l'enregistrement
   const startRecording = useCallback(async () => {
+    console.log('[RealCameraViewScreen] 🔴 startRecording appelé');
+    console.log('[RealCameraViewScreen] cameraRef.current:', cameraRef.current);
+    console.log('[RealCameraViewScreen] recordingState:', recordingState);
     if (recordingState !== 'idle') return;
 
     try {
       console.log('[RealCameraViewScreen] Démarrage enregistrement...');
-      setRecordingState('recording');
-      
-      const ok = await CameraEngine.startRecording({
+      console.log('[RealCameraViewScreen] Appel cameraRef.current?.startRecording...');
+      await cameraRef.current?.startRecording({
         quality: 'high',
-        maxDuration: 60, // Limite à 60 secondes
+        maxDuration: 60,
         recordAudio: true,
       });
-
-      if (!ok) {
-        throw new Error('Échec du démarrage de l\'enregistrement');
-      }
-
-      console.log('[RealCameraViewScreen] Enregistrement démarré');
+      console.log('[RealCameraViewScreen] ✅ startRecording réussi');
+      setRecordingState('recording');
+      console.log('[RealCameraViewScreen] Enregistrement démarré (via ref)');
     } catch (error) {
       console.error('[RealCameraViewScreen] Erreur démarrage enregistrement:', error);
       setRecordingState('idle');
@@ -157,13 +156,17 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Arrêter l'enregistrement
   const stopRecording = useCallback(async () => {
+    console.log('[RealCameraViewScreen] ⏹️ stopRecording appelé');
+    console.log('[RealCameraViewScreen] cameraRef.current:', cameraRef.current);
+    console.log('[RealCameraViewScreen] recordingState:', recordingState);
     if (recordingState !== 'recording') return;
 
     try {
       console.log('[RealCameraViewScreen] Arrêt enregistrement...');
       setRecordingState('processing');
-      
-      const result = await CameraEngine.stopRecording();
+      console.log('[RealCameraViewScreen] Appel cameraRef.current?.stopRecording...');
+      const result = await (cameraRef.current?.stopRecording?.() ?? CameraEngine.stopRecording());
+      console.log('[RealCameraViewScreen] ✅ stopRecording réussi, résultat:', result);
       console.log('[RealCameraViewScreen] Vidéo enregistrée:', result);
       
       setLastVideo(result);
@@ -190,16 +193,23 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Basculer la caméra
   const toggleCamera = useCallback(async () => {
+    console.log('[RealCameraViewScreen] 🔄 toggleCamera appelé');
+    console.log('[RealCameraViewScreen] cameraRef.current:', cameraRef.current);
+    console.log('[RealCameraViewScreen] cameraPosition actuel:', cameraPosition);
+    console.log('[RealCameraViewScreen] recordingState:', recordingState);
     if (recordingState === 'recording') return;
 
     try {
       const newPosition = cameraPosition === 'back' ? 'front' : 'back';
-      const ok = await CameraEngine.switchDevice(newPosition);
-      if (!ok) throw new Error('Échec du changement de caméra');
+      console.log('[RealCameraViewScreen] Nouvelle position:', newPosition);
+      console.log('[RealCameraViewScreen] Appel cameraRef.current?.switchDevice...');
+      await cameraRef.current?.switchDevice(newPosition);
+      console.log('[RealCameraViewScreen] ✅ switchDevice réussi');
       setCameraPosition(newPosition);
       // Mettre à jour l'état actif
-      const active = await CameraEngine.isActive();
-      setEngineActive(active);
+      console.log('[RealCameraViewScreen] Mise à jour engineActive...');
+      setEngineActive(Boolean(cameraRef.current?.isActive));
+      console.log('[RealCameraViewScreen] Nouvel engineActive:', Boolean(cameraRef.current?.isActive));
     } catch (error) {
       console.error('[RealCameraViewScreen] Erreur changement caméra:', error);
       Alert.alert('Erreur', 'Impossible de changer de caméra');
@@ -208,15 +218,20 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Basculer le flash
   const toggleFlash = useCallback(async () => {
+    console.log('[RealCameraViewScreen] ⚡ toggleFlash appelé');
+    console.log('[RealCameraViewScreen] cameraRef.current:', cameraRef.current);
+    console.log('[RealCameraViewScreen] flashMode actuel:', flashMode);
 
     try {
       const modes: Array<'on' | 'off' | 'auto'> = ['off', 'on', 'auto'];
       const currentIndex = modes.indexOf(flashMode);
       const newMode = modes[(currentIndex + 1) % modes.length];
-      
-      const ok = await CameraEngine.setFlashMode(newMode);
-      if (!ok) throw new Error('Échec de la configuration du flash');
+      console.log('[RealCameraViewScreen] Nouveau mode flash:', newMode);
+      console.log('[RealCameraViewScreen] Appel cameraRef.current?.setFlashMode...');
+      await cameraRef.current?.setFlashMode(newMode);
+      console.log('[RealCameraViewScreen] ✅ setFlashMode réussi');
       setFlashMode(newMode);
+      console.log('[RealCameraViewScreen] Flash mode mis à jour vers:', newMode);
     } catch (error) {
       console.error('[RealCameraViewScreen] Erreur changement flash:', error);
     }
@@ -224,10 +239,15 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Prendre une photo
   const takePhoto = useCallback(async () => {
+    console.log('[RealCameraViewScreen] 📷 takePhoto appelé');
+    console.log('[RealCameraViewScreen] cameraRef.current:', cameraRef.current);
+    console.log('[RealCameraViewScreen] recordingState:', recordingState);
     if (recordingState === 'recording') return;
 
     try {
-      const result = await CameraEngine.capturePhoto({ quality: 0.9 });
+      console.log('[RealCameraViewScreen] Appel cameraRef.current?.capturePhoto...');
+      const result = await (cameraRef.current?.capturePhoto?.({ quality: 0.9 }) ?? CameraEngine.capturePhoto({ quality: 0.9 }));
+      console.log('[RealCameraViewScreen] ✅ capturePhoto réussi, résultat:', result);
       
       console.log('[RealCameraViewScreen] Photo capturée:', result);
       Alert.alert('Photo capturée', `Résolution: ${result.width}x${result.height}`);
@@ -239,25 +259,42 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Smoke Test Caméra
   const runSmokeTest = useCallback(async () => {
+    console.log('[RealCameraViewScreen] 🧪 runSmokeTest appelé');
+    console.log('[RealCameraViewScreen] cameraRef.current:', cameraRef.current);
     try {
       setIsLoading(true);
       console.log('[SmokeTest] Démarrage');
+      console.log('[SmokeTest] Vérification permissions...');
       const perms = await CameraEngine.checkPermissions();
+      console.log('[SmokeTest] Permissions:', perms);
       if (perms.camera !== 'granted' || perms.microphone !== 'granted') {
+        console.log('[SmokeTest] Demande permissions...');
         await CameraEngine.requestPermissions();
       }
+      console.log('[SmokeTest] Récupération dispositifs...');
       const devices = await CameraEngine.getAvailableDevices();
+      console.log('[SmokeTest] Dispositifs trouvés:', devices);
       if (!devices || devices.length === 0) {
         throw new Error('Aucune caméra disponible');
       }
       const back = devices.find(d => d.position === 'back') || devices[0];
+      console.log('[SmokeTest] Dispositif sélectionné:', back);
+      console.log('[SmokeTest] Démarrage caméra...');
       await CameraEngine.startCamera(back.id);
+      console.log('[SmokeTest] Capture photo...');
       const photo = await CameraEngine.capturePhoto({ quality: 0.8, deviceId: back.id });
+      console.log('[SmokeTest] Photo capturée:', photo);
+      console.log('[SmokeTest] Démarrage enregistrement...');
       const ok = await CameraEngine.startRecording({ quality: 'high', recordAudio: true, maxDuration: 10, deviceId: back.id });
+      console.log('[SmokeTest] Enregistrement démarré:', ok);
       if (!ok) throw new Error('Échec startRecording');
       await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('[SmokeTest] Récupération progression...');
       const prog = await CameraEngine.getRecordingProgress();
+      console.log('[SmokeTest] Progression:', prog);
+      console.log('[SmokeTest] Arrêt enregistrement...');
       const video = await CameraEngine.stopRecording();
+      console.log('[SmokeTest] Vidéo enregistrée:', video);
       Alert.alert(
         'Smoke test Caméra réussi',
         `Photo: ${photo.width}x${photo.height}\nVidéo: ${video.duration.toFixed(1)}s, ${(video.size/1024/1024).toFixed(2)} MB\nProgress ~ ${prog.duration.toFixed(1)}s`

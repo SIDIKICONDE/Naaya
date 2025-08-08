@@ -17,8 +17,13 @@ export interface VideoCaptureOptions {
   videoBitrate?: number;
   audioBitrate?: number;
   recordAudio?: boolean;
-  codec?: string; // "H264", etc.
-  deviceId?: string; // optionnel: forcer un device avant enregistrement
+  codec?: string; // "H264" | "HEVC" | "Auto"
+  container?: 'mp4' | 'mov';
+  audioCodec?: string; // "AAC"
+  width?: number;
+  height?: number;
+  fps?: number;
+  deviceId?: string; // "front" | "back" ou id natif
 }
 
 // Types pour les résultats

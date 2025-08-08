@@ -3,9 +3,11 @@
  * Performance pure - utilise directement le moteur C++ Naaya
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { NativeCameraEngine } from '../index';
+import { useCallback, useEffect, useState } from 'react';
+import type { FilterState } from '../../../specs/NativeCameraFiltersModule';
+import CameraFilters from '../../../specs/NativeCameraFiltersModule';
 import type { CameraDevice, PermissionResult } from '../../../specs/NativeCameraModule';
+import { NativeCameraEngine } from '../index';
 
 export interface UseNativeCameraReturn {
   // État
@@ -22,6 +24,12 @@ export interface UseNativeCameraReturn {
   stopCamera: () => Promise<void>;
   switchDevice: (position: 'front' | 'back') => Promise<void>;
   refresh: () => Promise<void>;
+  
+  // Filtres
+  availableFilters: string[];
+  currentFilter: FilterState | null;
+  setFilter: (name: string, intensity: number) => Promise<boolean>;
+  clearFilter: () => Promise<boolean>;
 }
 
 /**
@@ -35,6 +43,10 @@ export function useNativeCamera(): UseNativeCameraReturn {
   const [isActive, setIsActive] = useState(false);
   const [permissions, setPermissions] = useState<PermissionResult | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  
+  // État des filtres
+  const [availableFilters, setAvailableFilters] = useState<string[]>([]);
+  const [currentFilter, setCurrentFilter] = useState<FilterState | null>(null);
 
   /**
    * Charge la liste des dispositifs caméra
@@ -111,15 +123,15 @@ export function useNativeCamera(): UseNativeCameraReturn {
 
       console.log('[useNativeCamera] Démarrage caméra:', targetDeviceId);
       
-      // Vérifier les permissions avant de démarrer
-      const permissions = await NativeCameraEngine.checkPermissions();
-      if (permissions.camera !== 'granted') {
+      // Vérifier toujours les permissions (le natif gère simulateur)
+      const perms = await NativeCameraEngine.checkPermissions();
+      if (perms.camera !== 'granted') {
         throw new Error('Permission caméra non accordée');
       }
       
       // Vérifier que le dispositif existe toujours
-      const devices = await NativeCameraEngine.getAvailableDevices();
-      const deviceExists = devices.some(d => d.id === targetDeviceId);
+      const availableDevices = await NativeCameraEngine.getAvailableDevices();
+      const deviceExists = availableDevices.some(d => d.id === targetDeviceId);
       if (!deviceExists) {
         throw new Error('Dispositif caméra non disponible');
       }
@@ -192,6 +204,57 @@ export function useNativeCamera(): UseNativeCameraReturn {
   }, [devices, isActive, stopCamera, startCamera]);
 
   /**
+   * Charge les filtres disponibles
+   */
+  const loadFilters = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Chargement des filtres...');
+      const filters = await CameraFilters.getAvailableFilters();
+      setAvailableFilters(filters);
+      console.log('[useNativeCamera] Filtres disponibles:', filters);
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur chargement filtres:', err);
+    }
+  }, []);
+
+  /**
+   * Applique un filtre
+   */
+  const setFilter = useCallback(async (name: string, intensity: number) => {
+    try {
+      console.log('[useNativeCamera] Application filtre:', name, 'intensité:', intensity);
+      const success = await CameraFilters.setFilter(name, intensity);
+      if (success) {
+        const filter = await CameraFilters.getFilter();
+        setCurrentFilter(filter);
+        console.log('[useNativeCamera] Filtre appliqué:', filter);
+      }
+      return success;
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur application filtre:', err);
+      return false;
+    }
+  }, []);
+
+  /**
+   * Supprime le filtre actuel
+   */
+  const clearFilter = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Suppression du filtre...');
+      const success = await CameraFilters.clearFilter();
+      if (success) {
+        setCurrentFilter(null);
+        console.log('[useNativeCamera] Filtre supprimé');
+      }
+      return success;
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur suppression filtre:', err);
+      return false;
+    }
+  }, []);
+
+  /**
    * Rafraîchit la liste des dispositifs
    */
   const refresh = useCallback(async () => {
@@ -205,11 +268,13 @@ export function useNativeCamera(): UseNativeCameraReturn {
       } else {
         await loadDevices();
       }
+      // Charger aussi les filtres
+      await loadFilters();
     } catch (err) {
       console.error('[useNativeCamera] Erreur rafraîchissement:', err);
       setError(err as Error);
     }
-  }, [checkPermissions, loadDevices, requestPermissions]);
+  }, [checkPermissions, loadDevices, requestPermissions, loadFilters]);
 
   // Initialisation au montage
   useEffect(() => {
@@ -238,5 +303,11 @@ export function useNativeCamera(): UseNativeCameraReturn {
     stopCamera,
     switchDevice,
     refresh,
+    
+    // Filtres
+    availableFilters,
+    currentFilter,
+    setFilter,
+    clearFilter,
   };
 }

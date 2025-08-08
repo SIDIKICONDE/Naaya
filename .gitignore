@@ -104,3 +104,14 @@ ios/build/generated/
 # Ruby/CocoaPods
 vendor/bundle/
 Gemfile.lock
+
+# FFmpeg Android Maker (external repository)
+ffmpeg-android-maker/
+
+# Large build files that exceed GitHub's 100MB limit
+builds/
+*.xcarchive/
+*.dSYM/
+*.ipa
+*.apk
+*.aab

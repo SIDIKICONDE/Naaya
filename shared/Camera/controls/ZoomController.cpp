@@ -1,15 +1,29 @@
 #include "ZoomController.hpp"
+#include <algorithm>
 
 namespace Camera {
 
 ZoomController::ZoomController() = default;
 ZoomController::~ZoomController() = default;
 
-bool ZoomController::initialize() { return true; }
+bool ZoomController::initialize() {
+    // Récupérer la plage de zoom depuis la plateforme
+    auto [minZ, maxZ] = getZoomRangePlatform();
+    if (minZ <= 0.0) minZ = 1.0;
+    if (maxZ < minZ) maxZ = minZ;
+    minZoom_ = minZ;
+    maxZoom_ = maxZ;
+    // Forcer le zoom courant dans la plage
+    currentZoom_ = clampZoom(currentZoom_.load());
+    return initializePlatform();
+}
 void ZoomController::shutdown() {}
 
 bool ZoomController::setZoomLevel(double level) {
     double clamped = clampZoom(level);
+    if (!setZoomLevelPlatform(clamped)) {
+        return false;
+    }
     currentZoom_ = clamped;
     return true;
 }
@@ -88,7 +102,7 @@ public:
 protected:
     bool initializePlatform() override { return true; }
     void shutdownPlatform() override {}
-    bool setZoomLevelPlatform(double level) override { return true; }
+    bool setZoomLevelPlatform(double /*level*/) override { return true; }
     std::pair<double, double> getZoomRangePlatform() const override { return {1.0, 10.0}; }
     bool zoomToPointPlatform(double x, double y, double zoomLevel) override { return true; }
     bool setGestureZoomEnabledPlatform(bool enabled) override { return true; }
@@ -96,7 +110,12 @@ protected:
 };
 
 std::unique_ptr<ZoomController> ZoomControllerFactory::create() {
+#if defined(__APPLE__)
+    // Fallback: pas d'impl iOS spécifique pour le moment -> utiliser défaut
     return std::make_unique<DefaultZoomController>();
+#else
+    return std::make_unique<DefaultZoomController>();
+#endif
 }
 
 } // namespace Camera

@@ -20,6 +20,13 @@ struct VideoCaptureOptions {
     int audioBitrate = 0;           // Bitrate audio (0 = auto)
     bool recordAudio = true;        // Enregistrer l'audio
     std::string codec = "H264";     // Codec vidéo
+    std::string container = "mp4";  // Conteneur: "mp4" ou "mov"
+    std::string audioCodec = "AAC"; // Codec audio (AAC par défaut)
+    // Nouvelles options
+    int width = 0;                  // Largeur souhaitée (0 = auto)
+    int height = 0;                 // Hauteur souhaitée (0 = auto)
+    int fps = 0;                    // FPS souhaités (0 = auto)
+    std::string deviceId;           // Id du device ou "front"/"back"
     
     VideoCaptureOptions() = default;
 };

@@ -4,23 +4,19 @@
  * Performance pure - pas de dépendance vision-camera
  */
 
-import NativeCameraModule from '../../specs/NativeCameraModule';
 import type {
-  PhotoCaptureOptions,
-  VideoCaptureOptions,
-  PhotoResult,
-  VideoResult,
   CameraDevice,
   PermissionResult,
+  PhotoCaptureOptions,
+  PhotoResult,
+  VideoCaptureOptions,
+  VideoResult,
 } from '../../specs/NativeCameraModule';
+import NativeCameraModule from '../../specs/NativeCameraModule';
 
-export type { 
-  PhotoCaptureOptions, 
-  VideoCaptureOptions, 
-  PhotoResult, 
-  VideoResult, 
-  CameraDevice, 
-  PermissionResult 
+export type {
+  CameraDevice,
+  PermissionResult, PhotoCaptureOptions, PhotoResult, VideoCaptureOptions, VideoResult
 };
 
 /**
@@ -204,14 +200,35 @@ class CameraModule {
   async capturePhoto(options?: PhotoCaptureOptions): Promise<PhotoResult> {
     try {
       const native: any = NativeCameraModule as any;
+      // S'assurer que la caméra est active avant la capture
+      try {
+        const active = (typeof native.isActive === 'function') ? await native.isActive() : this.mockActive;
+        if (!active) {
+          const devices = (typeof native.getAvailableDevices === 'function') ? await native.getAvailableDevices() : [];
+          const back = devices?.find((d: any) => d.position === 'back') || devices?.[0];
+          if (back && typeof native.startCamera === 'function') {
+            await native.startCamera(back.id);
+          }
+        }
+      } catch (prepErr) {
+        console.warn('[CameraModule] Préparation capture (auto-start) a échoué:', prepErr);
+      }
+
       if (typeof native.capturePhoto === 'function') {
-        return await native.capturePhoto(options || {});
+        const res = await native.capturePhoto(options || {});
+        // Normaliser un résultat potentiellement vide renvoyé par le natif
+        if (!res || !res.uri) {
+          console.warn('[CameraModule] capturePhoto a renvoyé un résultat vide, fallback');
+          return { uri: '', width: 0, height: 0 } as PhotoResult;
+        }
+        return res;
       }
       console.warn('[CameraModule] capturePhoto indisponible — retour de secours');
       return { uri: 'ph://mock', width: 0, height: 0 } as PhotoResult;
     } catch (error) {
       console.error('[CameraModule] Erreur capture photo:', error);
-      throw error;
+      // Ne pas propager pour éviter les "Exception in HostFunction" côté UI
+      return { uri: '', width: 0, height: 0 } as PhotoResult;
     }
   }
 
@@ -425,3 +442,4 @@ export default NativeCameraEngine;
 export { NativeCamera } from './components/NativeCamera';
 export { useNativeCamera } from './hooks/useNativeCamera';
 export { useNativeCameraCapture } from './hooks/useNativeCameraCapture';
+

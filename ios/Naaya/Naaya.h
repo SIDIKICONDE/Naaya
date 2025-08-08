@@ -32,6 +32,35 @@
 
 
 NS_ASSUME_NONNULL_BEGIN
+
+@protocol NativeCameraFiltersModuleSpec <RCTBridgeModule, RCTTurboModule>
+
+- (NSArray<NSString *> *)getAvailableFilters;
+- (NSNumber *)setFilter:(NSString *)name
+              intensity:(double)intensity;
+- (NSDictionary * _Nullable)getFilter;
+- (NSNumber *)clearFilter;
+
+@end
+
+@interface NativeCameraFiltersModuleSpecBase : NSObject {
+@protected
+facebook::react::EventEmitterCallback _eventEmitterCallback;
+}
+- (void)setEventEmitterCallback:(EventEmitterCallbackWrapper *)eventEmitterCallbackWrapper;
+
+
+@end
+
+namespace facebook::react {
+  /**
+   * ObjC++ class for module 'NativeCameraFiltersModule'
+   */
+  class JSI_EXPORT NativeCameraFiltersModuleSpecJSI : public ObjCTurboModule {
+  public:
+    NativeCameraFiltersModuleSpecJSI(const ObjCTurboModule::InitParams &params);
+  };
+} // namespace facebook::react
 namespace JS {
   namespace NativeCameraModule {
     struct PhotoCaptureOptions {
@@ -119,6 +148,7 @@ namespace facebook::react {
     NativeCameraModuleSpecJSI(const ObjCTurboModule::InitParams &params);
   };
 } // namespace facebook::react
+
 inline std::optional<double> JS::NativeCameraModule::PhotoCaptureOptions::quality() const
 {
   id const p = _v[@"quality"];

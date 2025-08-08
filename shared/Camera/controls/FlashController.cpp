@@ -63,7 +63,12 @@ protected:
 };
 
 std::unique_ptr<FlashController> FlashControllerFactory::create() {
+#if defined(__APPLE__)
+    // Fallback: pas d'impl iOS spécifique pour le moment -> utiliser défaut
     return std::make_unique<DefaultFlashController>();
+#else
+    return std::make_unique<DefaultFlashController>();
+#endif
 }
 
 } // namespace Camera

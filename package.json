@@ -51,7 +51,8 @@
     },
     "ios": {
       "modulesProvider": {
-        "NativeCameraModule": "NativeCameraModuleProvider"
+        "NativeCameraModule": "NativeCameraModuleProvider",
+        "NativeCameraFiltersModule": "NativeCameraFiltersModuleProvider"
       }
     }
   }

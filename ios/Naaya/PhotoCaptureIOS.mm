@@ -1,9 +1,34 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
 #import <ImageIO/ImageIO.h>
+#if __has_include(<MobileCoreServices/UTCoreTypes.h>)
+#import <MobileCoreServices/UTCoreTypes.h>
+#else
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#define kUTTypeJPEG CFSTR("public.jpeg")
+#endif
+#if __has_include(<MobileCoreServices/MobileCoreServices.h>)
+#import <MobileCoreServices/MobileCoreServices.h>
+#endif
+#import <CoreImage/CoreImage.h>
+// Éviter UIKit si indisponible en environnement de lint
+#if __has_include(<UIKit/UIKit.h>)
+#import <UIKit/UIKit.h>
+#endif
 
 #include "PhotoCaptureIOS.h"
 #import "CameraSessionBridge.h"
+
+// API C filtres depuis runtime C++
+#ifdef __cplusplus
+extern "C" {
+#endif
+bool NaayaFilters_HasFilter(void);
+const char* NaayaFilters_GetCurrentName(void);
+double NaayaFilters_GetCurrentIntensity(void);
+#ifdef __cplusplus
+}
+#endif
 
 @interface NaayaPhotoDelegate : NSObject <AVCapturePhotoCaptureDelegate>
 @property(nonatomic, assign) dispatch_semaphore_t sem;
@@ -21,8 +46,50 @@
     return;
   }
   NSData* d = [photo fileDataRepresentation];
-  self.data = d;
-  if (d) {
+  // Appliquer filtre si actif (CI côté capture)
+  if (d && NaayaFilters_HasFilter()) {
+    CIImage* ci = [CIImage imageWithData:d];
+    if (ci) {
+      CIContext* ctx = [CIContext contextWithOptions:nil];
+      NSString* name = NaayaFilters_GetCurrentName() ? [NSString stringWithUTF8String:NaayaFilters_GetCurrentName()] : @"";
+      double intensity = NaayaFilters_GetCurrentIntensity();
+      CIImage* out = ci;
+      if ([name isEqualToString:@"sepia"]) {
+        CIFilter* f = [CIFilter filterWithName:@"CISepiaTone"]; [f setValue:ci forKey:kCIInputImageKey]; [f setValue:@(MAX(0, MIN(1, intensity))) forKey:kCIInputIntensityKey]; out = f.outputImage ?: ci;
+      } else if ([name isEqualToString:@"noir"]) {
+        CIFilter* f = [CIFilter filterWithName:@"CIPhotoEffectNoir"]; [f setValue:ci forKey:kCIInputImageKey]; out = f.outputImage ?: ci;
+      } else if ([name isEqualToString:@"monochrome"]) {
+        CIFilter* f = [CIFilter filterWithName:@"CIColorMonochrome"]; [f setValue:ci forKey:kCIInputImageKey]; [f setValue:@(1.0) forKey:@"inputIntensity"]; out = f.outputImage ?: ci;
+      } else if ([name isEqualToString:@"color_controls"]) {
+        CIFilter* f = [CIFilter filterWithName:@"CIColorControls"]; [f setValue:ci forKey:kCIInputImageKey]; [f setValue:@(1.0) forKey:@"inputSaturation"]; [f setValue:@(intensity * 0.2) forKey:@"inputBrightness"]; [f setValue:@(1.0 + intensity * 0.5) forKey:@"inputContrast"]; out = f.outputImage ?: ci;
+      }
+      CGImageRef cg = [ctx createCGImage:out fromRect:out.extent];
+      if (cg) {
+        // Encodage JPEG sans UIKit
+        CFMutableDataRef jpegData = CFDataCreateMutable(kCFAllocatorDefault, 0);
+        CGImageDestinationRef dest = CGImageDestinationCreateWithData(jpegData, kUTTypeJPEG, 1, NULL);
+        if (dest) {
+          const CGFloat quality = 0.95;
+          NSDictionary* options = @{ (NSString*)kCGImageDestinationLossyCompressionQuality: @(quality) };
+          CGImageDestinationAddImage(dest, cg, (__bridge CFDictionaryRef)options);
+          CGImageDestinationFinalize(dest);
+          self.data = [NSData dataWithData:(__bridge_transfer NSData*)jpegData];
+          CFRelease(dest);
+        } else {
+          self.data = d;
+          CFRelease(jpegData);
+        }
+        CGImageRelease(cg);
+      } else {
+        self.data = d;
+      }
+    } else {
+      self.data = d;
+    }
+  } else {
+    self.data = d;
+  }
+  if (self.data) {
     CGImageSourceRef src = CGImageSourceCreateWithData((__bridge CFDataRef)d, NULL);
     if (src) {
       NSDictionary* props = (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(src, 0, NULL);
@@ -95,6 +162,21 @@ protected:
 
     AVCapturePhotoSettings* settings = [AVCapturePhotoSettings photoSettings];
     settings.highResolutionPhotoEnabled = YES;
+    // Appliquer le flash mode selon le contrôleur global (via device capabilities)
+    AVCaptureDeviceInput* input = NaayaGetCurrentInput();
+    AVCaptureDevice* device = input ? input.device : nil;
+    if (device && device.hasFlash) {
+      // Par défaut, utiliser 'auto' si supporté
+      if ([photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeAuto)]) {
+        settings.flashMode = AVCaptureFlashModeAuto;
+      } else if ([photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeOn)]) {
+        settings.flashMode = AVCaptureFlashModeOn;
+      } else {
+        settings.flashMode = AVCaptureFlashModeOff;
+      }
+    } else {
+      settings.flashMode = AVCaptureFlashModeOff;
+    }
     [photoOutput capturePhotoWithSettings:settings delegate:delegate];
 
     // Attendre la fin de capture
