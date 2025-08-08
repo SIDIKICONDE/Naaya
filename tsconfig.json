@@ -1,0 +1,11 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@teleprompter/*": ["src/teleprompter/*"],
+      "@ui/*": ["src/ui/*"],
+      "@screens/*": ["src/screens/*"]
+    }
+  }
+}

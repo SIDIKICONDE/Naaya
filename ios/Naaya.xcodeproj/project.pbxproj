@@ -1,0 +1,568 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		63EE9E9D0D8D8693175FA7A7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		AA1111111A11111111111111 /* CameraManagerIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA1111111C11111111111111 /* CameraManagerIOS.mm */; };
+		AA2222222A22222222222222 /* NativeCameraModuleProvider.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA2222222C22222222222222 /* NativeCameraModuleProvider.mm */; };
+		AA3333333A33333333333333 /* NaayaFrameProcessor.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA3333333C33333333333333 /* NaayaFrameProcessor.mm */; };
+		AA4445555A00000000000001 /* PermissionManagerIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA4445555C00000000000001 /* PermissionManagerIOS.mm */; };
+		AA4445555A00000000000002 /* PhotoCaptureIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA4445555C00000000000002 /* PhotoCaptureIOS.mm */; };
+		AA4445555A00000000000003 /* VideoCaptureIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA4445555C00000000000003 /* VideoCaptureIOS.mm */; };
+		AA5556666A00000000000001 /* CameraSessionBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA5556666C00000000000001 /* CameraSessionBridge.mm */; };
+		AA7778888A00000000000001 /* NaayaPreviewView.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA7778888C00000000000001 /* NaayaPreviewView.mm */; };
+		AA7778888A00000000000002 /* NaayaPreviewManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA7778888C00000000000002 /* NaayaPreviewManager.mm */; };
+		AAB101001B00000000000001 /* NativeCameraModule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001001B00000000000001 /* NativeCameraModule.cpp */; };
+		AAB101002B00000000000002 /* CameraManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001002B00000000000002 /* CameraManager.cpp */; };
+		AAB101003B00000000000003 /* PhotoCapture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001003B00000000000003 /* PhotoCapture.cpp */; };
+		AAB101004B00000000000004 /* VideoCapture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001004B00000000000004 /* VideoCapture.cpp */; };
+		AAB101005B00000000000005 /* FlashController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001005B00000000000005 /* FlashController.cpp */; };
+		AAB101006B00000000000006 /* ZoomController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001006B00000000000006 /* ZoomController.cpp */; };
+		AAB101007B00000000000007 /* PermissionManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001007B00000000000007 /* PermissionManager.cpp */; };
+		AAC096ADA7142E7CE3F08237 /* libPods-Naaya.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		13B07F961A680F5B00A75B9A /* Naaya.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Naaya.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Naaya/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Naaya/Info.plist; sourceTree = "<group>"; };
+		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = Naaya/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4BE2BE17F4F353013E802CEA /* Pods-Naaya.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Naaya.debug.xcconfig"; path = "Target Support Files/Pods-Naaya/Pods-Naaya.debug.xcconfig"; sourceTree = "<group>"; };
+		5F367C6E9085D05A6E48CFF9 /* Pods-Naaya.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Naaya.release.xcconfig"; path = "Target Support Files/Pods-Naaya/Pods-Naaya.release.xcconfig"; sourceTree = "<group>"; };
+		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Naaya/AppDelegate.swift; sourceTree = "<group>"; };
+		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Naaya/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		AA1111111B11111111111111 /* CameraManagerIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CameraManagerIOS.h; path = Naaya/CameraManagerIOS.h; sourceTree = "<group>"; };
+		AA1111111C11111111111111 /* CameraManagerIOS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = CameraManagerIOS.mm; path = Naaya/CameraManagerIOS.mm; sourceTree = "<group>"; };
+		AA2222222B22222222222222 /* NativeCameraModuleProvider.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = NativeCameraModuleProvider.h; path = Naaya/NativeCameraModuleProvider.h; sourceTree = "<group>"; };
+		AA2222222C22222222222222 /* NativeCameraModuleProvider.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = NativeCameraModuleProvider.mm; path = Naaya/NativeCameraModuleProvider.mm; sourceTree = "<group>"; };
+		AA3333333C33333333333333 /* NaayaFrameProcessor.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = NaayaFrameProcessor.mm; path = Naaya/NaayaFrameProcessor.mm; sourceTree = "<group>"; };
+		AA4444444B44444444444444 /* Naaya.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Naaya.h; path = Naaya/Naaya.h; sourceTree = "<group>"; };
+		AA4445555B00000000000001 /* PermissionManagerIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PermissionManagerIOS.h; path = Naaya/PermissionManagerIOS.h; sourceTree = "<group>"; };
+		AA4445555B00000000000002 /* PhotoCaptureIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PhotoCaptureIOS.h; path = Naaya/PhotoCaptureIOS.h; sourceTree = "<group>"; };
+		AA4445555B00000000000003 /* VideoCaptureIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VideoCaptureIOS.h; path = Naaya/VideoCaptureIOS.h; sourceTree = "<group>"; };
+		AA4445555C00000000000001 /* PermissionManagerIOS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = PermissionManagerIOS.mm; path = Naaya/PermissionManagerIOS.mm; sourceTree = "<group>"; };
+		AA4445555C00000000000002 /* PhotoCaptureIOS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = PhotoCaptureIOS.mm; path = Naaya/PhotoCaptureIOS.mm; sourceTree = "<group>"; };
+		AA4445555C00000000000003 /* VideoCaptureIOS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = VideoCaptureIOS.mm; path = Naaya/VideoCaptureIOS.mm; sourceTree = "<group>"; };
+		AA5556666B00000000000001 /* CameraSessionBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CameraSessionBridge.h; path = Naaya/CameraSessionBridge.h; sourceTree = "<group>"; };
+		AA5556666C00000000000001 /* CameraSessionBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = CameraSessionBridge.mm; path = Naaya/CameraSessionBridge.mm; sourceTree = "<group>"; };
+		AA7778888B00000000000001 /* NaayaPreviewView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = NaayaPreviewView.h; path = Naaya/NaayaPreviewView.h; sourceTree = "<group>"; };
+		AA7778888B00000000000002 /* NaayaPreviewManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = NaayaPreviewManager.h; path = Naaya/NaayaPreviewManager.h; sourceTree = "<group>"; };
+		AA7778888C00000000000001 /* NaayaPreviewView.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = NaayaPreviewView.mm; path = Naaya/NaayaPreviewView.mm; sourceTree = "<group>"; };
+		AA7778888C00000000000002 /* NaayaPreviewManager.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = NaayaPreviewManager.mm; path = Naaya/NaayaPreviewManager.mm; sourceTree = "<group>"; };
+		AAB001001B00000000000001 /* NativeCameraModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NativeCameraModule.cpp; path = ../shared/NativeCameraModule.cpp; sourceTree = "<group>"; };
+		AAB001002B00000000000002 /* CameraManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CameraManager.cpp; path = ../shared/Camera/core/CameraManager.cpp; sourceTree = "<group>"; };
+		AAB001003B00000000000003 /* PhotoCapture.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PhotoCapture.cpp; path = ../shared/Camera/capture/PhotoCapture.cpp; sourceTree = "<group>"; };
+		AAB001004B00000000000004 /* VideoCapture.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VideoCapture.cpp; path = ../shared/Camera/capture/VideoCapture.cpp; sourceTree = "<group>"; };
+		AAB001005B00000000000005 /* FlashController.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FlashController.cpp; path = ../shared/Camera/controls/FlashController.cpp; sourceTree = "<group>"; };
+		AAB001006B00000000000006 /* ZoomController.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ZoomController.cpp; path = ../shared/Camera/controls/ZoomController.cpp; sourceTree = "<group>"; };
+		AAB001007B00000000000007 /* PermissionManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PermissionManager.cpp; path = ../shared/Camera/utils/PermissionManager.cpp; sourceTree = "<group>"; };
+		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Naaya.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AAC096ADA7142E7CE3F08237 /* libPods-Naaya.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		13B07FAE1A68108700A75B9A /* Naaya */ = {
+			isa = PBXGroup;
+			children = (
+				13B07FB51A68108700A75B9A /* Images.xcassets */,
+				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				13B07FB61A68108700A75B9A /* Info.plist */,
+				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
+				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				AA4444444B44444444444444 /* Naaya.h */,
+				AA1111111B11111111111111 /* CameraManagerIOS.h */,
+				AA1111111C11111111111111 /* CameraManagerIOS.mm */,
+				AA2222222B22222222222222 /* NativeCameraModuleProvider.h */,
+				AA2222222C22222222222222 /* NativeCameraModuleProvider.mm */,
+				AA3333333C33333333333333 /* NaayaFrameProcessor.mm */,
+				AAB001001B00000000000001 /* NativeCameraModule.cpp */,
+				AAB001002B00000000000002 /* CameraManager.cpp */,
+				AAB001003B00000000000003 /* PhotoCapture.cpp */,
+				AAB001004B00000000000004 /* VideoCapture.cpp */,
+				AAB001005B00000000000005 /* FlashController.cpp */,
+				AAB001006B00000000000006 /* ZoomController.cpp */,
+				AAB001007B00000000000007 /* PermissionManager.cpp */,
+				AA4445555B00000000000001 /* PermissionManagerIOS.h */,
+				AA4445555C00000000000001 /* PermissionManagerIOS.mm */,
+				AA4445555B00000000000002 /* PhotoCaptureIOS.h */,
+				AA4445555C00000000000002 /* PhotoCaptureIOS.mm */,
+				AA4445555B00000000000003 /* VideoCaptureIOS.h */,
+				AA4445555C00000000000003 /* VideoCaptureIOS.mm */,
+				AA5556666B00000000000001 /* CameraSessionBridge.h */,
+				AA5556666C00000000000001 /* CameraSessionBridge.mm */,
+				AA7778888B00000000000001 /* NaayaPreviewView.h */,
+				AA7778888C00000000000001 /* NaayaPreviewView.mm */,
+				AA7778888B00000000000002 /* NaayaPreviewManager.h */,
+				AA7778888C00000000000002 /* NaayaPreviewManager.mm */,
+			);
+			name = Naaya;
+			sourceTree = "<group>";
+		};
+		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
+				FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Libraries;
+			sourceTree = "<group>";
+		};
+		83CBB9F61A601CBA00E9B192 = {
+			isa = PBXGroup;
+			children = (
+				13B07FAE1A68108700A75B9A /* Naaya */,
+				832341AE1AAA6A7D00B99B32 /* Libraries */,
+				83CBBA001A601CBA00E9B192 /* Products */,
+				2D16E6871FA4F8E400B85C8A /* Frameworks */,
+				BBD78D7AC51CEA395F1C20DB /* Pods */,
+			);
+			indentWidth = 2;
+			sourceTree = "<group>";
+			tabWidth = 2;
+			usesTabs = 0;
+		};
+		83CBBA001A601CBA00E9B192 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				13B07F961A680F5B00A75B9A /* Naaya.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				4BE2BE17F4F353013E802CEA /* Pods-Naaya.debug.xcconfig */,
+				5F367C6E9085D05A6E48CFF9 /* Pods-Naaya.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		13B07F861A680F5B00A75B9A /* Naaya */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Naaya" */;
+			buildPhases = (
+				5ADCD0D139759A01F3877C55 /* [CP] Check Pods Manifest.lock */,
+				13B07F871A680F5B00A75B9A /* Sources */,
+				13B07F8C1A680F5B00A75B9A /* Frameworks */,
+				13B07F8E1A680F5B00A75B9A /* Resources */,
+				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
+				FE38F201F3C044F492B741F9 /* [CP] Embed Pods Frameworks */,
+				EA2DF08FE88B0598A6657CD5 /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Naaya;
+			productName = Naaya;
+			productReference = 13B07F961A680F5B00A75B9A /* Naaya.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		83CBB9F71A601CBA00E9B192 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1210;
+				TargetAttributes = {
+					13B07F861A680F5B00A75B9A = {
+						LastSwiftMigration = 1120;
+					};
+				};
+			};
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "Naaya" */;
+			compatibilityVersion = "Xcode 12.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 83CBB9F61A601CBA00E9B192;
+			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				13B07F861A680F5B00A75B9A /* Naaya */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		13B07F8E1A680F5B00A75B9A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				63EE9E9D0D8D8693175FA7A7 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/.xcode.env",
+			);
+			name = "Bundle React Native code and images";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
+		};
+		5ADCD0D139759A01F3877C55 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Naaya-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		EA2DF08FE88B0598A6657CD5 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		FE38F201F3C044F492B741F9 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		13B07F871A680F5B00A75B9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				AA1111111A11111111111111 /* CameraManagerIOS.mm in Sources */,
+				AA2222222A22222222222222 /* NativeCameraModuleProvider.mm in Sources */,
+				AA3333333A33333333333333 /* NaayaFrameProcessor.mm in Sources */,
+				AAB101001B00000000000001 /* NativeCameraModule.cpp in Sources */,
+				AAB101002B00000000000002 /* CameraManager.cpp in Sources */,
+				AAB101003B00000000000003 /* PhotoCapture.cpp in Sources */,
+				AAB101004B00000000000004 /* VideoCapture.cpp in Sources */,
+				AAB101005B00000000000005 /* FlashController.cpp in Sources */,
+				AAB101006B00000000000006 /* ZoomController.cpp in Sources */,
+				AAB101007B00000000000007 /* PermissionManager.cpp in Sources */,
+				AA4445555A00000000000001 /* PermissionManagerIOS.mm in Sources */,
+				AA4445555A00000000000002 /* PhotoCaptureIOS.mm in Sources */,
+				AA4445555A00000000000003 /* VideoCaptureIOS.mm in Sources */,
+				AA5556666A00000000000001 /* CameraSessionBridge.mm in Sources */,
+				AA7778888A00000000000001 /* NaayaPreviewView.mm in Sources */,
+				AA7778888A00000000000002 /* NaayaPreviewManager.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		13B07F941A680F5B00A75B9A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4BE2BE17F4F353013E802CEA /* Pods-Naaya.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_BITCODE = NO;
+				INFOPLIST_FILE = Naaya/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_NAME = Naaya;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		13B07F951A680F5B00A75B9A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5F367C6E9085D05A6E48CFF9 /* Pods-Naaya.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Naaya/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_NAME = Naaya;
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		83CBBA201A601CBA00E9B192 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					/usr/lib/swift,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SDKROOT)/usr/lib/swift\"",
+					"\"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)\"",
+					"\"$(inherited)\"",
+				);
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(OTHER_CFLAGS)",
+					"-DFOLLY_NO_CONFIG",
+					"-DFOLLY_MOBILE=1",
+					"-DFOLLY_USE_LIBCPP=1",
+					"-DFOLLY_CFG_NO_COROUTINES=1",
+					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				USE_HERMES = true;
+			};
+			name = Debug;
+		};
+		83CBBA211A601CBA00E9B192 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					/usr/lib/swift,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SDKROOT)/usr/lib/swift\"",
+					"\"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)\"",
+					"\"$(inherited)\"",
+				);
+				MTL_ENABLE_DEBUG_INFO = NO;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(OTHER_CFLAGS)",
+					"-DFOLLY_NO_CONFIG",
+					"-DFOLLY_MOBILE=1",
+					"-DFOLLY_USE_LIBCPP=1",
+					"-DFOLLY_CFG_NO_COROUTINES=1",
+					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
+				SDKROOT = iphoneos;
+				USE_HERMES = true;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Naaya" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				13B07F941A680F5B00A75B9A /* Debug */,
+				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "Naaya" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83CBBA201A601CBA00E9B192 /* Debug */,
+				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
+}

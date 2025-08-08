@@ -1,0 +1,242 @@
+/**
+ * Hook natif pour la gestion de la caméra
+ * Performance pure - utilise directement le moteur C++ Naaya
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { NativeCameraEngine } from '../index';
+import type { CameraDevice, PermissionResult } from '../../../specs/NativeCameraModule';
+
+export interface UseNativeCameraReturn {
+  // État
+  devices: CameraDevice[];
+  currentDevice: CameraDevice | null;
+  isReady: boolean;
+  isActive: boolean;
+  permissions: PermissionResult | null;
+  error: Error | null;
+
+  // Actions
+  requestPermissions: () => Promise<void>;
+  startCamera: (deviceId?: string) => Promise<void>;
+  stopCamera: () => Promise<void>;
+  switchDevice: (position: 'front' | 'back') => Promise<void>;
+  refresh: () => Promise<void>;
+}
+
+/**
+ * Hook principal pour la caméra native
+ */
+export function useNativeCamera(): UseNativeCameraReturn {
+  // État local
+  const [devices, setDevices] = useState<CameraDevice[]>([]);
+  const [currentDevice, setCurrentDevice] = useState<CameraDevice | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [permissions, setPermissions] = useState<PermissionResult | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  /**
+   * Charge la liste des dispositifs caméra
+   */
+  const loadDevices = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Chargement des dispositifs...');
+      const availableDevices = await NativeCameraEngine.getAvailableDevices();
+      console.log('[useNativeCamera] Dispositifs trouvés:', availableDevices.length);
+      
+      setDevices(availableDevices);
+      
+      // Sélectionner le dispositif par défaut (arrière d'abord)
+      if (availableDevices.length > 0) {
+        const backDevice = availableDevices.find(device => device.position === 'back');
+        const defaultDevice = backDevice || availableDevices[0];
+        if (defaultDevice) {
+          setCurrentDevice(defaultDevice);
+          console.log('[useNativeCamera] Dispositif par défaut:', defaultDevice.name);
+          setIsReady(true);
+        }
+      }
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur chargement dispositifs:', err);
+      setError(err as Error);
+    }
+  }, []);
+
+  /**
+   * Vérifie et met à jour les permissions
+   */
+  const checkPermissions = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Vérification des permissions...');
+      const perms = await NativeCameraEngine.checkPermissions();
+      setPermissions(perms);
+      return perms;
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur permissions:', err);
+      setError(err as Error);
+      throw err;
+    }
+  }, []);
+
+  /**
+   * Demande les permissions caméra
+   */
+  const requestPermissions = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Demande de permissions...');
+      const perms = await NativeCameraEngine.requestPermissions();
+      setPermissions(perms);
+      
+      // Si permissions accordées, initialiser les dispositifs
+      if (perms.camera === 'granted') {
+        await loadDevices();
+      }
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur demande permissions:', err);
+      setError(err as Error);
+      throw err;
+    }
+  }, [loadDevices]);
+
+  /**
+   * Démarre la caméra avec le dispositif spécifié
+   */
+  const startCamera = useCallback(async (deviceId?: string) => {
+    try {
+      const targetDeviceId = deviceId || currentDevice?.id;
+      if (!targetDeviceId) {
+        throw new Error('Aucun dispositif disponible');
+      }
+
+      console.log('[useNativeCamera] Démarrage caméra:', targetDeviceId);
+      
+      // Vérifier les permissions avant de démarrer
+      const permissions = await NativeCameraEngine.checkPermissions();
+      if (permissions.camera !== 'granted') {
+        throw new Error('Permission caméra non accordée');
+      }
+      
+      // Vérifier que le dispositif existe toujours
+      const devices = await NativeCameraEngine.getAvailableDevices();
+      const deviceExists = devices.some(d => d.id === targetDeviceId);
+      if (!deviceExists) {
+        throw new Error('Dispositif caméra non disponible');
+      }
+      
+      const success = await NativeCameraEngine.startCamera(targetDeviceId);
+      
+      if (success) {
+        setIsActive(true);
+        console.log('[useNativeCamera] Caméra démarrée avec succès');
+      } else {
+        throw new Error('Échec du démarrage de la caméra - vérifiez l\'espace de stockage et redémarrez l\'app');
+      }
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur démarrage caméra:', err);
+      setError(err as Error);
+      throw err;
+    }
+  }, [currentDevice]);
+
+  /**
+   * Arrête la caméra
+   */
+  const stopCamera = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Arrêt caméra...');
+      const success = await NativeCameraEngine.stopCamera();
+      
+      if (success) {
+        setIsActive(false);
+        console.log('[useNativeCamera] Caméra arrêtée');
+      }
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur arrêt caméra:', err);
+      setError(err as Error);
+    }
+  }, []);
+
+  /**
+   * Change de dispositif (avant/arrière)
+   */
+  const switchDevice = useCallback(async (position: 'front' | 'back') => {
+    try {
+      console.log('[useNativeCamera] Changement vers:', position);
+      
+      // Trouver le dispositif correspondant
+      const targetDevice = devices.find(device => device.position === position);
+      if (!targetDevice) {
+        throw new Error(`Aucun dispositif ${position} disponible`);
+      }
+
+      // Arrêter la caméra actuelle si active
+      if (isActive) {
+        await stopCamera();
+      }
+
+      // Changer de dispositif
+      const success = await NativeCameraEngine.switchDevice(position);
+      if (success) {
+        setCurrentDevice(targetDevice);
+        console.log('[useNativeCamera] Dispositif changé vers:', targetDevice.name);
+        
+        // Redémarrer la caméra
+        await startCamera(targetDevice.id);
+      }
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur changement dispositif:', err);
+      setError(err as Error);
+      throw err;
+    }
+  }, [devices, isActive, stopCamera, startCamera]);
+
+  /**
+   * Rafraîchit la liste des dispositifs
+   */
+  const refresh = useCallback(async () => {
+    try {
+      console.log('[useNativeCamera] Rafraîchissement...');
+      setError(null);
+      const perms = await checkPermissions();
+      if (perms.camera === 'not-determined') {
+        // Demander automatiquement la permission lors du premier lancement
+        await requestPermissions();
+      } else {
+        await loadDevices();
+      }
+    } catch (err) {
+      console.error('[useNativeCamera] Erreur rafraîchissement:', err);
+      setError(err as Error);
+    }
+  }, [checkPermissions, loadDevices, requestPermissions]);
+
+  // Initialisation au montage
+  useEffect(() => {
+    console.log('[useNativeCamera] Initialisation...');
+    refresh();
+    
+    // Nettoyage au démontage
+    return () => {
+      console.log('[useNativeCamera] Nettoyage...');
+      stopCamera().catch(console.error);
+    };
+  }, [refresh, stopCamera]);
+
+  return {
+    // État
+    devices,
+    currentDevice,
+    isReady,
+    isActive,
+    permissions,
+    error,
+
+    // Actions
+    requestPermissions,
+    startCamera,
+    stopCamera,
+    switchDevice,
+    refresh,
+  };
+}

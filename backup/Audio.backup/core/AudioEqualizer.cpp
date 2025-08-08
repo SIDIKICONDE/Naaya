@@ -1,0 +1,455 @@
+#include "AudioEqualizer.h"
+#include <cmath>
+#include <algorithm>
+#include <cstring>
+
+namespace AudioEqualizer {
+
+AudioEqualizer::AudioEqualizer(size_t numBands, uint32_t sampleRate)
+    : m_sampleRate(sampleRate)
+    , m_masterGain(1.0)
+    , m_bypass(false)
+    , m_parametersChanged(false) {
+    initialize(numBands, sampleRate);
+}
+
+AudioEqualizer::~AudioEqualizer() = default;
+
+void AudioEqualizer::initialize(size_t numBands, uint32_t sampleRate) {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    
+    m_sampleRate = sampleRate;
+    m_bands.clear();
+    m_bands.resize(numBands);
+    
+    // Initialize temp buffer for processing
+    m_tempBuffer = std::make_unique<AudioBuffer>(2, MAX_BLOCK_SIZE);
+    
+    // Setup default bands
+    setupDefaultBands();
+    
+    // Update all filters
+    updateFilters();
+}
+
+void AudioEqualizer::setupDefaultBands() {
+    size_t numBands = m_bands.size();
+    
+    if (numBands == NUM_BANDS) {
+        // Use predefined frequencies for 10-band EQ
+        for (size_t i = 0; i < numBands; ++i) {
+            m_bands[i].frequency = DEFAULT_FREQUENCIES[i];
+            m_bands[i].gain = 0.0;
+            m_bands[i].q = DEFAULT_Q;
+            m_bands[i].type = FilterType::PEAK;
+            m_bands[i].enabled = true;
+        }
+        
+        // Set first and last bands as shelf filters
+        m_bands[0].type = FilterType::LOWSHELF;
+        m_bands[numBands - 1].type = FilterType::HIGHSHELF;
+    } else {
+        // Calculate logarithmically spaced frequencies
+        double minFreq = 20.0;
+        double maxFreq = 20000.0;
+        double logMin = std::log10(minFreq);
+        double logMax = std::log10(maxFreq);
+        double logStep = (logMax - logMin) / (numBands - 1);
+        
+        for (size_t i = 0; i < numBands; ++i) {
+            double logFreq = logMin + i * logStep;
+            m_bands[i].frequency = std::pow(10.0, logFreq);
+            m_bands[i].gain = 0.0;
+            m_bands[i].q = DEFAULT_Q;
+            m_bands[i].type = FilterType::PEAK;
+            m_bands[i].enabled = true;
+        }
+        
+        // Set first and last bands as shelf filters
+        if (numBands > 0) {
+            m_bands[0].type = FilterType::LOWSHELF;
+            if (numBands > 1) {
+                m_bands[numBands - 1].type = FilterType::HIGHSHELF;
+            }
+        }
+    }
+}
+
+void AudioEqualizer::updateFilters() {
+    for (size_t i = 0; i < m_bands.size(); ++i) {
+        updateBandFilter(i);
+    }
+}
+
+void AudioEqualizer::updateBandFilter(size_t bandIndex) {
+    if (bandIndex >= m_bands.size()) return;
+    
+    EQBand& band = m_bands[bandIndex];
+    
+    switch (band.type) {
+        case FilterType::LOWPASS:
+            band.filter->calculateLowpass(band.frequency, m_sampleRate, band.q);
+            break;
+        case FilterType::HIGHPASS:
+            band.filter->calculateHighpass(band.frequency, m_sampleRate, band.q);
+            break;
+        case FilterType::BANDPASS:
+            band.filter->calculateBandpass(band.frequency, m_sampleRate, band.q);
+            break;
+        case FilterType::NOTCH:
+            band.filter->calculateNotch(band.frequency, m_sampleRate, band.q);
+            break;
+        case FilterType::PEAK:
+            band.filter->calculatePeaking(band.frequency, m_sampleRate, band.q, band.gain);
+            break;
+        case FilterType::LOWSHELF:
+            band.filter->calculateLowShelf(band.frequency, m_sampleRate, band.q, band.gain);
+            break;
+        case FilterType::HIGHSHELF:
+            band.filter->calculateHighShelf(band.frequency, m_sampleRate, band.q, band.gain);
+            break;
+        case FilterType::ALLPASS:
+            band.filter->calculateAllpass(band.frequency, m_sampleRate, band.q);
+            break;
+    }
+}
+
+void AudioEqualizer::process(const float* input, float* output, size_t numSamples) {
+    if (m_bypass.load()) {
+        // Bypass mode - just copy input to output
+        std::memcpy(output, input, numSamples * sizeof(float));
+        return;
+    }
+    
+    // Use optimized processing path
+    processOptimized(input, output, numSamples);
+}
+
+void AudioEqualizer::processOptimized(const float* input, float* output, size_t numSamples) {
+    // Check if parameters have changed
+    if (m_parametersChanged.load()) {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        updateFilters();
+        m_parametersChanged.store(false);
+    }
+    
+    // Process in blocks for better cache efficiency
+    size_t blockSize = std::min(numSamples, DEFAULT_BLOCK_SIZE);
+    size_t processedSamples = 0;
+    
+    while (processedSamples < numSamples) {
+        size_t samplesToProcess = std::min(blockSize, numSamples - processedSamples);
+        const float* blockInput = input + processedSamples;
+        float* blockOutput = output + processedSamples;
+        
+        // Copy input to output for first filter
+        std::memcpy(blockOutput, blockInput, samplesToProcess * sizeof(float));
+        
+        // Apply each band's filter
+        for (const auto& band : m_bands) {
+            if (band.enabled && std::abs(band.gain) > 0.01) {
+                // Process in-place
+                band.filter->process(blockOutput, blockOutput, samplesToProcess);
+            }
+        }
+        
+        // Apply master gain
+        float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
+        if (std::abs(masterGainLinear - 1.0f) > 0.001f) {
+            m_tempBuffer->copyFrom(0, blockOutput, samplesToProcess);
+            m_tempBuffer->applyGain(0, 0, samplesToProcess, masterGainLinear);
+            std::memcpy(blockOutput, m_tempBuffer->getChannel(0), samplesToProcess * sizeof(float));
+        }
+        
+        processedSamples += samplesToProcess;
+    }
+}
+
+void AudioEqualizer::processStereo(const float* inputL, const float* inputR,
+                                  float* outputL, float* outputR, size_t numSamples) {
+    if (m_bypass.load()) {
+        // Bypass mode - just copy input to output
+        std::memcpy(outputL, inputL, numSamples * sizeof(float));
+        std::memcpy(outputR, inputR, numSamples * sizeof(float));
+        return;
+    }
+    
+    // Check if parameters have changed
+    if (m_parametersChanged.load()) {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        updateFilters();
+        m_parametersChanged.store(false);
+    }
+    
+    // Process in blocks
+    size_t blockSize = std::min(numSamples, DEFAULT_BLOCK_SIZE);
+    size_t processedSamples = 0;
+    
+    while (processedSamples < numSamples) {
+        size_t samplesToProcess = std::min(blockSize, numSamples - processedSamples);
+        const float* blockInputL = inputL + processedSamples;
+        const float* blockInputR = inputR + processedSamples;
+        float* blockOutputL = outputL + processedSamples;
+        float* blockOutputR = outputR + processedSamples;
+        
+        // Copy input to output for first filter
+        std::memcpy(blockOutputL, blockInputL, samplesToProcess * sizeof(float));
+        std::memcpy(blockOutputR, blockInputR, samplesToProcess * sizeof(float));
+        
+        // Apply each band's filter
+        for (const auto& band : m_bands) {
+            if (band.enabled && std::abs(band.gain) > 0.01) {
+                band.filter->processStereo(blockOutputL, blockOutputR,
+                                          blockOutputL, blockOutputR, samplesToProcess);
+            }
+        }
+        
+        // Apply master gain
+        float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
+        if (std::abs(masterGainLinear - 1.0f) > 0.001f) {
+            m_tempBuffer->copyFrom(0, blockOutputL, samplesToProcess);
+            m_tempBuffer->copyFrom(1, blockOutputR, samplesToProcess);
+            m_tempBuffer->applyGain(masterGainLinear);
+            std::memcpy(blockOutputL, m_tempBuffer->getChannel(0), samplesToProcess * sizeof(float));
+            std::memcpy(blockOutputR, m_tempBuffer->getChannel(1), samplesToProcess * sizeof(float));
+        }
+        
+        processedSamples += samplesToProcess;
+    }
+}
+
+// Band control methods
+void AudioEqualizer::setBandGain(size_t bandIndex, double gainDB) {
+    if (bandIndex >= m_bands.size()) return;
+    
+    gainDB = std::clamp(gainDB, MIN_GAIN_DB, MAX_GAIN_DB);
+    
+    {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        m_bands[bandIndex].gain = gainDB;
+        m_parametersChanged.store(true);
+    }
+}
+
+void AudioEqualizer::setBandFrequency(size_t bandIndex, double frequency) {
+    if (bandIndex >= m_bands.size()) return;
+    
+    frequency = std::clamp(frequency, 20.0, m_sampleRate / 2.0);
+    
+    {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        m_bands[bandIndex].frequency = frequency;
+        m_parametersChanged.store(true);
+    }
+}
+
+void AudioEqualizer::setBandQ(size_t bandIndex, double q) {
+    if (bandIndex >= m_bands.size()) return;
+    
+    q = std::clamp(q, MIN_Q, MAX_Q);
+    
+    {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        m_bands[bandIndex].q = q;
+        m_parametersChanged.store(true);
+    }
+}
+
+void AudioEqualizer::setBandType(size_t bandIndex, FilterType type) {
+    if (bandIndex >= m_bands.size()) return;
+    
+    {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        m_bands[bandIndex].type = type;
+        m_parametersChanged.store(true);
+    }
+}
+
+void AudioEqualizer::setBandEnabled(size_t bandIndex, bool enabled) {
+    if (bandIndex >= m_bands.size()) return;
+    
+    {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        m_bands[bandIndex].enabled = enabled;
+    }
+}
+
+// Get band parameters
+double AudioEqualizer::getBandGain(size_t bandIndex) const {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    return (bandIndex < m_bands.size()) ? m_bands[bandIndex].gain : 0.0;
+}
+
+double AudioEqualizer::getBandFrequency(size_t bandIndex) const {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    return (bandIndex < m_bands.size()) ? m_bands[bandIndex].frequency : 0.0;
+}
+
+double AudioEqualizer::getBandQ(size_t bandIndex) const {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    return (bandIndex < m_bands.size()) ? m_bands[bandIndex].q : DEFAULT_Q;
+}
+
+FilterType AudioEqualizer::getBandType(size_t bandIndex) const {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    return (bandIndex < m_bands.size()) ? m_bands[bandIndex].type : FilterType::PEAK;
+}
+
+bool AudioEqualizer::isBandEnabled(size_t bandIndex) const {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    return (bandIndex < m_bands.size()) ? m_bands[bandIndex].enabled : false;
+}
+
+// Global controls
+void AudioEqualizer::setMasterGain(double gainDB) {
+    gainDB = std::clamp(gainDB, MIN_GAIN_DB, MAX_GAIN_DB);
+    m_masterGain.store(gainDB);
+}
+
+double AudioEqualizer::getMasterGain() const {
+    return m_masterGain.load();
+}
+
+void AudioEqualizer::setBypass(bool bypass) {
+    m_bypass.store(bypass);
+}
+
+bool AudioEqualizer::isBypassed() const {
+    return m_bypass.load();
+}
+
+// Preset management
+void AudioEqualizer::loadPreset(const EQPreset& preset) {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    
+    size_t numBands = std::min(preset.gains.size(), m_bands.size());
+    for (size_t i = 0; i < numBands; ++i) {
+        m_bands[i].gain = preset.gains[i];
+    }
+    
+    m_parametersChanged.store(true);
+}
+
+void AudioEqualizer::savePreset(EQPreset& preset) const {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    
+    preset.gains.clear();
+    preset.gains.reserve(m_bands.size());
+    
+    for (const auto& band : m_bands) {
+        preset.gains.push_back(band.gain);
+    }
+}
+
+void AudioEqualizer::resetAllBands() {
+    std::lock_guard<std::mutex> lock(m_parameterMutex);
+    
+    for (auto& band : m_bands) {
+        band.gain = 0.0;
+    }
+    
+    m_parametersChanged.store(true);
+}
+
+void AudioEqualizer::setSampleRate(uint32_t sampleRate) {
+    if (sampleRate != m_sampleRate) {
+        std::lock_guard<std::mutex> lock(m_parameterMutex);
+        m_sampleRate = sampleRate;
+        m_parametersChanged.store(true);
+    }
+}
+
+uint32_t AudioEqualizer::getSampleRate() const {
+    return m_sampleRate;
+}
+
+void AudioEqualizer::beginParameterUpdate() {
+    m_parameterMutex.lock();
+}
+
+void AudioEqualizer::endParameterUpdate() {
+    m_parametersChanged.store(true);
+    m_parameterMutex.unlock();
+}
+
+// Helper functions
+double AudioEqualizer::dbToLinear(double db) const {
+    return std::pow(10.0, db / 20.0);
+}
+
+double AudioEqualizer::linearToDb(double linear) const {
+    return 20.0 * std::log10(std::max(linear, EPSILON));
+}
+
+// Preset Factory implementations
+EQPreset EQPresetFactory::createFlatPreset() {
+    EQPreset preset;
+    preset.name = "Flat";
+    preset.gains = std::vector<double>(NUM_BANDS, 0.0);
+    return preset;
+}
+
+EQPreset EQPresetFactory::createRockPreset() {
+    EQPreset preset;
+    preset.name = "Rock";
+    preset.gains = {4.0, 3.0, -1.0, -2.0, -1.0, 2.0, 3.0, 4.0, 3.0, 2.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createPopPreset() {
+    EQPreset preset;
+    preset.name = "Pop";
+    preset.gains = {-1.0, 2.0, 4.0, 3.0, 0.0, -1.0, -1.0, 0.0, 2.0, 3.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createJazzPreset() {
+    EQPreset preset;
+    preset.name = "Jazz";
+    preset.gains = {0.0, 2.0, 1.0, 2.0, -2.0, -2.0, 0.0, 1.0, 2.0, 3.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createClassicalPreset() {
+    EQPreset preset;
+    preset.name = "Classical";
+    preset.gains = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -2.0, -2.0, -2.0, -3.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createElectronicPreset() {
+    EQPreset preset;
+    preset.name = "Electronic";
+    preset.gains = {4.0, 3.0, 1.0, 0.0, -2.0, 2.0, 1.0, 1.0, 3.0, 4.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createVocalBoostPreset() {
+    EQPreset preset;
+    preset.name = "Vocal Boost";
+    preset.gains = {-2.0, -1.0, 0.0, 2.0, 4.0, 4.0, 3.0, 2.0, 0.0, -1.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createBassBoostPreset() {
+    EQPreset preset;
+    preset.name = "Bass Boost";
+    preset.gains = {6.0, 5.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createTrebleBoostPreset() {
+    EQPreset preset;
+    preset.name = "Treble Boost";
+    preset.gains = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 5.0, 6.0};
+    return preset;
+}
+
+EQPreset EQPresetFactory::createLoudnessPreset() {
+    EQPreset preset;
+    preset.name = "Loudness";
+    preset.gains = {5.0, 3.0, 0.0, -1.0, -2.0, -2.0, -1.0, 0.0, 3.0, 5.0};
+    return preset;
+}
+
+} // namespace AudioEqualizer

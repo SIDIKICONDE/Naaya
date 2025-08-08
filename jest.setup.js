@@ -1,0 +1,42 @@
+// Configuration Jest pour Naaya
+// Mock simple des modules natifs
+
+// Mock de TurboModuleRegistry
+jest.mock('react-native/Libraries/TurboModule/TurboModuleRegistry', () => ({
+  getEnforcing: jest.fn(() => ({
+    setEQEnabled: jest.fn(),
+    getEQEnabled: jest.fn(() => false),
+    setBandGain: jest.fn(),
+    getBandGain: jest.fn(() => 0),
+    setPreset: jest.fn(),
+    getCurrentPreset: jest.fn(() => 'Flat'),
+    getSpectrumData: jest.fn(() => []),
+    startSpectrumAnalysis: jest.fn(),
+    stopSpectrumAnalysis: jest.fn(),
+    start: jest.fn(),
+    stop: jest.fn(),
+    getData: jest.fn(() => []),
+    checkPermissions: jest.fn(() => ({ camera: 'granted', microphone: 'granted', storage: 'granted' })),
+    requestPermissions: jest.fn(() => ({ camera: 'granted', microphone: 'granted', storage: 'granted' })),
+    getAvailableDevices: jest.fn(() => []),
+    getCurrentDevice: jest.fn(() => null),
+    selectDevice: jest.fn(() => true),
+    switchDevice: jest.fn(() => true),
+    startCamera: jest.fn(() => true),
+    stopCamera: jest.fn(() => true),
+    isActive: jest.fn(() => false),
+    capturePhoto: jest.fn(() => ({ uri: 'mock.jpg', width: 1920, height: 1080 })),
+    startRecording: jest.fn(() => true),
+    stopRecording: jest.fn(() => ({ uri: 'mock.mp4', duration: 0, size: 0, width: 1920, height: 1080 })),
+    isRecording: jest.fn(() => false),
+    getRecordingProgress: jest.fn(() => ({ duration: 0, size: 0 })),
+    hasFlash: jest.fn(() => true),
+    setFlashMode: jest.fn(() => true),
+    setTorchMode: jest.fn(() => true),
+    getMinZoom: jest.fn(() => 1.0),
+    getMaxZoom: jest.fn(() => 10.0),
+    setZoom: jest.fn(() => true),
+    getPreviewSize: jest.fn(() => ({ width: 1920, height: 1080 })),
+    getSupportedFormats: jest.fn(() => []),
+  })),
+}));
