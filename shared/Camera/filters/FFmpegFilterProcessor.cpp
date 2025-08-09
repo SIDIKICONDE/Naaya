@@ -11,6 +11,8 @@ extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavutil/frame.h>
     #include <libavutil/imgutils.h>
+    #include <libavutil/pixfmt.h>
+    #include <libavutil/opt.h>
 }
 #endif
 
@@ -77,15 +79,63 @@ bool FFmpegFilterProcessor::applyFilter(const FilterState& filter, const void* i
         return false;
     }
     
-    // Traitement avec FFmpeg
-    // Note: Implémentation simplifiée pour l'exemple
-    if (inputSize <= outputSize) {
-        std::memcpy(outputData, inputData, inputSize);
-        return true;
-    } else {
-        setLastError("Taille de sortie insuffisante");
+    // Préparer frame d'entrée à partir du buffer brut
+    if (!inputFrame_) inputFrame_ = av_frame_alloc();
+    if (!outputFrame_) outputFrame_ = av_frame_alloc();
+    if (!inputFrame_ || !outputFrame_) {
+        setLastError("Impossible d'allouer les frames FFmpeg");
         return false;
     }
+
+    AVPixelFormat pix = av_get_pix_fmt(pixelFormat_.empty() ? "yuv420p" : pixelFormat_.c_str());
+    if (pix == AV_PIX_FMT_NONE) pix = AV_PIX_FMT_YUV420P;
+
+    inputFrame_->width = width_;
+    inputFrame_->height = height_;
+    inputFrame_->format = pix;
+
+    // Renseigner les pointeurs de planes depuis le buffer d'entrée
+    int ret = av_image_fill_arrays(inputFrame_->data, inputFrame_->linesize,
+                                   reinterpret_cast<const uint8_t*>(inputData),
+                                   pix, width_, height_, 1);
+    if (ret < 0) {
+        setLastError("av_image_fill_arrays a échoué");
+        return false;
+    }
+
+    // Pousser la frame dans le buffersrc
+    ret = av_buffersrc_add_frame_flags(sourceContext_, inputFrame_, AV_BUFFERSRC_FLAG_KEEP_REF);
+    if (ret < 0) {
+        setLastError("buffersrc_add_frame a échoué");
+        return false;
+    }
+
+    // Récupérer la frame traitée
+    ret = av_buffersink_get_frame(sinkContext_, outputFrame_);
+    if (ret < 0) {
+        setLastError("buffersink_get_frame a échoué");
+        return false;
+    }
+
+    // Copier la frame de sortie vers le buffer fourni
+    int required = av_image_get_buffer_size((AVPixelFormat)outputFrame_->format,
+                                            outputFrame_->width, outputFrame_->height, 1);
+    if (required < 0 || static_cast<size_t>(required) > outputSize) {
+        setLastError("Taille de sortie insuffisante pour la frame filtrée");
+        av_frame_unref(outputFrame_);
+        return false;
+    }
+    int copied = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(outputData), (int)outputSize,
+                                         (const uint8_t* const*)outputFrame_->data,
+                                         outputFrame_->linesize,
+                                         (AVPixelFormat)outputFrame_->format,
+                                         outputFrame_->width, outputFrame_->height, 1);
+    av_frame_unref(outputFrame_);
+    if (copied < 0) {
+        setLastError("Échec de copie de la frame filtrée");
+        return false;
+    }
+    return true;
     #else
     // Mode fallback: copie directe avec log
     std::cout << "[FFmpegFilterProcessor] Mode fallback - filtre: " 
@@ -215,10 +265,71 @@ bool FFmpegFilterProcessor::addFilterToGraph(const FilterState& filter) {
         setLastError("Filtre FFmpeg non supporté");
         return false;
     }
-    
-    // Ajouter le filtre au graphe
-    // Note: Implémentation simplifiée
-    std::cout << "[FFmpegFilterProcessor] Ajout filtre FFmpeg: " << filterString << std::endl;
+
+    // Créer buffersrc/buffersink
+    const AVFilter* buffersrc = avfilter_get_by_name("buffer");
+    const AVFilter* buffersink = avfilter_get_by_name("buffersink");
+    if (!buffersrc || !buffersink) {
+        setLastError("Impossible d'obtenir buffer/buffersink");
+        return false;
+    }
+
+    char args[256];
+    AVPixelFormat pix = av_get_pix_fmt(pixelFormat_.empty() ? "yuv420p" : pixelFormat_.c_str());
+    if (pix == AV_PIX_FMT_NONE) pix = AV_PIX_FMT_YUV420P;
+    snprintf(args, sizeof(args),
+             "video_size=%dx%d:pix_fmt=%d:time_base=1/%d:frame_rate=%d/1:pixel_aspect=1/1",
+             width_, height_, pix, frameRate_, frameRate_);
+
+    int ret = avfilter_graph_create_filter(&sourceContext_, buffersrc, "in", args, NULL, filterGraph_);
+    if (ret < 0) { setLastError("create_filter buffer a échoué"); return false; }
+
+    ret = avfilter_graph_create_filter(&sinkContext_, buffersink, "out", NULL, NULL, filterGraph_);
+    if (ret < 0) { setLastError("create_filter buffersink a échoué"); return false; }
+
+    // Verrouiller le format de sortie pour éviter conversions implicites
+    static const AVPixelFormat pix_fmts[] = { pix, AV_PIX_FMT_NONE };
+    ret = av_opt_set_int_list(sinkContext_, "pix_fmts", pix_fmts, AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
+    if (ret < 0) { setLastError("Impossible de fixer pix_fmts sur buffersink"); return false; }
+
+    // Construire la description: [in]filterString[out]
+    std::string desc = "[in]" + filterString + "[out]";
+
+    AVFilterInOut* outputs = avfilter_inout_alloc();
+    AVFilterInOut* inputs = avfilter_inout_alloc();
+    if (!outputs || !inputs) {
+        if (outputs) avfilter_inout_free(&outputs);
+        if (inputs) avfilter_inout_free(&inputs);
+        setLastError("Allocation AVFilterInOut a échoué");
+        return false;
+    }
+    outputs->name = av_strdup("in");
+    outputs->filter_ctx = sourceContext_;
+    outputs->pad_idx = 0;
+    outputs->next = nullptr;
+
+    inputs->name = av_strdup("out");
+    inputs->filter_ctx = sinkContext_;
+    inputs->pad_idx = 0;
+    inputs->next = nullptr;
+
+    ret = avfilter_graph_parse_ptr(filterGraph_, desc.c_str(), &inputs, &outputs, NULL);
+    if (ret < 0) {
+        avfilter_inout_free(&outputs);
+        avfilter_inout_free(&inputs);
+        setLastError("avfilter_graph_parse_ptr a échoué");
+        return false;
+    }
+    // Libérer les in/out maintenant que le graphe est parsé
+    avfilter_inout_free(&outputs);
+    avfilter_inout_free(&inputs);
+    ret = avfilter_graph_config(filterGraph_, NULL);
+    if (ret < 0) {
+        setLastError("avfilter_graph_config a échoué");
+        return false;
+    }
+
+    std::cout << "[FFmpegFilterProcessor] Graphe FFmpeg configuré: " << filterString << std::endl;
     return true;
 }
 
@@ -242,8 +353,8 @@ std::string FFmpegFilterProcessor::getFFmpegFilterString(const FilterState& filt
             return "hue=s=0.5";
         
         case FilterType::COLOR_CONTROLS:
-            return "eq=brightness=" + std::to_string(filter.params.brightness) + 
-                   ":contrast=" + std::to_string(filter.params.contrast) + 
+            return "eq=brightness=" + std::to_string(filter.params.brightness) +
+                   ":contrast=" + std::to_string(filter.params.contrast) +
                    ":saturation=" + std::to_string(filter.params.saturation);
         
         case FilterType::VINTAGE:

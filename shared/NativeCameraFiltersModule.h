@@ -40,6 +40,7 @@
     // JSI methods
     jsi::Array getAvailableFilters(jsi::Runtime& rt);
     bool setFilter(jsi::Runtime& rt, jsi::String name, double intensity);
+    bool setFilterWithParams(jsi::Runtime& rt, jsi::String name, double intensity, jsi::Object params);
     std::optional<jsi::Object> getFilter(jsi::Runtime& rt);
     bool clearFilter(jsi::Runtime& rt);
 
@@ -51,6 +52,8 @@
     bool hasFilter_{false};
     FilterState state_{};
     std::unique_ptr<Camera::FilterManager> filterManager_;
+    // Paramètres avancés courants
+    Camera::FilterParams advancedParams_{};
   };
 
   } } // namespace facebook::react
@@ -74,6 +77,25 @@ extern "C" {
 bool NaayaFilters_HasFilter();
 const char* NaayaFilters_GetCurrentName();
 double NaayaFilters_GetCurrentIntensity();
+
+// Structure C des paramètres avancés
+typedef struct {
+  double brightness;    
+  double contrast;      
+  double saturation;    
+  double hue;           
+  double gamma;         
+  double warmth;        
+  double tint;          
+  double exposure;      
+  double shadows;       
+  double highlights;    
+  double vignette;      
+  double grain;         
+} NaayaAdvancedFilterParams;
+
+// Remplit outParams avec la dernière valeur des paramètres avancés. Retourne true si dispo.
+bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
 
 #ifdef __cplusplus
 }

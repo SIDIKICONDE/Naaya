@@ -5,21 +5,22 @@
 
 import React, { useCallback, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
   ActivityIndicator,
   Animated,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { THEME_COLORS } from '../constants';
 import { useEqualizer } from '../hooks';
+import EqualizerService from '../services/EqualizerService';
 import { FrequencyBand } from './FrequencyBand';
 import { PresetSelector } from './PresetSelector';
 import { SpectrumVisualizer, SpectrumVisualizerFallback } from './SpectrumVisualizer';
-import { THEME_COLORS } from '../constants';
 
 interface AudioEqualizerProps {
   enableSpectrum?: boolean;
@@ -48,9 +49,9 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({
   const enabled = isEnabled;
   const loading = isLoading;
 
-  // Adapter l'échelle des données spectrales (service renvoie 0..255, visualizer attend 0..1)
+  // Adapter l'échelle des données spectrales (normalisées 0..1 côté natif Android; iOS peut renvoyer 0)
   const normalizedSpectrumData = React.useMemo(() => {
-    return spectrumData ? spectrumData.map(v => Math.max(0, Math.min(1, v / 255))) : null;
+    return spectrumData ? spectrumData.map(v => Math.max(0, Math.min(1, v))) : null;
   }, [spectrumData]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -80,8 +81,15 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({
     }
   }, [setEnabled]);
 
+  const throttledSetBand = React.useRef<number | null>(null);
   const handleBandGainChange = useCallback((bandId: string, gain: number) => {
-    setBandGain(Number(bandId), gain);
+    // Démarrer un batch pour réduire recalculs natifs
+    try { (EqualizerService as any)?.beginBatch?.(); } catch {}
+    if (throttledSetBand.current) clearTimeout(throttledSetBand.current as any);
+    throttledSetBand.current = (setTimeout(() => {
+      setBandGain(Number(bandId), gain);
+      try { (EqualizerService as any)?.endBatch?.(); } catch {}
+    }, 32) as unknown) as number;
   }, [setBandGain]);
 
   const handlePresetSelect = useCallback(async (presetId: string) => {

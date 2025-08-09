@@ -249,7 +249,6 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
       {capture.isRecording && (
         <View style={styles.recordingIndicator}>
           <View style={styles.recordingDot} />
-          <Text style={styles.recordingText}>REC</Text>
         </View>
       )}
     </View>
@@ -295,6 +294,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    zIndex: 999,
   },
 
   // États d'erreur/chargement

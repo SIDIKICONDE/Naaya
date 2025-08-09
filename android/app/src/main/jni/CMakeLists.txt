@@ -39,6 +39,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Ca
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio/core)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio/utils)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio/effects)
 # FFmpeg headers (copied into jni/)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # Add ffmpeg exported includes

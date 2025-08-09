@@ -22,8 +22,7 @@ void AudioEqualizer::initialize(size_t numBands, uint32_t sampleRate) {
     m_bands.clear();
     m_bands.resize(numBands);
     
-    // Initialize temp buffer for processing
-    m_tempBuffer = std::make_unique<AudioBuffer>(2, MAX_BLOCK_SIZE);
+    // Plus de buffer temporaire nécessaire (master gain appliqué in-place)
     
     // Setup default bands
     setupDefaultBands();
@@ -153,12 +152,12 @@ void AudioEqualizer::processOptimized(const float* input, float* output, size_t 
             }
         }
         
-        // Apply master gain
+        // Apply master gain in-place (avoid extra buffer/copies)
         float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
         if (std::abs(masterGainLinear - 1.0f) > 0.001f) {
-            m_tempBuffer->copyFrom(0, blockOutput, samplesToProcess);
-            m_tempBuffer->applyGain(0, 0, samplesToProcess, masterGainLinear);
-            std::memcpy(blockOutput, m_tempBuffer->getChannel(0), samplesToProcess * sizeof(float));
+            for (size_t i = 0; i < samplesToProcess; ++i) {
+                blockOutput[i] *= masterGainLinear;
+            }
         }
         
         processedSamples += samplesToProcess;
@@ -204,14 +203,13 @@ void AudioEqualizer::processStereo(const float* inputL, const float* inputR,
             }
         }
         
-        // Apply master gain
+        // Apply master gain in-place (avoid extra buffer/copies)
         float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
         if (std::abs(masterGainLinear - 1.0f) > 0.001f) {
-            m_tempBuffer->copyFrom(0, blockOutputL, samplesToProcess);
-            m_tempBuffer->copyFrom(1, blockOutputR, samplesToProcess);
-            m_tempBuffer->applyGain(masterGainLinear);
-            std::memcpy(blockOutputL, m_tempBuffer->getChannel(0), samplesToProcess * sizeof(float));
-            std::memcpy(blockOutputR, m_tempBuffer->getChannel(1), samplesToProcess * sizeof(float));
+            for (size_t i = 0; i < samplesToProcess; ++i) {
+                blockOutputL[i] *= masterGainLinear;
+                blockOutputR[i] *= masterGainLinear;
+            }
         }
         
         processedSamples += samplesToProcess;

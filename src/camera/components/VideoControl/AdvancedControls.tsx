@@ -1,5 +1,15 @@
-import React, { memo, useCallback, useMemo } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useCallback } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  AUDIO_BITRATE_PRESETS,
+  CONTAINER_OPTIONS,
+  FILE_PREFIX_OPTIONS,
+  ORIENTATION_OPTIONS,
+  RESOLUTIONS,
+  STABILIZATION_OPTIONS,
+  SUPPORTED_CODECS,
+  VIDEO_BITRATE_PRESETS,
+} from './advanced/constants';
 import type { AdvancedRecordingOptions } from './types';
 
 interface AdvancedControlsProps {
@@ -22,10 +32,7 @@ const Pill: React.FC<{ selected?: boolean; onPress: () => void; children: React.
 export const AdvancedControls: React.FC<AdvancedControlsProps> = memo(({ value, onChange, onApply }) => {
   const set = useCallback((patch: Partial<AdvancedRecordingOptions>) => onChange({ ...value, ...patch }), [value, onChange]);
 
-  const supportedCodecs = useMemo(() => {
-    if (Platform.OS === 'ios') return ['hevc', 'h264'] as const;
-    return ['h264', 'hevc'] as const; // Android favorise h264 mais hevc possible
-  }, []);
+  const supportedCodecs = SUPPORTED_CODECS;
 
   return (
     <View style={styles.container}>
@@ -39,54 +46,51 @@ export const AdvancedControls: React.FC<AdvancedControlsProps> = memo(({ value, 
 
       <Row style={styles.section}>
         <Text style={styles.label}>Conteneur</Text>
-        <Pill selected={value.container === 'mp4'} onPress={() => set({ container: 'mp4' })}>MP4</Pill>
-        <Pill selected={value.container === 'mov'} onPress={() => set({ container: 'mov' })}>MOV</Pill>
+        {CONTAINER_OPTIONS.map(opt => (
+          <Pill key={opt.value} selected={value.container === opt.value} onPress={() => set({ container: opt.value })}>{opt.label}</Pill>
+        ))}
       </Row>
 
       <Row style={styles.section}>
         <Text style={styles.label}>Codec</Text>
         {supportedCodecs.map((c) => (
-          <Pill key={c} selected={value.codec === c} onPress={() => set({ codec: c })}>{c.toUpperCase()}</Pill>
+          <Pill key={c.value} selected={value.codec === c.value} onPress={() => set({ codec: c.value })}>{c.label}</Pill>
         ))}
       </Row>
 
       <Row style={styles.section}>
         <Text style={styles.label}>Vidéo bitrate</Text>
-        <Pill selected={!value || !(value as any).videoBitrate} onPress={() => set({ videoBitrate: undefined } as any)}>Auto</Pill>
-        <Pill selected={(value as any).videoBitrate === 8_000_000} onPress={() => set({ videoBitrate: 8_000_000 } as any)}>8 Mbps</Pill>
-        <Pill selected={(value as any).videoBitrate === 12_000_000} onPress={() => set({ videoBitrate: 12_000_000 } as any)}>12 Mbps</Pill>
-        <Pill selected={(value as any).videoBitrate === 20_000_000} onPress={() => set({ videoBitrate: 20_000_000 } as any)}>20 Mbps</Pill>
+        {VIDEO_BITRATE_PRESETS.map(opt => (
+          <Pill key={String(opt.value)} selected={(value as any).videoBitrate === opt.value} onPress={() => set({ videoBitrate: opt.value } as any)}>{opt.label}</Pill>
+        ))}
       </Row>
 
       <Row style={styles.section}>
         <Text style={styles.label}>Audio bitrate</Text>
-        <Pill selected={!value || !(value as any).audioBitrate} onPress={() => set({ audioBitrate: undefined } as any)}>Auto</Pill>
-        <Pill selected={(value as any).audioBitrate === 96_000} onPress={() => set({ audioBitrate: 96_000 } as any)}>96 kbps</Pill>
-        <Pill selected={(value as any).audioBitrate === 128_000} onPress={() => set({ audioBitrate: 128_000 } as any)}>128 kbps</Pill>
-        <Pill selected={(value as any).audioBitrate === 192_000} onPress={() => set({ audioBitrate: 192_000 } as any)}>192 kbps</Pill>
+        {AUDIO_BITRATE_PRESETS.map(opt => (
+          <Pill key={String(opt.value)} selected={(value as any).audioBitrate === opt.value} onPress={() => set({ audioBitrate: opt.value } as any)}>{opt.label}</Pill>
+        ))}
       </Row>
 
       <Row style={styles.section}>
         <Text style={styles.label}>Orientation</Text>
-        <Pill selected={value.orientation === 'auto'} onPress={() => set({ orientation: 'auto' })}>Auto</Pill>
-        <Pill selected={value.orientation === 'portrait'} onPress={() => set({ orientation: 'portrait' })}>Portrait</Pill>
-        <Pill selected={value.orientation === 'landscapeLeft'} onPress={() => set({ orientation: 'landscapeLeft' })}>Paysage G</Pill>
-        <Pill selected={value.orientation === 'landscapeRight'} onPress={() => set({ orientation: 'landscapeRight' })}>Paysage D</Pill>
+        {ORIENTATION_OPTIONS.map(opt => (
+          <Pill key={opt.value} selected={value.orientation === opt.value} onPress={() => set({ orientation: opt.value })}>{opt.label}</Pill>
+        ))}
       </Row>
 
       <Row style={styles.section}>
         <Text style={styles.label}>Stabilisation</Text>
-        <Pill selected={value.stabilization === 'off'} onPress={() => set({ stabilization: 'off' })}>Off</Pill>
-        <Pill selected={value.stabilization === 'standard'} onPress={() => set({ stabilization: 'standard' })}>Standard</Pill>
-        <Pill selected={value.stabilization === 'cinematic'} onPress={() => set({ stabilization: 'cinematic' })}>Cinématique</Pill>
-        <Pill selected={value.stabilization === 'auto'} onPress={() => set({ stabilization: 'auto' })}>Auto</Pill>
+        {STABILIZATION_OPTIONS.map(opt => (
+          <Pill key={opt.value} selected={value.stabilization === opt.value} onPress={() => set({ stabilization: opt.value })}>{opt.label}</Pill>
+        ))}
       </Row>
 
       <Row style={styles.section}>
         <Text style={styles.label}>Résolution</Text>
-        <Pill selected={value.width === 1920 && value.height === 1080} onPress={() => set({ width: 1920, height: 1080 })}>1080p</Pill>
-        <Pill selected={value.width === 1280 && value.height === 720} onPress={() => set({ width: 1280, height: 720 })}>720p</Pill>
-        <Pill selected={value.width === 3840 && value.height === 2160} onPress={() => set({ width: 3840, height: 2160 })}>4K</Pill>
+        {RESOLUTIONS.map(r => (
+          <Pill key={r.label} selected={value.width === r.width && value.height === r.height} onPress={() => set({ width: r.width, height: r.height })}>{r.label}</Pill>
+        ))}
       </Row>
 
       <Row style={styles.section}>
@@ -103,17 +107,13 @@ export const AdvancedControls: React.FC<AdvancedControlsProps> = memo(({ value, 
         <Pill selected={!!value.lockAF} onPress={() => set({ lockAF: !value.lockAF })}>AF</Pill>
       </Row>
 
-      <Row style={styles.section}>
-        <Text style={styles.label}>Dossier</Text>
-        <Pill selected={!value.saveDirectory} onPress={() => set({ saveDirectory: undefined })}>Défaut</Pill>
-        <Pill selected={value.saveDirectory === '/storage/emulated/0/Naaya/videos'} onPress={() => set({ saveDirectory: '/storage/emulated/0/Naaya/videos' })}>Public</Pill>
-      </Row>
+
 
       <Row style={styles.section}>
         <Text style={styles.label}>Préfixe</Text>
-        <Pill selected={!value.fileNamePrefix || value.fileNamePrefix === 'video'} onPress={() => set({ fileNamePrefix: 'video' })}>video</Pill>
-        <Pill selected={value.fileNamePrefix === 'clip'} onPress={() => set({ fileNamePrefix: 'clip' })}>clip</Pill>
-        <Pill selected={value.fileNamePrefix === 'rec'} onPress={() => set({ fileNamePrefix: 'rec' })}>rec</Pill>
+        {FILE_PREFIX_OPTIONS.map(opt => (
+          <Pill key={opt.value} selected={value.fileNamePrefix === opt.value} onPress={() => set({ fileNamePrefix: opt.value })}>{opt.label}</Pill>
+        ))}
       </Row>
 
       <TouchableOpacity style={styles.apply} onPress={onApply}>

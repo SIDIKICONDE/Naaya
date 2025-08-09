@@ -78,6 +78,28 @@ public:
     void beginParameterUpdate(jsi::Runtime& rt, double equalizerId);
     void endParameterUpdate(jsi::Runtime& rt, double equalizerId);
 
+    /*
+     * JSI endpoints (enregistrés dans le constructeur via methodMap_)
+     * – Wrappers par défaut (sans equalizerId explicite):
+     *   beginBatch(), endBatch()
+     *
+     * – Noise Reduction (NR):
+     *   nrSetEnabled(enabled)
+     *   nrGetEnabled() -> boolean
+     *   nrSetConfig(highPassEnabled, highPassHz, thresholdDb, ratio, floorDb, attackMs, releaseMs)
+     *   nrGetConfig() -> { highPassEnabled, highPassHz, thresholdDb, ratio, floorDb, attackMs, releaseMs }
+     *
+     * – Audio Safety:
+     *   safetySetConfig(enabled, dcRemovalEnabled, dcThreshold, limiterEnabled, limiterThresholdDb,
+     *                  softKneeLimiter, kneeWidthDb, feedbackDetectEnabled, feedbackCorrThreshold)
+     *   safetyGetReport() -> { peak, rms, dcOffset, clippedSamples, feedbackScore, overload }
+     *
+     * – FX (effets créatifs):
+     *   fxSetEnabled(enabled), fxGetEnabled()
+     *   fxSetCompressor(thresholdDb, ratio, attackMs, releaseMs, makeupDb)
+     *   fxSetDelay(delayMs, feedback, mix)
+     */
+
 private:
     struct EqualizerInstance {
         std::unique_ptr<AudioEqualizer::AudioEqualizer> equalizer;

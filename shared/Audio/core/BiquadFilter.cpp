@@ -6,9 +6,7 @@ namespace AudioEqualizer {
 BiquadFilter::BiquadFilter() 
     : m_a0(1.0), m_a1(0.0), m_a2(0.0)
     , m_b1(0.0), m_b2(0.0)
-    , m_x1(0.0), m_x2(0.0)
     , m_y1(0.0), m_y2(0.0)
-    , m_x1R(0.0), m_x2R(0.0)
     , m_y1R(0.0), m_y2R(0.0) {
 }
 
@@ -191,8 +189,8 @@ void BiquadFilter::process(const float* input, float* output, size_t numSamples)
 
 void BiquadFilter::processStereo(const float* inputL, const float* inputR,
                                 float* outputL, float* outputR, size_t numSamples) {
-    // Process left channel
-    double x1 = m_x1, x2 = m_x2, y1 = m_y1, y2 = m_y2;
+    // Process left channel (DF-II transposé)
+    double y1 = m_y1, y2 = m_y2;
     
     for (size_t i = 0; i < numSamples; ++i) {
         double x = static_cast<double>(inputL[i]);
@@ -205,10 +203,10 @@ void BiquadFilter::processStereo(const float* inputL, const float* inputR,
         outputL[i] = static_cast<float>(y);
     }
     
-    m_x1 = x1; m_x2 = x2; m_y1 = y1; m_y2 = y2;
+    m_y1 = y1; m_y2 = y2;
     
-    // Process right channel
-    x1 = m_x1R; x2 = m_x2R; y1 = m_y1R; y2 = m_y2R;
+    // Process right channel (DF-II transposé)
+    y1 = m_y1R; y2 = m_y2R;
     
     for (size_t i = 0; i < numSamples; ++i) {
         double x = static_cast<double>(inputR[i]);
@@ -221,7 +219,7 @@ void BiquadFilter::processStereo(const float* inputL, const float* inputR,
         outputR[i] = static_cast<float>(y);
     }
     
-    m_x1R = x1; m_x2R = x2; m_y1R = y1; m_y2R = y2;
+    m_y1R = y1; m_y2R = y2;
 }
 
 #ifdef __ARM_NEON
@@ -257,17 +255,17 @@ void BiquadFilter::processSSE2(const float* input, float* output, size_t numSamp
     
     // Process SIMD blocks
     for (size_t i = 0; i < simdSamples; i += 4) {
-        __m128 in = _mm_load_ps(&input[i]);
+        __m128 in = _mm_loadu_ps(&input[i]);
         alignas(16) float temp[4];
-        _mm_store_ps(temp, in);
+        _mm_storeu_ps(temp, in);
         
         // Process each sample
         for (int j = 0; j < 4; ++j) {
             temp[j] = processSample(temp[j]);
         }
         
-        __m128 out = _mm_load_ps(temp);
-        _mm_store_ps(&output[i], out);
+        __m128 out = _mm_loadu_ps(temp);
+        _mm_storeu_ps(&output[i], out);
     }
     
     // Process remaining samples
@@ -278,9 +276,7 @@ void BiquadFilter::processSSE2(const float* input, float* output, size_t numSamp
 #endif
 
 void BiquadFilter::reset() {
-    m_x1 = m_x2 = 0.0;
     m_y1 = m_y2 = 0.0;
-    m_x1R = m_x2R = 0.0;
     m_y1R = m_y2R = 0.0;
 }
 

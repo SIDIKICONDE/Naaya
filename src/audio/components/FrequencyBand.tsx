@@ -5,15 +5,16 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  PanResponder,
   Animated,
-  Vibration,
+  PanResponder,
   Platform,
+  StyleSheet,
+  Text,
+  Vibration,
+  View,
 } from 'react-native';
 import { THEME_COLORS } from '../constants';
+import EqualizerService from '../services/EqualizerService';
 
 interface FrequencyBandProps {
   id: string;
@@ -92,6 +93,9 @@ export const FrequencyBand: React.FC<FrequencyBandProps> = ({
         if (Platform.OS === 'ios') {
           Vibration.vibrate(1);
         }
+
+        // Début batch natif si dispo
+        try { (EqualizerService as any)?.beginBatch?.(); } catch {}
       },
       
       onPanResponderMove: (_, gestureState) => {
@@ -113,6 +117,9 @@ export const FrequencyBand: React.FC<FrequencyBandProps> = ({
           damping: 10,
           useNativeDriver: true,
         }).start();
+
+        // Fin batch natif si dispo
+        try { (EqualizerService as any)?.endBatch?.(); } catch {}
       },
     })
   ).current;

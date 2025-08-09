@@ -1,8 +1,10 @@
 #pragma once
 
+#ifdef __cplusplus
 #include "Constants.h"
 #include <memory>
 #include <cstring>
+#include <cstddef>
 
 namespace AudioEqualizer {
 
@@ -76,3 +78,8 @@ inline const float* AudioBuffer::getChannel(size_t channel) const {
 }
 
 } // namespace AudioEqualizer
+
+#else
+/* Ce header contient uniquement des déclarations C++.
+   Aucune API C n'est exposée lorsqu'il est inclus dans un TU C/Obj-C. */
+#endif

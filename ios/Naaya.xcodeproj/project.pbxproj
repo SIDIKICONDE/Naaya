@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		5E38AF9F0383070D294F11BA /* libPods-Naaya.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F9922CFC9C4C3669330294E4 /* libPods-Naaya.a */; };
 		63EE9E9D0D8D8693175FA7A7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
@@ -31,20 +32,22 @@
 		AAB101009B00000000000009 /* FilterManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB001009B00000000000009 /* FilterManager.cpp */; };
 		AAB10100AB0000000000000A /* FFmpegFilterProcessor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */; };
 		AAB10100BB0000000000000B /* FilterFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB00100BB0000000000000B /* FilterFactory.cpp */; };
-		AAC096ADA7142E7CE3F08237 /* libPods-Naaya.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */; };
 		AAE1B0010000000000000001 /* NativeAudioEqualizerModule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0010000000000000001 /* NativeAudioEqualizerModule.cpp */; };
 		AAE1B0020000000000000001 /* AudioEqualizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0020000000000000001 /* AudioEqualizer.cpp */; };
 		AAE1B0030000000000000001 /* BiquadFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0030000000000000001 /* BiquadFilter.cpp */; };
 		AAE1B0040000000000000001 /* AudioBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0040000000000000001 /* AudioBuffer.cpp */; };
+		AASAB0010000000000000001 /* AudioSafety.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AASAF0010000000000000001 /* AudioSafety.cpp */; };
+		ABNRB0010000000000000001 /* NoiseReducer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABNRF0010000000000000001 /* NoiseReducer.cpp */; };
+		ABNRB0020000000000000001 /* SpectralNR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABNRF0030000000000000001 /* SpectralNR.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		007F5BB878B12EF53EEACBAA /* Pods-Naaya.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Naaya.release.xcconfig"; path = "Target Support Files/Pods-Naaya/Pods-Naaya.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Naaya.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Naaya.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Naaya/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Naaya/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = Naaya/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		4BE2BE17F4F353013E802CEA /* Pods-Naaya.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Naaya.debug.xcconfig"; path = "Target Support Files/Pods-Naaya/Pods-Naaya.debug.xcconfig"; sourceTree = "<group>"; };
-		5F367C6E9085D05A6E48CFF9 /* Pods-Naaya.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Naaya.release.xcconfig"; path = "Target Support Files/Pods-Naaya/Pods-Naaya.release.xcconfig"; sourceTree = "<group>"; };
+		4B4097F89BB7CF766A4B4365 /* Pods-Naaya.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Naaya.debug.xcconfig"; path = "Target Support Files/Pods-Naaya/Pods-Naaya.debug.xcconfig"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Naaya/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Naaya/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		AA1111111B11111111111111 /* CameraManagerIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CameraManagerIOS.h; path = Naaya/CameraManagerIOS.h; sourceTree = "<group>"; };
@@ -84,8 +87,12 @@
 		AAE1F0060000000000000001 /* BiquadFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BiquadFilter.h; path = ../shared/Audio/core/BiquadFilter.h; sourceTree = "<group>"; };
 		AAE1F0070000000000000001 /* AudioBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AudioBuffer.h; path = ../shared/Audio/utils/AudioBuffer.h; sourceTree = "<group>"; };
 		AAE1F0080000000000000001 /* Constants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Constants.h; path = ../shared/Audio/utils/Constants.h; sourceTree = "<group>"; };
+		AASAF0010000000000000001 /* AudioSafety.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AudioSafety.cpp; path = ../shared/Audio/safety/AudioSafety.cpp; sourceTree = "<group>"; };
+		AASAF0020000000000000001 /* AudioSafety.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AudioSafety.h; path = ../shared/Audio/safety/AudioSafety.h; sourceTree = "<group>"; };
+		ABNRF0010000000000000001 /* NoiseReducer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NoiseReducer.cpp; path = ../shared/Audio/noise/NoiseReducer.cpp; sourceTree = "<group>"; };
+		ABNRF0030000000000000001 /* SpectralNR.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpectralNR.cpp; path = ../shared/Audio/noise/SpectralNR.cpp; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Naaya.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F9922CFC9C4C3669330294E4 /* libPods-Naaya.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Naaya.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,7 +100,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AAC096ADA7142E7CE3F08237 /* libPods-Naaya.a in Frameworks */,
+				5E38AF9F0383070D294F11BA /* libPods-Naaya.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +140,8 @@
 				AAE1F0060000000000000001 /* BiquadFilter.h */,
 				AAE1F0070000000000000001 /* AudioBuffer.h */,
 				AAE1F0080000000000000001 /* Constants.h */,
+				AASAF0020000000000000001 /* AudioSafety.h */,
+				AASAF0010000000000000001 /* AudioSafety.cpp */,
 				AA4445555B00000000000001 /* PermissionManagerIOS.h */,
 				AA4445555C00000000000001 /* PermissionManagerIOS.mm */,
 				AA4445555B00000000000002 /* PhotoCaptureIOS.h */,
@@ -153,7 +162,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */,
+				F9922CFC9C4C3669330294E4 /* libPods-Naaya.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -190,8 +199,8 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				4BE2BE17F4F353013E802CEA /* Pods-Naaya.debug.xcconfig */,
-				5F367C6E9085D05A6E48CFF9 /* Pods-Naaya.release.xcconfig */,
+				4B4097F89BB7CF766A4B4365 /* Pods-Naaya.debug.xcconfig */,
+				007F5BB878B12EF53EEACBAA /* Pods-Naaya.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -203,13 +212,13 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Naaya" */;
 			buildPhases = (
-				5ADCD0D139759A01F3877C55 /* [CP] Check Pods Manifest.lock */,
+				9E277FA3B04E297597610ACF /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				FE38F201F3C044F492B741F9 /* [CP] Embed Pods Frameworks */,
-				EA2DF08FE88B0598A6657CD5 /* [CP] Copy Pods Resources */,
+				23074627459B6337108D6E09 /* [CP] Embed Pods Frameworks */,
+				33D730F015FF1BA9DDD2EA6A /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -281,7 +290,41 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
-		5ADCD0D139759A01F3877C55 /* [CP] Check Pods Manifest.lock */ = {
+		23074627459B6337108D6E09 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		33D730F015FF1BA9DDD2EA6A /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		9E277FA3B04E297597610ACF /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -301,40 +344,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		EA2DF08FE88B0598A6657CD5 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		FE38F201F3C044F492B741F9 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Naaya/Pods-Naaya-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -363,6 +372,9 @@
 				AAE1B0020000000000000001 /* AudioEqualizer.cpp in Sources */,
 				AAE1B0030000000000000001 /* BiquadFilter.cpp in Sources */,
 				AAE1B0040000000000000001 /* AudioBuffer.cpp in Sources */,
+				ABNRB0010000000000000001 /* NoiseReducer.cpp in Sources */,
+				ABNRB0020000000000000001 /* SpectralNR.cpp in Sources */,
+				AASAB0010000000000000001 /* AudioSafety.cpp in Sources */,
 				AA4445555A00000000000001 /* PermissionManagerIOS.mm in Sources */,
 				AA4445555A00000000000002 /* PhotoCaptureIOS.mm in Sources */,
 				AA4445555A00000000000003 /* VideoCaptureIOS.mm in Sources */,
@@ -377,7 +389,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 4BE2BE17F4F353013E802CEA /* Pods-Naaya.debug.xcconfig */;
+			baseConfigurationReference = 4B4097F89BB7CF766A4B4365 /* Pods-Naaya.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -397,6 +409,7 @@
 					"-ObjC",
 					"-lc++",
 				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sidikiconde.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = Naaya;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -407,7 +420,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5F367C6E9085D05A6E48CFF9 /* Pods-Naaya.release.xcconfig */;
+			baseConfigurationReference = 007F5BB878B12EF53EEACBAA /* Pods-Naaya.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -426,6 +439,7 @@
 					"-ObjC",
 					"-lc++",
 				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sidikiconde.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = Naaya;
 				SWIFT_VERSION = 5.0;

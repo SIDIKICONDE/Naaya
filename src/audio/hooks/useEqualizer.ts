@@ -3,9 +3,9 @@
  * Fournit une interface réactive pour contrôler l'égaliseur
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import EqualizerService from '../services/EqualizerService';
-import type { EqualizerState, EqualizerBand, EqualizerPreset, SpectrumData } from '../types';
+import type { EqualizerState, SpectrumData } from '../types';
 
 export const useEqualizer = () => {
   const [state, setState] = useState<EqualizerState>({

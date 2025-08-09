@@ -3,6 +3,7 @@
 #import <CoreImage/CoreImage.h>
 #import <CoreVideo/CoreVideo.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <TargetConditionals.h>
 
 #include "VideoCaptureIOS.h"
 #import "CameraSessionBridge.h"
@@ -10,6 +11,12 @@
 #include <chrono>
 #include "../../shared/Audio/core/AudioEqualizer.h"
 #include <vector>
+#import <Accelerate/Accelerate.h>
+#include "../../shared/Audio/safety/AudioSafety.h"
+#include "../../shared/Audio/noise/NoiseReducer.h"
+#include "../../shared/Audio/effects/EffectChain.h"
+#include "../../shared/Audio/effects/Compressor.h"
+#include "../../shared/Audio/effects/Delay.h"
 
 // API C filtres exposée par le runtime C++
 #ifdef __cplusplus
@@ -18,6 +25,22 @@ extern "C" {
 bool NaayaFilters_HasFilter(void);
 const char* NaayaFilters_GetCurrentName(void);
 double NaayaFilters_GetCurrentIntensity(void);
+// Paramètres avancés (exposés par le module C)
+typedef struct {
+  double brightness;
+  double contrast;
+  double saturation;
+  double hue;
+  double gamma;
+  double warmth;
+  double tint;
+  double exposure;
+  double shadows;
+  double highlights;
+  double vignette;
+  double grain;
+} NaayaAdvancedFilterParams;
+bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes"
 bool NaayaEQ_IsEnabled(void);
@@ -26,10 +49,65 @@ size_t NaayaEQ_CopyBandGains(double* out, size_t maxCount);
 size_t NaayaEQ_GetNumBands(void);
 bool NaayaEQ_HasPendingUpdate(void);
 void NaayaEQ_ClearPendingUpdate(void);
+bool NaayaNR_IsEnabled(void);
+bool NaayaNR_HasPendingUpdate(void);
+void NaayaNR_ClearPendingUpdate(void);
+void NaayaNR_GetConfig(bool* hpEnabled,
+                       double* hpHz,
+                       double* thresholdDb,
+                       double* ratio,
+                       double* floorDb,
+                       double* attackMs,
+                       double* releaseMs);
+#if TARGET_OS_IOS
+// API spectre (exigée par le module JSI)
+void NaayaAudioSpectrumStart(void);
+void NaayaAudioSpectrumStop(void);
+size_t NaayaAudioSpectrumCopyMagnitudes(float* outBuffer, size_t maxCount);
+#endif
+// FX C API (exposée par le TurboModule EQ)
+bool NaayaFX_IsEnabled(void);
+bool NaayaFX_HasPendingUpdate(void);
+void NaayaFX_ClearPendingUpdate(void);
+void NaayaFX_GetCompressor(double* thresholdDb,
+                           double* ratio,
+                           double* attackMs,
+                           double* releaseMs,
+                           double* makeupDb);
+void NaayaFX_GetDelay(double* delayMs,
+                      double* feedback,
+                      double* mix);
+// Safety report updater (globally exposed by TurboModule)
+void NaayaSafety_UpdateReport(double peak,
+                              double rms,
+                              double dcOffset,
+                              uint32_t clippedSamples,
+                              double feedbackScore,
+                              bool overload);
 #pragma clang diagnostic pop
 #ifdef __cplusplus
 }
 #endif
+
+// === Implémentation iOS de l'API spectre attendue par le module JSI ===
+// Variables spectre visibles dans ce TU
+static BOOL sNaayaSpectrumRunning = NO;
+static float sNaayaSpectrum[64] = {0};
+
+extern "C" void NaayaAudioSpectrumStart(void) {
+  sNaayaSpectrumRunning = YES;
+}
+
+extern "C" void NaayaAudioSpectrumStop(void) {
+  sNaayaSpectrumRunning = NO;
+}
+
+extern "C" size_t NaayaAudioSpectrumCopyMagnitudes(float* outBuffer, size_t maxCount) {
+  if (!outBuffer || maxCount == 0) return 0;
+  size_t n = maxCount < 32 ? maxCount : 32;
+  memcpy(outBuffer, sNaayaSpectrum, n * sizeof(float));
+  return n;
+}
 
 @class NaayaFilteredVideoRecorder;
 
@@ -77,9 +155,81 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 }
 @end
 
+// Tap audio pour calcul du spectre lorsque MovieFileOutput est utilisé
+@interface NaayaSpectrumTap : NSObject <AVCaptureAudioDataOutputSampleBufferDelegate>
+@end
+
+@implementation NaayaSpectrumTap
+- (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+  (void)output; (void)connection;
+  if (!sNaayaSpectrumRunning) return;
+  CMAudioFormatDescriptionRef fmt = (CMAudioFormatDescriptionRef)CMSampleBufferGetFormatDescription(sampleBuffer);
+  const AudioStreamBasicDescription* asbd = fmt ? CMAudioFormatDescriptionGetStreamBasicDescription(fmt) : nullptr;
+  if (!asbd) return;
+  int channels = (int)asbd->mChannelsPerFrame;
+  if (channels < 1) return;
+  CMBlockBufferRef dataBuf = CMSampleBufferGetDataBuffer(sampleBuffer);
+  if (!dataBuf) return;
+  size_t totalLength = 0; size_t lenAtOffset = 0; char* dataPtr = nullptr;
+  if (CMBlockBufferGetDataPointer(dataBuf, 0, &lenAtOffset, &totalLength, &dataPtr) != kCMBlockBufferNoErr || !dataPtr || totalLength == 0) return;
+  size_t numFrames = (size_t)CMSampleBufferGetNumSamples(sampleBuffer);
+  bool isPCM = (asbd->mFormatID == kAudioFormatLinearPCM);
+  bool isInt16 = isPCM && asbd->mBitsPerChannel == 16;
+  bool isPacked = (asbd->mFormatFlags & kAudioFormatFlagIsPacked) != 0;
+  bool isSignedInt = (asbd->mFormatFlags & kAudioFormatFlagIsSignedInteger) != 0;
+  if (!isInt16 || !isPacked || !isSignedInt || channels > 2) return;
+  const size_t N = 1024;
+  static FFTSetup setup = NULL;
+  if (!setup) setup = vDSP_create_fftsetup(10, kFFTRadix2);
+  static float realp[N]; static float imagp[N];
+  static float monoBuf[N];
+  size_t L = (numFrames < N ? numFrames : N);
+  int16_t* in = reinterpret_cast<int16_t*>(dataPtr);
+  if (channels == 1) {
+    for (size_t i = 0; i < L; ++i) monoBuf[i] = (float)in[i] / 32768.0f;
+  } else {
+    for (size_t i = 0; i < L; ++i) monoBuf[i] = 0.5f * ((float)in[2*i] + (float)in[2*i+1]) / 32768.0f;
+  }
+  memcpy(realp, monoBuf, sizeof(float) * L);
+  if (L < N) memset(realp + L, 0, sizeof(float) * (N - L));
+  memset(imagp, 0, sizeof(float) * N);
+  DSPSplitComplex split = { .realp = realp, .imagp = imagp };
+  vDSP_fft_zip(setup, &split, 1, 10, FFT_FORWARD);
+  static float mags[N/2];
+  vDSP_zvabs(&split, 1, mags, 1, N/2);
+  const int bars = 32; float outBars[bars];
+  int per = (int)(N/2 / bars); if (per < 1) per = 1;
+  for (int b = 0; b < bars; ++b) {
+    int start = b * per; int end = start + per; if (end > (int)(N/2)) end = (int)(N/2);
+    float sum = 0.f; int cnt = 0;
+    for (int k = start; k < end; ++k) { sum += mags[k]; ++cnt; }
+    outBars[b] = cnt > 0 ? (sum / cnt) : 0.f;
+  }
+  float maxv = 1.f; for (int b = 0; b < bars; ++b) if (outBars[b] > maxv) maxv = outBars[b];
+  for (int b = 0; b < bars; ++b) {
+    float norm = (float)(log1pf(outBars[b]) / log1pf(maxv));
+    if (norm < 0.f) norm = 0.f; else if (norm > 1.f) norm = 1.f;
+    sNaayaSpectrum[b] = norm;
+  }
+}
+@end
+
 // Enregistreur AVAssetWriter avec pipeline CoreImage (vidéo uniquement)
 @interface NaayaFilteredVideoRecorder : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate> {
   std::unique_ptr<AudioEqualizer::AudioEqualizer> _eq;
+  std::unique_ptr<AudioNR::NoiseReducer> _nr;
+  std::unique_ptr<AudioSafety::AudioSafetyEngine> _safety;
+  std::unique_ptr<AudioFX::EffectChain> _fx;
+  // Tampons audio réutilisés (éviter allocations par frame)
+  std::vector<float> _bufMono;
+  std::vector<float> _tmpMono;
+  std::vector<float> _outMono;
+  std::vector<float> _left;
+  std::vector<float> _right;
+  std::vector<float> _tmpLeft;
+  std::vector<float> _tmpRight;
+  std::vector<float> _outLeft;
+  std::vector<float> _outRight;
 }
 @property(nonatomic, assign) AVCaptureSession* session; // éviter weak sous MRC
 @property(nonatomic, strong) NSURL* outputURL;
@@ -122,6 +272,9 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
     _eqSampleRate = 48000.0;
     _eqChannels = 1;
     _eqConfigured = NO;
+    _nr = nullptr;
+    _fx = nullptr;
+    _safety = nullptr;
     _forcedOrientation = -1;
     _stabilizationMode = -1;
   }
@@ -368,7 +521,114 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
     } else if ([name isEqualToString:@"monochrome"]) {
       CIFilter* f = [CIFilter filterWithName:@"CIColorMonochrome"]; [f setValue:inImg forKey:kCIInputImageKey]; [f setValue:@(1.0) forKey:@"inputIntensity"]; outImg = f.outputImage ?: inImg;
     } else if ([name isEqualToString:@"color_controls"]) {
-      CIFilter* f = [CIFilter filterWithName:@"CIColorControls"]; [f setValue:inImg forKey:kCIInputImageKey]; [f setValue:@(1.0) forKey:@"inputSaturation"]; [f setValue:@(intensity * 0.2) forKey:@"inputBrightness"]; [f setValue:@(1.0 + intensity * 0.5) forKey:@"inputContrast"]; outImg = f.outputImage ?: inImg;
+      // Si des paramètres avancés sont fournis, utiliser le pipeline avancé
+      NaayaAdvancedFilterParams adv;
+      bool hasAdv = NaayaFilters_GetAdvancedParams(&adv);
+      if (hasAdv) {
+        CIImage* tmp = inImg;
+        // 1) Contrôles de couleur de base
+        {
+          CIFilter* c = [CIFilter filterWithName:@"CIColorControls"];
+          [c setValue:tmp forKey:kCIInputImageKey];
+          [c setValue:@(MAX(-1.0, MIN(1.0, adv.brightness))) forKey:@"inputBrightness"];
+          [c setValue:@(MAX(0.0, MIN(2.0, adv.contrast))) forKey:@"inputContrast"];
+          [c setValue:@(MAX(0.0, MIN(2.0, adv.saturation))) forKey:@"inputSaturation"];
+          tmp = c.outputImage ?: tmp;
+        }
+        // 2) Teinte (hue)
+        if (fabs(adv.hue) > 0.01) {
+          CIFilter* h = [CIFilter filterWithName:@"CIHueAdjust"];
+          [h setValue:tmp forKey:kCIInputImageKey];
+          double radians = adv.hue * M_PI / 180.0;
+          [h setValue:@(radians) forKey:@"inputAngle"];
+          tmp = h.outputImage ?: tmp;
+        }
+        // 3) Gamma
+        if (fabs(adv.gamma - 1.0) > 0.01) {
+          CIFilter* g = [CIFilter filterWithName:@"CIGammaAdjust"];
+          [g setValue:tmp forKey:kCIInputImageKey];
+          [g setValue:@(MAX(0.1, MIN(3.0, adv.gamma))) forKey:@"inputPower"];
+          tmp = g.outputImage ?: tmp;
+        }
+        // 4) Exposition
+        if (fabs(adv.exposure) > 0.01) {
+          CIFilter* e = [CIFilter filterWithName:@"CIExposureAdjust"];
+          [e setValue:tmp forKey:kCIInputImageKey];
+          [e setValue:@(MAX(-2.0, MIN(2.0, adv.exposure))) forKey:@"inputEV"];
+          tmp = e.outputImage ?: tmp;
+        }
+        // 5) Ombres/hautes lumières
+        if (fabs(adv.shadows) > 0.01 || fabs(adv.highlights) > 0.01) {
+          CIFilter* sh = [CIFilter filterWithName:@"CIHighlightShadowAdjust"];
+          [sh setValue:tmp forKey:kCIInputImageKey];
+          double s = (adv.shadows + 1.0) / 2.0;
+          double hl = (adv.highlights + 1.0) / 2.0;
+          [sh setValue:@(MAX(0.0, MIN(1.0, s))) forKey:@"inputShadowAmount"];
+          [sh setValue:@(MAX(0.0, MIN(1.0, hl))) forKey:@"inputHighlightAmount"];
+          tmp = sh.outputImage ?: tmp;
+        }
+        // 6) Température/Teinte
+        if (fabs(adv.warmth) > 0.01 || fabs(adv.tint) > 0.01) {
+          CIFilter* tt = [CIFilter filterWithName:@"CITemperatureAndTint"];
+          [tt setValue:tmp forKey:kCIInputImageKey];
+          CGFloat temp = (CGFloat)(6500.0 + adv.warmth * 2000.0);
+          CGFloat tint = (CGFloat)(adv.tint * 50.0);
+          CIVector* neutral = [CIVector vectorWithX:temp Y:tint];
+          CIVector* target = [CIVector vectorWithX:6500 Y:0];
+          [tt setValue:neutral forKey:@"inputNeutral"];
+          [tt setValue:target forKey:@"inputTargetNeutral"];
+          tmp = tt.outputImage ?: tmp;
+        }
+        // 7) Vignettage
+        if (adv.vignette > 0.01) {
+          CIFilter* v = [CIFilter filterWithName:@"CIVignette"];
+          [v setValue:tmp forKey:kCIInputImageKey];
+          [v setValue:@(MIN(1.0, MAX(0.0, adv.vignette)) * 2.0) forKey:@"inputIntensity"];
+          [v setValue:@(1.0) forKey:@"inputRadius"];
+          tmp = v.outputImage ?: tmp;
+        }
+        // 8) Grain (superposition bruit)
+        if (adv.grain > 0.01) {
+          CGRect extent = inImg.extent;
+          CIFilter* rnd = [CIFilter filterWithName:@"CIRandomGenerator"];
+          CIImage* noise = rnd.outputImage;
+          if (noise) {
+            noise = [noise imageByCroppingToRect:extent];
+            CIFilter* ctrl = [CIFilter filterWithName:@"CIColorControls"];
+            [ctrl setValue:noise forKey:kCIInputImageKey];
+            [ctrl setValue:@(0.0) forKey:@"inputSaturation"];
+            [ctrl setValue:@(0.0) forKey:@"inputBrightness"];
+            [ctrl setValue:@(1.0 + MIN(1.0, MAX(0.0, adv.grain)) * 0.5) forKey:@"inputContrast"];
+            noise = ctrl.outputImage ?: noise;
+            CIFilter* blur = [CIFilter filterWithName:@"CIGaussianBlur"];
+            [blur setValue:noise forKey:kCIInputImageKey];
+            [blur setValue:@(0.5) forKey:@"inputRadius"];
+            noise = [blur.outputImage imageByCroppingToRect:extent] ?: noise;
+            CIFilter* mat = [CIFilter filterWithName:@"CIColorMatrix"];
+            [mat setValue:noise forKey:kCIInputImageKey];
+            [mat setValue:[CIVector vectorWithX:1 Y:0 Z:0 W:0] forKey:@"inputRVector"];
+            [mat setValue:[CIVector vectorWithX:0 Y:1 Z:0 W:0] forKey:@"inputGVector"];
+            [mat setValue:[CIVector vectorWithX:0 Y:0 Z:1 W:0] forKey:@"inputBVector"];
+            [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:0] forKey:@"inputAVector"];
+            CGFloat alpha = (CGFloat)(MIN(1.0, MAX(0.0, adv.grain)) * 0.18);
+            [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:alpha] forKey:@"inputBiasVector"];
+            CIImage* noiseA = mat.outputImage ?: noise;
+            CIFilter* comp = [CIFilter filterWithName:@"CISourceOverCompositing"];
+            [comp setValue:noiseA forKey:kCIInputImageKey];
+            [comp setValue:tmp forKey:kCIInputBackgroundImageKey];
+            tmp = [comp.outputImage imageByCroppingToRect:extent] ?: tmp;
+          }
+        }
+        outImg = tmp;
+      } else {
+        // Fallback: simple intensité quand pas de paramètres avancés
+        CIFilter* f = [CIFilter filterWithName:@"CIColorControls"];
+        [f setValue:inImg forKey:kCIInputImageKey];
+        [f setValue:@(1.0) forKey:@"inputSaturation"];
+        [f setValue:@(intensity * 0.2) forKey:@"inputBrightness"];
+        [f setValue:@(1.0 + intensity * 0.5) forKey:@"inputContrast"];
+        outImg = f.outputImage ?: inImg;
+      }
     }
   }
 
@@ -402,6 +662,25 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
       self.eqSampleRate = sr;
       self.eqChannels = channels;
       self.eqConfigured = YES;
+      // Init NR moteur simple (expander + passe-haut)
+      _nr = std::make_unique<AudioNR::NoiseReducer>((uint32_t)sr, channels);
+      _safety = std::make_unique<AudioSafety::AudioSafetyEngine>((uint32_t)sr, channels);
+      // FX chain setup
+      _fx = std::make_unique<AudioFX::EffectChain>();
+      _fx->setEnabled(NaayaFX_IsEnabled());
+      _fx->setSampleRate((uint32_t)sr, channels);
+      {
+        auto* comp = _fx->emplaceEffect<AudioFX::CompressorEffect>();
+        auto* del = _fx->emplaceEffect<AudioFX::DelayEffect>();
+        comp->setEnabled(true); del->setEnabled(true);
+        double th, ra, at, rl, mk; NaayaFX_GetCompressor(&th, &ra, &at, &rl, &mk);
+        comp->setParameters(th, ra, at, rl, mk);
+        double dm, fb, mx; NaayaFX_GetDelay(&dm, &fb, &mx);
+        del->setParameters(dm, fb, mx);
+      }
+      AudioNR::NoiseReducerConfig cfg; bool hpE; double hpHz, thDb, ratio, flDb, aMs, rMs;
+      NaayaNR_GetConfig(&hpE, &hpHz, &thDb, &ratio, &flDb, &aMs, &rMs);
+      cfg.enabled = NaayaNR_IsEnabled(); cfg.enableHighPass = hpE; cfg.highPassHz = hpHz; cfg.thresholdDb = thDb; cfg.ratio = ratio; cfg.floorDb = flDb; cfg.attackMs = aMs; cfg.releaseMs = rMs; _nr->setConfig(cfg);
       // Charger gains initiaux
       double gains[32] = {0};
       size_t nb = NaayaEQ_CopyBandGains(gains, 32);
@@ -421,6 +700,21 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
       _eq->setMasterGain(NaayaEQ_GetMasterGainDB());
       _eq->setBypass(!NaayaEQ_IsEnabled());
       NaayaEQ_ClearPendingUpdate();
+    }
+    if (NaayaFX_HasPendingUpdate()) {
+      if (_fx) {
+        _fx->setEnabled(NaayaFX_IsEnabled());
+        _fx->setSampleRate((uint32_t)sr, channels);
+        _fx->clear();
+        auto* comp = _fx->emplaceEffect<AudioFX::CompressorEffect>();
+        auto* del = _fx->emplaceEffect<AudioFX::DelayEffect>();
+        comp->setEnabled(true); del->setEnabled(true);
+        double th, ra, at, rl, mk; NaayaFX_GetCompressor(&th, &ra, &at, &rl, &mk);
+        comp->setParameters(th, ra, at, rl, mk);
+        double dm, fb, mx; NaayaFX_GetDelay(&dm, &fb, &mx);
+        del->setParameters(dm, fb, mx);
+      }
+      NaayaFX_ClearPendingUpdate();
     }
 
     CMBlockBufferRef dataBuf = CMSampleBufferGetDataBuffer(sampleBuffer);
@@ -445,29 +739,154 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
 
     // Convertir → float, traiter, reconvertir
     if (channels == 1) {
-      std::vector<float> mono(numFrames);
+      _bufMono.resize(numFrames);
       int16_t* in = reinterpret_cast<int16_t*>(dataPtr);
-      for (size_t i = 0; i < numFrames; ++i) mono[i] = (float)in[i] / 32768.0f;
-      std::vector<float> out(mono.size());
-      _eq->process(mono.data(), out.data(), numFrames);
+      for (size_t i = 0; i < numFrames; ++i) _bufMono[i] = (float)in[i] / 32768.0f;
+      // NR temps-réel (faible latence)
+      if (_nr) {
+        if (NaayaNR_HasPendingUpdate()) {
+          AudioNR::NoiseReducerConfig cfg; bool hpE; double hpHz, thDb, ratio, flDb, aMs, rMs;
+          NaayaNR_GetConfig(&hpE, &hpHz, &thDb, &ratio, &flDb, &aMs, &rMs);
+          cfg.enabled = NaayaNR_IsEnabled(); cfg.enableHighPass = hpE; cfg.highPassHz = hpHz; cfg.thresholdDb = thDb; cfg.ratio = ratio; cfg.floorDb = flDb; cfg.attackMs = aMs; cfg.releaseMs = rMs; _nr->setConfig(cfg);
+          NaayaNR_ClearPendingUpdate();
+        }
+        _tmpMono.resize(numFrames);
+        _nr->processMono(_bufMono.data(), _tmpMono.data(), numFrames);
+        _bufMono.swap(_tmpMono);
+      }
+      // Spectre (optionnel)
+      if (sNaayaSpectrumRunning) {
+          const size_t N = 1024;
+          static FFTSetup setup = NULL;
+          if (!setup) setup = vDSP_create_fftsetup(10, kFFTRadix2);
+          static float realp[N]; static float imagp[N];
+          size_t L = (numFrames < N ? numFrames : N);
+          // Copier mono -> realp et zero-pad
+          memcpy(realp, _bufMono.data(), sizeof(float) * L);
+          if (L < N) memset(realp + L, 0, sizeof(float) * (N - L));
+          memset(imagp, 0, sizeof(float) * N);
+          DSPSplitComplex split = { .realp = realp, .imagp = imagp };
+          vDSP_fft_zip(setup, &split, 1, 10, FFT_FORWARD);
+          // Magnitudes sur N/2
+          static float mags[N/2];
+          vDSP_zvabs(&split, 1, mags, 1, N/2);
+          // Agg 32 barres
+          const int bars = 32;
+          float outBars[bars];
+          int per = (int)(N/2 / bars);
+          if (per < 1) per = 1;
+          for (int b = 0; b < bars; ++b) {
+            int start = b * per;
+            int end = start + per;
+            if (end > (int)(N/2)) end = (int)(N/2);
+            float sum = 0.f; int cnt = 0;
+            for (int k = start; k < end; ++k) { sum += mags[k]; ++cnt; }
+            float avg = cnt > 0 ? (sum / cnt) : 0.f;
+            outBars[b] = avg;
+          }
+          // Normalisation log 0..1
+          float maxv = 1.f;
+          for (int b = 0; b < bars; ++b) if (outBars[b] > maxv) maxv = outBars[b];
+          for (int b = 0; b < bars; ++b) {
+            float norm = (float)(log1pf(outBars[b]) / log1pf(maxv));
+            if (norm < 0.f) norm = 0.f; else if (norm > 1.f) norm = 1.f;
+            sNaayaSpectrum[b] = norm;
+          }
+        
+      }
+      // Effets créatifs (FX)
+      if (_fx && _fx->isEnabled()) {
+        _tmpMono.resize(numFrames);
+        _fx->processMono(_bufMono.data(), _tmpMono.data(), numFrames);
+        _bufMono.swap(_tmpMono);
+      }
+       // Sécurité audio (DC offset / limiter / validation)
+       if (_safety) {
+        _safety->processMono(_bufMono.data(), numFrames);
+        auto rep = _safety->getLastReport();
+        NaayaSafety_UpdateReport(rep.peak, rep.rms, rep.dcOffset, rep.clippedSamples, rep.feedbackScore, rep.overloadActive);
+       }
+       _outMono.resize(numFrames);
+      _eq->process(_bufMono.data(), _outMono.data(), numFrames);
       for (size_t i = 0; i < numFrames; ++i) {
-        float v = std::max(-1.0f, std::min(1.0f, out[i]));
+        float v = std::max(-1.0f, std::min(1.0f, _outMono[i]));
         in[i] = (int16_t)lrintf(v * 32767.0f);
       }
       [self.audioInput appendSampleBuffer:sampleBuffer];
     } else {
       // stéréo interleaved LR LR ...
-      std::vector<float> left(numFrames), right(numFrames);
+      _left.resize(numFrames); _right.resize(numFrames);
       int16_t* in = reinterpret_cast<int16_t*>(dataPtr);
       for (size_t i = 0; i < numFrames; ++i) {
-        left[i] = (float)in[2*i] / 32768.0f;
-        right[i] = (float)in[2*i+1] / 32768.0f;
+        _left[i] = (float)in[2*i] / 32768.0f;
+        _right[i] = (float)in[2*i+1] / 32768.0f;
       }
-      std::vector<float> outL(numFrames), outR(numFrames);
-      _eq->processStereo(left.data(), right.data(), outL.data(), outR.data(), numFrames);
+      if (_nr) {
+        if (NaayaNR_HasPendingUpdate()) {
+          AudioNR::NoiseReducerConfig cfg; bool hpE; double hpHz, thDb, ratio, flDb, aMs, rMs;
+          NaayaNR_GetConfig(&hpE, &hpHz, &thDb, &ratio, &flDb, &aMs, &rMs);
+          cfg.enabled = NaayaNR_IsEnabled(); cfg.enableHighPass = hpE; cfg.highPassHz = hpHz; cfg.thresholdDb = thDb; cfg.ratio = ratio; cfg.floorDb = flDb; cfg.attackMs = aMs; cfg.releaseMs = rMs; _nr->setConfig(cfg);
+          NaayaNR_ClearPendingUpdate();
+        }
+        _tmpLeft.resize(numFrames); _tmpRight.resize(numFrames);
+        _nr->processStereo(_left.data(), _right.data(), _tmpLeft.data(), _tmpRight.data(), numFrames);
+        _left.swap(_tmpLeft); _right.swap(_tmpRight);
+      }
+      // Spectre (optionnel)
+      if (sNaayaSpectrumRunning) {
+          const size_t N = 1024;
+          static FFTSetup setup = NULL;
+          if (!setup) setup = vDSP_create_fftsetup(10, kFFTRadix2);
+          static float realp[N]; static float imagp[N];
+          // moyenne L/R
+          static float monoBuf[N];
+          size_t L = (numFrames < N ? numFrames : N);
+          for (size_t i = 0; i < L; ++i) monoBuf[i] = 0.5f * (_left[i] + _right[i]);
+          memcpy(realp, monoBuf, sizeof(float) * L);
+          if (L < N) memset(realp + L, 0, sizeof(float) * (N - L));
+          memset(imagp, 0, sizeof(float) * N);
+          DSPSplitComplex split = { .realp = realp, .imagp = imagp };
+          vDSP_fft_zip(setup, &split, 1, 10, FFT_FORWARD);
+          static float mags[N/2];
+          vDSP_zvabs(&split, 1, mags, 1, N/2);
+          const int bars = 32;
+          float outBars[bars];
+          int per = (int)(N/2 / bars);
+          if (per < 1) per = 1;
+          for (int b = 0; b < bars; ++b) {
+            int start = b * per;
+            int end = start + per;
+            if (end > (int)(N/2)) end = (int)(N/2);
+            float sum = 0.f; int cnt = 0;
+            for (int k = start; k < end; ++k) { sum += mags[k]; ++cnt; }
+            float avg = cnt > 0 ? (sum / cnt) : 0.f;
+            outBars[b] = avg;
+          }
+          float maxv = 1.f;
+          for (int b = 0; b < bars; ++b) if (outBars[b] > maxv) maxv = outBars[b];
+          for (int b = 0; b < bars; ++b) {
+            float norm = (float)(log1pf(outBars[b]) / log1pf(maxv));
+            if (norm < 0.f) norm = 0.f; else if (norm > 1.f) norm = 1.f;
+            sNaayaSpectrum[b] = norm;
+          }
+      }
+      // Effets créatifs (FX)
+      if (_fx && _fx->isEnabled()) {
+        _tmpLeft.resize(numFrames); _tmpRight.resize(numFrames);
+        _fx->processStereo(_left.data(), _right.data(), _tmpLeft.data(), _tmpRight.data(), numFrames);
+        _left.swap(_tmpLeft); _right.swap(_tmpRight);
+      }
+       // Sécurité audio
+       if (_safety) {
+        _safety->processStereo(_left.data(), _right.data(), numFrames);
+        auto repL = _safety->getLastReport();
+        NaayaSafety_UpdateReport(repL.peak, repL.rms, repL.dcOffset, repL.clippedSamples, repL.feedbackScore, repL.overloadActive);
+       }
+       _outLeft.resize(numFrames); _outRight.resize(numFrames);
+      _eq->processStereo(_left.data(), _right.data(), _outLeft.data(), _outRight.data(), numFrames);
       for (size_t i = 0; i < numFrames; ++i) {
-        float vl = std::max(-1.0f, std::min(1.0f, outL[i]));
-        float vr = std::max(-1.0f, std::min(1.0f, outR[i]));
+        float vl = std::max(-1.0f, std::min(1.0f, _outLeft[i]));
+        float vr = std::max(-1.0f, std::min(1.0f, _outRight[i]));
         in[2*i]   = (int16_t)lrintf(vl * 32767.0f);
         in[2*i+1] = (int16_t)lrintf(vr * 32767.0f);
       }
@@ -494,8 +913,8 @@ protected:
     AVCaptureSession* session = NaayaGetSharedSession();
     if (!session) return false;
 
-    // Si un filtre est actif, utiliser l'enregistreur filtré (AVAssetWriter)
-    if (NaayaFilters_HasFilter()) {
+    // Utiliser l'enregistreur filtré (AVAssetWriter) pour unifier NR/EQ/spectre
+    {
       // Préparer fichier de sortie
       std::string dir = this->getSaveDirectory();
       if (dir.empty()) { dir = "/tmp/naaya/videos"; }
@@ -557,7 +976,6 @@ protected:
         return true;
       }
     }
-
     // Sortie vidéo non filtrée (fallback MovieFileOutput)
     AVCaptureMovieFileOutput* movie = NaayaGetMovieOutput();
     if (!movie) {
@@ -572,7 +990,7 @@ protected:
       }
     }
 
-    // Input audio optionnel
+  // Input audio optionnel (et nécessaire pour spectre MovieFileOutput)
     if (options.recordAudio) {
       AVCaptureDeviceInput* audioIn = NaayaGetAudioInput();
       if (!audioIn) {
@@ -588,6 +1006,12 @@ protected:
           }
         }
       }
+    // Brancher un AudioDataOutput pour spectre (MovieFileOutput) – NR/EQ restent sur pipeline filtré
+    AVCaptureAudioDataOutput* aout = [[AVCaptureAudioDataOutput alloc] init];
+    dispatch_queue_t aq = dispatch_queue_create("naaya.audio.mfo.tap", DISPATCH_QUEUE_SERIAL);
+    NaayaSpectrumTap* tap = [NaayaSpectrumTap new];
+    [aout setSampleBufferDelegate:tap queue:aq];
+    if ([session canAddOutput:aout]) { [session beginConfiguration]; [session addOutput:aout]; [session commitConfiguration]; }
     }
 
     // Préparer fichier de sortie

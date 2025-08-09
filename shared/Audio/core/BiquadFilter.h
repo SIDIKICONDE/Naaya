@@ -1,8 +1,8 @@
 #pragma once
 
+#ifdef __cplusplus
 #include "../utils/Constants.h"
-#include <memory>
-#include <cstring>
+#include <cmath>
 
 #ifdef __ARM_NEON
 #include <arm_neon.h>
@@ -52,12 +52,10 @@ private:
     double m_a0, m_a1, m_a2;  // Feedforward coefficients
     double m_b1, m_b2;        // Feedback coefficients (b0 is always 1)
     
-    // Filter state variables (double precision for accuracy)
-    double m_x1, m_x2;  // Input history
-    double m_y1, m_y2;  // Output history
+    // Filter state variables (DF-II transposé)
+    double m_y1, m_y2;  // State history
     
     // Stereo state variables
-    double m_x1R, m_x2R;
     double m_y1R, m_y2R;
     
     // Helper functions
@@ -79,8 +77,10 @@ private:
 #endif
 };
 
+} // namespace AudioEqualizer
+
 // Inline implementation for real-time processing
-inline float BiquadFilter::processSample(float input) {
+inline float AudioEqualizer::BiquadFilter::processSample(float input) {
     // Direct Form II implementation
     double x = static_cast<double>(input);
     
@@ -97,4 +97,6 @@ inline float BiquadFilter::processSample(float input) {
     return static_cast<float>(y);
 }
 
-} // namespace AudioEqualizer
+#else
+// C/ObjC compilation guard: no API exposed
+#endif

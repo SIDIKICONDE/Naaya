@@ -3,7 +3,6 @@
 #ifdef __cplusplus
 #include "BiquadFilter.h"
 #include "../utils/Constants.h"
-#include "../utils/AudioBuffer.h"
 #include <vector>
 #include <memory>
 #include <atomic>
@@ -92,9 +91,6 @@ private:
     // Thread safety
     mutable std::mutex m_parameterMutex;
     std::atomic<bool> m_parametersChanged;
-    
-    // Internal buffers for processing
-    std::unique_ptr<AudioBuffer> m_tempBuffer;
     
     // Helper functions
     void updateFilters();

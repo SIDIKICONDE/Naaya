@@ -4,10 +4,12 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import type { FilterState } from '../../../specs/NativeCameraFiltersModule';
+import type { AdvancedFilterParams, FilterState } from '../../../specs/NativeCameraFiltersModule';
 import CameraFilters from '../../../specs/NativeCameraFiltersModule';
 import type { CameraDevice, PermissionResult } from '../../../specs/NativeCameraModule';
 import { NativeCameraEngine } from '../index';
+
+export type { AdvancedFilterParams };
 
 export interface UseNativeCameraReturn {
   // État
@@ -28,7 +30,7 @@ export interface UseNativeCameraReturn {
   // Filtres
   availableFilters: string[];
   currentFilter: FilterState | null;
-  setFilter: (name: string, intensity: number) => Promise<boolean>;
+  setFilter: (name: string, intensity: number, params?: AdvancedFilterParams) => Promise<boolean>;
   clearFilter: () => Promise<boolean>;
 }
 
@@ -171,37 +173,49 @@ export function useNativeCamera(): UseNativeCameraReturn {
 
   /**
    * Change de dispositif (avant/arrière)
+   * Implémentation optimisée selon les directives C++20
    */
   const switchDevice = useCallback(async (position: 'front' | 'back') => {
     try {
       console.log('[useNativeCamera] Changement vers:', position);
       
-      // Trouver le dispositif correspondant
+      // Validation pré-conditions
+      if (!devices || devices.length === 0) {
+        throw new Error('Aucun dispositif caméra disponible');
+      }
+      
+      // Vérifier que le dispositif cible existe
       const targetDevice = devices.find(device => device.position === position);
       if (!targetDevice) {
-        throw new Error(`Aucun dispositif ${position} disponible`);
+        const availablePositions = devices.map(d => d.position).join(', ');
+        throw new Error(`Dispositif ${position} non disponible. Disponibles: ${availablePositions}`);
       }
 
-      // Arrêter la caméra actuelle si active
-      if (isActive) {
-        await stopCamera();
+      // Éviter un switch inutile vers le même dispositif
+      if (currentDevice?.position === position) {
+        console.log('[useNativeCamera] Dispositif déjà sélectionné:', position);
+        return;
       }
 
-      // Changer de dispositif
+      console.log(`[useNativeCamera] Basculement ${currentDevice?.position || 'inconnu'} → ${position}`);
+      
+      // Approche optimisée : switch direct sans arrêt/redémarrage
       const success = await NativeCameraEngine.switchDevice(position);
-      if (success) {
-        setCurrentDevice(targetDevice);
-        console.log('[useNativeCamera] Dispositif changé vers:', targetDevice.name);
-        
-        // Redémarrer la caméra
-        await startCamera(targetDevice.id);
+      if (!success) {
+        throw new Error(`Échec du basculement vers ${position}`);
       }
+      
+      // Mettre à jour l'état local uniquement après succès
+      setCurrentDevice(targetDevice);
+      console.log('[useNativeCamera] Basculement réussi vers:', targetDevice.name);
+      
     } catch (err) {
-      console.error('[useNativeCamera] Erreur changement dispositif:', err);
-      setError(err as Error);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[useNativeCamera] Erreur changement dispositif:', errorMsg);
+      setError(new Error(`Basculement échoué: ${errorMsg}`));
       throw err;
     }
-  }, [devices, isActive, stopCamera, startCamera]);
+  }, [devices, currentDevice]);
 
   /**
    * Charge les filtres disponibles
@@ -220,10 +234,12 @@ export function useNativeCamera(): UseNativeCameraReturn {
   /**
    * Applique un filtre
    */
-  const setFilter = useCallback(async (name: string, intensity: number) => {
+  const setFilter = useCallback(async (name: string, intensity: number, params?: AdvancedFilterParams) => {
     try {
       console.log('[useNativeCamera] Application filtre:', name, 'intensité:', intensity);
-      const success = await CameraFilters.setFilter(name, intensity);
+      const success = params
+        ? await CameraFilters.setFilterWithParams(name, intensity, params)
+        : await CameraFilters.setFilter(name, intensity);
       if (success) {
         const filter = await CameraFilters.getFilter();
         setCurrentFilter(filter);

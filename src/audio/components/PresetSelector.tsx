@@ -5,15 +5,16 @@
 
 import React, { useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-  Platform,
+    Animated,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { THEME_COLORS, EQUALIZER_PRESETS } from '../constants';
+import { THEME_COLORS } from '../constants';
+import { useEqualizer } from '../hooks';
 import { EqualizerPreset } from '../types';
 
 interface PresetSelectorProps {
@@ -111,6 +112,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   onPresetSelect,
   disabled = false,
 }) => {
+  const { presets } = useEqualizer();
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -125,13 +127,13 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   // Auto-scroll vers le préréglage sélectionné
   React.useEffect(() => {
     if (currentPreset && scrollViewRef.current) {
-      const index = EQUALIZER_PRESETS.findIndex(p => p.id === currentPreset);
+      const index = presets.findIndex(p => p.id === currentPreset);
       if (index >= 0) {
         const scrollPosition = index * (PRESET_CARD_WIDTH + 12) - 20;
         scrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
       }
     }
-  }, [currentPreset]);
+  }, [currentPreset, presets]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -139,7 +141,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
         <Text style={styles.title}>Préréglages</Text>
         <View style={styles.indicator}>
           <Text style={styles.indicatorText}>
-            {EQUALIZER_PRESETS.find(p => p.id === currentPreset)?.name || 'Personnalisé'}
+            {presets.find(p => p.id === currentPreset)?.name || 'Personnalisé'}
           </Text>
         </View>
       </View>
@@ -153,7 +155,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
         snapToInterval={PRESET_CARD_WIDTH + 12}
         snapToAlignment="start"
       >
-        {EQUALIZER_PRESETS.map((preset) => (
+        {presets.map((preset) => (
           <PresetCard
             key={preset.id}
             preset={preset}

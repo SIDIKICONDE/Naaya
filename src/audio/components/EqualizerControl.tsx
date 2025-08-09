@@ -3,17 +3,17 @@
  * Interface principale pour ajuster les bandes de fréquence
  */
 
+import Slider from '@react-native-community/slider';
 import React, { memo, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Switch,
-  TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { useEqualizer } from '../hooks';
 import type { EqualizerBand } from '../types';
 
@@ -133,12 +133,12 @@ export const EqualizerControl: React.FC<EqualizerControlProps> = memo(({
               </Text>
               <View style={styles.sliderContainer}>
                 <Text style={[styles.gainValue, !isEnabled && styles.disabledText]}>
-                  +12
+                  +24
                 </Text>
-                <Slider
+                 <Slider
                   style={styles.slider}
-                  minimumValue={-12}
-                  maximumValue={12}
+                   minimumValue={-24}
+                   maximumValue={24}
                   value={band.gain}
                   onValueChange={(value) => handleBandChange(band.index, value)}
                   minimumTrackTintColor={isEnabled ? '#007AFF' : '#cccccc'}
@@ -146,9 +146,9 @@ export const EqualizerControl: React.FC<EqualizerControlProps> = memo(({
                   thumbTintColor={isEnabled ? '#007AFF' : '#999999'}
                   disabled={!isEnabled}
                 />
-                <Text style={[styles.gainValue, !isEnabled && styles.disabledText]}>
-                  -12
-                </Text>
+                 <Text style={[styles.gainValue, !isEnabled && styles.disabledText]}>
+                   -24
+                 </Text>
               </View>
               <Text style={[styles.currentGain, !isEnabled && styles.disabledText]}>
                 {band.gain.toFixed(1)} dB

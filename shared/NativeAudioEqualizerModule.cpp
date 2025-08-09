@@ -11,6 +11,52 @@ static double g_naaya_eq_band_gains[32] = {0};
 static size_t g_naaya_eq_num_bands = 10;
 static std::atomic<bool> g_naaya_eq_dirty{false};
 
+// === NR global state (accessible cross-platform) ===
+static std::mutex g_naaya_nr_mutex;
+static bool   g_naaya_nr_enabled = false;
+static bool   g_naaya_nr_hp_enabled = true;
+static double g_naaya_nr_hp_hz = 80.0;
+static double g_naaya_nr_threshold_db = -45.0;
+static double g_naaya_nr_ratio = 2.5;
+static double g_naaya_nr_floor_db = -18.0;
+static double g_naaya_nr_attack_ms = 3.0;
+static double g_naaya_nr_release_ms = 80.0;
+static std::atomic<bool> g_naaya_nr_dirty{false};
+
+// Safety (audio integrity) global state
+static std::mutex g_naaya_safety_mutex;
+static bool   g_naaya_safety_enabled = true;
+static bool   g_naaya_safety_dc_enabled = true;
+static double g_naaya_safety_dc_threshold = 0.002;
+static bool   g_naaya_safety_limiter_enabled = true;
+static double g_naaya_safety_limiter_threshold_db = -1.0;
+static bool   g_naaya_safety_softknee = true;
+static double g_naaya_safety_knee_db = 6.0;
+static bool   g_naaya_safety_feedback_enabled = true;
+static double g_naaya_safety_feedback_thresh = 0.95;
+static std::atomic<bool> g_naaya_safety_dirty{false};
+static double g_naaya_safety_last_peak = 0.0;
+static double g_naaya_safety_last_rms = 0.0;
+static double g_naaya_safety_last_dc = 0.0;
+static uint32_t g_naaya_safety_last_clipped = 0;
+static double g_naaya_safety_last_feedback = 0.0;
+static bool g_naaya_safety_last_overload = false;
+
+// === FX (creative effects) global state ===
+static std::mutex g_naaya_fx_mutex;
+static bool   g_naaya_fx_enabled = false;
+// Compressor
+static double g_naaya_fx_comp_threshold_db = -18.0;
+static double g_naaya_fx_comp_ratio        = 3.0;
+static double g_naaya_fx_comp_attack_ms    = 10.0;
+static double g_naaya_fx_comp_release_ms   = 80.0;
+static double g_naaya_fx_comp_makeup_db    = 0.0;
+// Delay
+static double g_naaya_fx_delay_ms          = 150.0;
+static double g_naaya_fx_delay_feedback    = 0.3;
+static double g_naaya_fx_delay_mix         = 0.25;
+static std::atomic<bool> g_naaya_fx_dirty{false};
+
 extern "C" bool NaayaEQ_IsEnabled() {
   std::lock_guard<std::mutex> lk(g_naaya_eq_mutex);
   return g_naaya_eq_enabled;
@@ -42,11 +88,78 @@ extern "C" void NaayaEQ_ClearPendingUpdate() {
   g_naaya_eq_dirty.store(false);
 }
 
+// === NR C API ===
+extern "C" bool NaayaNR_IsEnabled() {
+  std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+  return g_naaya_nr_enabled;
+}
+
+extern "C" bool NaayaNR_HasPendingUpdate() {
+  return g_naaya_nr_dirty.load();
+}
+
+extern "C" void NaayaNR_ClearPendingUpdate() {
+  g_naaya_nr_dirty.store(false);
+}
+
+extern "C" void NaayaNR_GetConfig(bool* hpEnabled,
+                                  double* hpHz,
+                                  double* thresholdDb,
+                                  double* ratio,
+                                  double* floorDb,
+                                  double* attackMs,
+                                  double* releaseMs) {
+  std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+  if (hpEnabled)   *hpEnabled   = g_naaya_nr_hp_enabled;
+  if (hpHz)        *hpHz        = g_naaya_nr_hp_hz;
+  if (thresholdDb) *thresholdDb = g_naaya_nr_threshold_db;
+  if (ratio)       *ratio       = g_naaya_nr_ratio;
+  if (floorDb)     *floorDb     = g_naaya_nr_floor_db;
+  if (attackMs)    *attackMs    = g_naaya_nr_attack_ms;
+  if (releaseMs)   *releaseMs   = g_naaya_nr_release_ms;
+}
+
+// === FX C API ===
+extern "C" bool NaayaFX_IsEnabled() {
+  std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+  return g_naaya_fx_enabled;
+}
+
+extern "C" bool NaayaFX_HasPendingUpdate() {
+  return g_naaya_fx_dirty.load();
+}
+
+extern "C" void NaayaFX_ClearPendingUpdate() {
+  g_naaya_fx_dirty.store(false);
+}
+
+extern "C" void NaayaFX_GetCompressor(double* thresholdDb,
+                                       double* ratio,
+                                       double* attackMs,
+                                       double* releaseMs,
+                                       double* makeupDb) {
+  std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+  if (thresholdDb) *thresholdDb = g_naaya_fx_comp_threshold_db;
+  if (ratio)       *ratio       = g_naaya_fx_comp_ratio;
+  if (attackMs)    *attackMs    = g_naaya_fx_comp_attack_ms;
+  if (releaseMs)   *releaseMs   = g_naaya_fx_comp_release_ms;
+  if (makeupDb)    *makeupDb    = g_naaya_fx_comp_makeup_db;
+}
+
+extern "C" void NaayaFX_GetDelay(double* delayMs,
+                                  double* feedback,
+                                  double* mix) {
+  std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+  if (delayMs)  *delayMs  = g_naaya_fx_delay_ms;
+  if (feedback) *feedback = g_naaya_fx_delay_feedback;
+  if (mix)      *mix      = g_naaya_fx_delay_mix;
+}
+
 #if NAAYA_AUDIO_EQ_ENABLED
 #include <cmath>
 #include <string>
 #ifndef NAAYA_HAS_SPECTRUM
-#define NAAYA_HAS_SPECTRUM 0
+#define NAAYA_HAS_SPECTRUM 1
 #endif
 #if NAAYA_HAS_SPECTRUM && __APPLE__
 extern "C" {
@@ -277,6 +390,21 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
         return jsi::Value::undefined();
     }};
 
+    // Compat helpers without passing equalizerId from JS
+    methodMap_["beginBatch"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
+        self.ensureDefaultEqualizer(rt);
+        self.beginParameterUpdate(rt, self.defaultEqualizerId_);
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["endBatch"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
+        self.ensureDefaultEqualizer(rt);
+        self.endParameterUpdate(rt, self.defaultEqualizerId_);
+        return jsi::Value::undefined();
+    }};
+
     // ==== WRAPPERS SIMPLES POUR L'API JS EXISTANTE ====
     methodMap_["setEQEnabled"] = MethodMetadata{1, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* args, size_t count) -> jsi::Value {
         auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
@@ -395,6 +523,201 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
 #endif
         return result;
     }};
+
+    // ===== Noise Reduction (NR) controls exposed to JS =====
+    methodMap_["nrSetEnabled"] = MethodMetadata{1, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        bool en = args[0].getBool();
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+          g_naaya_nr_enabled = en;
+          g_naaya_nr_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["nrGetEnabled"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+        return jsi::Value(g_naaya_nr_enabled);
+    }};
+
+    methodMap_["nrSetConfig"] = MethodMetadata{7, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        bool hpEn      = args[0].getBool();
+        double hpHz    = args[1].asNumber();
+        double thDb    = args[2].asNumber();
+        double ratio   = args[3].asNumber();
+        double floorDb = args[4].asNumber();
+        double attMs   = args[5].asNumber();
+        double relMs   = args[6].asNumber();
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+          g_naaya_nr_hp_enabled  = hpEn;
+          g_naaya_nr_hp_hz       = hpHz;
+          g_naaya_nr_threshold_db= thDb;
+          g_naaya_nr_ratio       = ratio;
+          g_naaya_nr_floor_db    = floorDb;
+          g_naaya_nr_attack_ms   = attMs;
+          g_naaya_nr_release_ms  = relMs;
+          g_naaya_nr_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["nrGetConfig"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        auto obj = jsi::Object(rt);
+        bool hpEn; double hpHz, thDb, ratio, floorDb, attMs, relMs;
+        NaayaNR_GetConfig(&hpEn, &hpHz, &thDb, &ratio, &floorDb, &attMs, &relMs);
+        obj.setProperty(rt, "highPassEnabled", jsi::Value(hpEn));
+        obj.setProperty(rt, "highPassHz", jsi::Value(hpHz));
+        obj.setProperty(rt, "thresholdDb", jsi::Value(thDb));
+        obj.setProperty(rt, "ratio", jsi::Value(ratio));
+        obj.setProperty(rt, "floorDb", jsi::Value(floorDb));
+        obj.setProperty(rt, "attackMs", jsi::Value(attMs));
+        obj.setProperty(rt, "releaseMs", jsi::Value(relMs));
+        return obj;
+    }};
+
+    // ===== Safety controls exposed to JS =====
+    methodMap_["safetySetConfig"] = MethodMetadata{9, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        bool enabled = args[0].getBool();
+        bool dcEn    = args[1].getBool();
+        double dcTh  = args[2].asNumber();
+        bool limEn   = args[3].getBool();
+        double limDb = args[4].asNumber();
+        bool softK   = args[5].getBool();
+        double knee  = args[6].asNumber();
+        bool fbEn    = args[7].getBool();
+        double fbTh  = args[8].asNumber();
+        std::lock_guard<std::mutex> lk(g_naaya_safety_mutex);
+        g_naaya_safety_enabled = enabled;
+        g_naaya_safety_dc_enabled = dcEn;
+        g_naaya_safety_dc_threshold = dcTh;
+        g_naaya_safety_limiter_enabled = limEn;
+        g_naaya_safety_limiter_threshold_db = limDb;
+        g_naaya_safety_softknee = softK;
+        g_naaya_safety_knee_db = knee;
+        g_naaya_safety_feedback_enabled = fbEn;
+        g_naaya_safety_feedback_thresh = fbTh;
+        g_naaya_safety_dirty.store(true);
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["safetyGetReport"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        std::lock_guard<std::mutex> lk(g_naaya_safety_mutex);
+        auto obj = jsi::Object(rt);
+        obj.setProperty(rt, "peak", jsi::Value(g_naaya_safety_last_peak));
+        obj.setProperty(rt, "rms", jsi::Value(g_naaya_safety_last_rms));
+        obj.setProperty(rt, "dcOffset", jsi::Value(g_naaya_safety_last_dc));
+        obj.setProperty(rt, "clippedSamples", jsi::Value(static_cast<double>(g_naaya_safety_last_clipped)));
+        obj.setProperty(rt, "feedbackScore", jsi::Value(g_naaya_safety_last_feedback));
+        obj.setProperty(rt, "overload", jsi::Value(g_naaya_safety_last_overload));
+        return obj;
+    }};
+
+    // ===== FX controls exposed to JS =====
+    methodMap_["fxSetEnabled"] = MethodMetadata{1, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        bool en = args[0].getBool();
+        std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+        g_naaya_fx_enabled = en;
+        g_naaya_fx_dirty.store(true);
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["fxGetEnabled"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+        return jsi::Value(g_naaya_fx_enabled);
+    }};
+
+    methodMap_["fxSetCompressor"] = MethodMetadata{5, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        double th = args[0].asNumber();
+        double ra = args[1].asNumber();
+        double at = args[2].asNumber();
+        double rl = args[3].asNumber();
+        double mk = args[4].asNumber();
+        std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+        g_naaya_fx_comp_threshold_db = th;
+        g_naaya_fx_comp_ratio = ra;
+        g_naaya_fx_comp_attack_ms = at;
+        g_naaya_fx_comp_release_ms = rl;
+        g_naaya_fx_comp_makeup_db = mk;
+        g_naaya_fx_dirty.store(true);
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["fxSetDelay"] = MethodMetadata{3, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        double dm = args[0].asNumber();
+        double fb = args[1].asNumber();
+        double mx = args[2].asNumber();
+        std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+        g_naaya_fx_delay_ms = dm;
+        g_naaya_fx_delay_feedback = fb;
+        g_naaya_fx_delay_mix = mx;
+        g_naaya_fx_dirty.store(true);
+        return jsi::Value::undefined();
+    }};
+
+    // ===== Creative Effects (FX) controls exposed to JS =====
+    methodMap_["fxSetEnabled"] = MethodMetadata{1, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        bool en = args[0].getBool();
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+          g_naaya_fx_enabled = en;
+          g_naaya_fx_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["fxGetEnabled"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+        return jsi::Value(g_naaya_fx_enabled);
+    }};
+
+    methodMap_["fxSetCompressor"] = MethodMetadata{5, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        double th = args[0].asNumber();
+        double ra = args[1].asNumber();
+        double at = args[2].asNumber();
+        double rl = args[3].asNumber();
+        double mk = args[4].asNumber();
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+          g_naaya_fx_comp_threshold_db = th;
+          g_naaya_fx_comp_ratio        = ra;
+          g_naaya_fx_comp_attack_ms    = at;
+          g_naaya_fx_comp_release_ms   = rl;
+          g_naaya_fx_comp_makeup_db    = mk;
+          g_naaya_fx_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["fxSetDelay"] = MethodMetadata{3, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        double dm = args[0].asNumber();
+        double fb = args[1].asNumber();
+        double mx = args[2].asNumber();
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_fx_mutex);
+          g_naaya_fx_delay_ms       = dm;
+          g_naaya_fx_delay_feedback = fb;
+          g_naaya_fx_delay_mix      = mx;
+          g_naaya_fx_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+}
+
+// === Safety C API to update metrics from platform recorders ===
+extern "C" void NaayaSafety_UpdateReport(double peak,
+                                          double rms,
+                                          double dcOffset,
+                                          uint32_t clippedSamples,
+                                          double feedbackScore,
+                                          bool overload) {
+  std::lock_guard<std::mutex> lk(g_naaya_safety_mutex);
+  g_naaya_safety_last_peak = peak;
+  g_naaya_safety_last_rms = rms;
+  g_naaya_safety_last_dc = dcOffset;
+  g_naaya_safety_last_clipped = clippedSamples;
+  g_naaya_safety_last_feedback = feedbackScore;
+  g_naaya_safety_last_overload = overload;
 }
 
 void NativeAudioEqualizerModule::ensureDefaultEqualizer(jsi::Runtime& rt) {

@@ -2,9 +2,7 @@
 
 #ifdef __cplusplus
 #include <cstdint>
-#else
-#include <stdint.h>
-#endif
+#include <cstddef>
 #include <cmath>
 
 namespace AudioEqualizer {
@@ -71,3 +69,8 @@ constexpr double DENORMAL_THRESHOLD = 1e-15;
 constexpr size_t SIMD_ALIGNMENT = 16;
 
 } // namespace AudioEqualizer
+
+#else
+#include <stdint.h>
+#include <stddef.h>
+#endif

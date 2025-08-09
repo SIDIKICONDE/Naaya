@@ -33,10 +33,10 @@ export interface AdvancedRecordingOptions {
   lockAE?: boolean;
   lockAWB?: boolean;
   lockAF?: boolean;
-  saveDirectory?: string;
   fileNamePrefix?: string;
   videoBitrate?: number;
   audioBitrate?: number;
+  saveDirectory?: string;
 }
 
 

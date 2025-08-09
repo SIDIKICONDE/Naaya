@@ -4,6 +4,8 @@ module.exports = {
     ['module-resolver', {
       root: ['./'],
       alias: {
+        '@Audio': './src/audio',
+        '@audio': './src/audio',
         '@teleprompter': './src/teleprompter',
         '@ui': './src/ui',
         '@screens': './src/screens',
@@ -11,6 +13,7 @@ module.exports = {
         'system@components': './src/camera/components',
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx']
-    }]
+    }],
+    'react-native-reanimated/plugin'
   ]
 };

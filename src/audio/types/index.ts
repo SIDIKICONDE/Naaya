@@ -41,6 +41,16 @@ export interface EqualizerEvents {
   spectrumAnalysisStopped: void;
   reset: void;
   configurationRestored: EqualizerConfig;
+  nrEnabledChanged: boolean;
+  nrConfigChanged: {
+    highPassEnabled: boolean;
+    highPassHz: number;
+    thresholdDb: number;
+    ratio: number;
+    floorDb: number;
+    attackMs: number;
+    releaseMs: number;
+  };
 }
 
 // État de l'égaliseur pour les composants React

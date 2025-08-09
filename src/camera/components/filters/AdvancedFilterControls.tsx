@@ -3,47 +3,16 @@
  * Pour les filtres de type COLOR_CONTROLS et personnalisés
  */
 
-import Slider from '@react-native-community/slider';
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import type { FilterState } from '../../../specs/NativeCameraFiltersModule';
-
-// Interface pour les paramètres avancés de filtres
-export interface AdvancedFilterParams {
-  brightness: number;    // -1.0 à 1.0
-  contrast: number;      // 0.0 à 2.0
-  saturation: number;    // 0.0 à 2.0
-  hue: number;          // -180 à 180
-  gamma: number;        // 0.1 à 3.0
-  warmth: number;       // -1.0 à 1.0 (cool à warm)
-  tint: number;         // -1.0 à 1.0 (magenta à green)
-  exposure: number;     // -2.0 à 2.0
-  shadows: number;      // -1.0 à 1.0
-  highlights: number;   // -1.0 à 1.0
-  vignette: number;     // 0.0 à 1.0
-  grain: number;        // 0.0 à 1.0
-}
-
-const DEFAULT_PARAMS: AdvancedFilterParams = {
-  brightness: 0.0,
-  contrast: 1.0,
-  saturation: 1.0,
-  hue: 0.0,
-  gamma: 1.0,
-  warmth: 0.0,
-  tint: 0.0,
-  exposure: 0.0,
-  shadows: 0.0,
-  highlights: 0.0,
-  vignette: 0.0,
-  grain: 0.0,
-};
+import type { AdvancedFilterParams, FilterState } from '../../../../specs/NativeCameraFiltersModule';
+import { DEFAULT_FILTER_PARAMS } from './constants';
 
 export interface AdvancedFilterControlsProps {
   currentFilter: FilterState | null;
@@ -53,7 +22,7 @@ export interface AdvancedFilterControlsProps {
 }
 
 /**
- * Composant de contrôle individuel avec slider
+ * Composant de contrôle individuel avec boutons + et -
  */
 const ParameterControl: React.FC<{
   label: string;
@@ -75,19 +44,26 @@ const ParameterControl: React.FC<{
   unit = '', 
   color = '#007AFF',
   onValueChange, 
-  onSlidingComplete,
+  onSlidingComplete: _onSlidingComplete,
   disabled 
 }) => {
   const [localValue, setLocalValue] = useState(value);
 
   const handleValueChange = useCallback((newValue: number) => {
-    setLocalValue(newValue);
-    onValueChange(newValue);
-  }, [onValueChange]);
+    const clampedValue = Math.max(min, Math.min(max, newValue));
+    setLocalValue(clampedValue);
+    onValueChange(clampedValue);
+  }, [onValueChange, min, max]);
 
-  const handleSlidingComplete = useCallback((newValue: number) => {
-    onSlidingComplete(newValue);
-  }, [onSlidingComplete]);
+  // Note: pas de slider, on ne déclenche pas d'événement de fin indépendant
+
+  const increment = useCallback(() => {
+    handleValueChange(localValue + step);
+  }, [localValue, step, handleValueChange]);
+
+  const decrement = useCallback(() => {
+    handleValueChange(localValue - step);
+  }, [localValue, step, handleValueChange]);
 
   const displayValue = useMemo(() => {
     if (unit === '%') {
@@ -105,19 +81,31 @@ const ParameterControl: React.FC<{
         </Text>
       </View>
       
-      <Slider
-        style={styles.parameterSlider}
-        value={localValue}
-        onValueChange={handleValueChange}
-        onSlidingComplete={handleSlidingComplete}
-        minimumValue={min}
-        maximumValue={max}
-        step={step}
-        minimumTrackTintColor={color}
-        maximumTrackTintColor="#333333"
-        thumbTintColor={color}
-        disabled={disabled}
-      />
+      <View style={styles.parameterControls}>
+        <TouchableOpacity
+          style={[styles.controlButton, { backgroundColor: color }]}
+          onPress={decrement}
+          disabled={disabled || localValue <= min}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.controlButtonText}>-</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.valueDisplay}>
+          <Text style={[styles.valueText, { color }]}>
+            {displayValue}
+          </Text>
+        </View>
+        
+        <TouchableOpacity
+          style={[styles.controlButton, { backgroundColor: color }]}
+          onPress={increment}
+          disabled={disabled || localValue >= max}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.controlButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 });
@@ -166,13 +154,13 @@ const FilterPresets: React.FC<{
     {
       name: 'Reset',
       icon: '🔄',
-      params: DEFAULT_PARAMS,
+      params: DEFAULT_FILTER_PARAMS,
     },
     {
       name: 'Vivid',
       icon: '🌈',
       params: {
-        ...DEFAULT_PARAMS,
+        ...DEFAULT_FILTER_PARAMS,
         contrast: 1.2,
         saturation: 1.3,
         exposure: 0.1,
@@ -182,7 +170,7 @@ const FilterPresets: React.FC<{
       name: 'Film',
       icon: '🎞️',
       params: {
-        ...DEFAULT_PARAMS,
+        ...DEFAULT_FILTER_PARAMS,
         contrast: 0.9,
         saturation: 0.8,
         warmth: 0.2,
@@ -193,7 +181,7 @@ const FilterPresets: React.FC<{
       name: 'Portrait',
       icon: '👤',
       params: {
-        ...DEFAULT_PARAMS,
+        ...DEFAULT_FILTER_PARAMS,
         exposure: 0.1,
         shadows: 0.2,
         highlights: -0.1,
@@ -204,7 +192,7 @@ const FilterPresets: React.FC<{
       name: 'Dramatic',
       icon: '⚡',
       params: {
-        ...DEFAULT_PARAMS,
+        ...DEFAULT_FILTER_PARAMS,
         contrast: 1.4,
         shadows: -0.3,
         highlights: -0.2,
@@ -245,7 +233,7 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
   disabled = false,
   visible = true,
 }) => {
-  const [params, setParams] = useState<AdvancedFilterParams>(DEFAULT_PARAMS);
+  const [params, setParams] = useState<AdvancedFilterParams>(DEFAULT_FILTER_PARAMS);
   const [expandedSections, setExpandedSections] = useState({
     exposure: true,
     color: true,
@@ -254,8 +242,11 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
 
   // Vérifier si les contrôles avancés sont disponibles
   const isAdvancedFilterActive = useMemo(() => {
-    return currentFilter?.name === 'color_controls' || 
+    console.log('[AdvancedFilterControls] currentFilter:', currentFilter);
+    const isActive = currentFilter?.name === 'color_controls' || 
            currentFilter?.name === 'custom';
+    console.log('[AdvancedFilterControls] isAdvancedFilterActive:', isActive);
+    return isActive;
   }, [currentFilter]);
 
   // Gestion du changement de paramètre
@@ -494,7 +485,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     margin: 8,
-    maxHeight: 400,
+    alignSelf: 'stretch',
+    flexGrow: 1,
   },
   title: {
     fontSize: 18,
@@ -574,10 +566,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  parameterSlider: {
-    height: 30,
+  parameterControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-
+  controlButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  controlButtonText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  valueDisplay: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  valueText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
 export default AdvancedFilterControls;
+
+
