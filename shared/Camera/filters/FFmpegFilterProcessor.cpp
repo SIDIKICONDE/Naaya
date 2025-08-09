@@ -33,12 +33,9 @@ bool FFmpegFilterProcessor::initialize() {
     std::cout << "[FFmpegFilterProcessor] Initialisation..." << std::endl;
     
     #ifdef FFMPEG_AVAILABLE
-    // Initialiser FFmpeg si disponible
-    av_register_all();
-    avfilter_register_all();
-    
+    // Initialisation moderne: aucune inscription explicite nécessaire avec FFmpeg récent
     initialized_ = true;
-    std::cout << "[FFmpegFilterProcessor] Initialisation FFmpeg terminée" << std::endl;
+    std::cout << "[FFmpegFilterProcessor] Initialisation FFmpeg (sans register_all)" << std::endl;
     #else
     // Mode fallback sans FFmpeg
     initialized_ = true;

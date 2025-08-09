@@ -172,6 +172,23 @@ class Camera2VideoRecorder {
                       b.addTarget(recSurface);
                       b.set(CaptureRequest.CONTROL_MODE,
                             CaptureRequest.CONTROL_MODE_AUTO);
+                      if (opt != null) {
+                        if (Build.VERSION.SDK_INT >= 23) {
+                          b.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                                CaptureRequest
+                                    .CONTROL_VIDEO_STABILIZATION_MODE_ON);
+                        }
+                        if (opt.lockAE) {
+                          b.set(CaptureRequest.CONTROL_AE_LOCK, true);
+                        }
+                        if (opt.lockAWB && Build.VERSION.SDK_INT >= 23) {
+                          b.set(CaptureRequest.CONTROL_AWB_LOCK, true);
+                        }
+                        if (opt.lockAF) {
+                          b.set(CaptureRequest.CONTROL_AF_MODE,
+                                CaptureRequest.CONTROL_AF_MODE_OFF);
+                        }
+                      }
                       session.setRepeatingRequest(b.build(), null, null);
                       // Démarrer audio pipeline si demandé (et EQ possible)
                       if (opt != null && opt.recordAudio) {
@@ -313,8 +330,24 @@ class Camera2VideoRecorder {
     mediaRecorder.setVideoEncodingBitRate(
         opt != null && opt.videoBitrate > 0 ? opt.videoBitrate : 8_000_000);
 
-    File dir = resolveOutputDir();
-    outputFile = new File(dir, generateFileName());
+    File dir;
+    if (opt != null && opt.saveDirectory != null &&
+        !opt.saveDirectory.isEmpty()) {
+      dir = new File(opt.saveDirectory);
+    } else {
+      dir = resolveOutputDir();
+    }
+    if (!dir.exists())
+      dir.mkdirs();
+    String prefix = (opt != null && opt.fileNamePrefix != null &&
+                     !opt.fileNamePrefix.isEmpty())
+                        ? opt.fileNamePrefix
+                        : "video";
+    String ts =
+        new java.text
+            .SimpleDateFormat("yyyyMMdd_HHmmss_SSS", java.util.Locale.US)
+            .format(new java.util.Date());
+    outputFile = new File(dir, prefix + "_" + ts + ".mp4");
     mediaRecorder.setOutputFile(outputFile.getAbsolutePath());
 
     if (opt != null && opt.maxDurationSec > 0) {

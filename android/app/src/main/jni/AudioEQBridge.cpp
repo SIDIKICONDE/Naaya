@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <math.h>
 
 // C API global exposée par le module EQ
 extern "C" bool NaayaEQ_IsEnabled();
@@ -12,12 +13,11 @@ extern "C" size_t NaayaEQ_GetNumBands();
 extern "C" bool NaayaEQ_HasPendingUpdate();
 extern "C" void NaayaEQ_ClearPendingUpdate();
 
-#include "../../../../shared/Audio/core/AudioEqualizer.h"
-
-using AudioEqualizer::AudioEqualizer;
+#include "core/AudioEqualizer.h"
 
 namespace {
-std::unique_ptr<AudioEqualizer> g_eq;
+using AudioEqClass = AudioEqualizer::AudioEqualizer;
+std::unique_ptr<AudioEqClass> g_eq;
 uint32_t g_sampleRate = 48000;
 int g_channels = 2;
 }
@@ -31,7 +31,7 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_naaya_audio_NativeEqProcessor_nativeInit(JNIEnv*, jclass, jint sampleRate, jint channels) {
   if (sampleRate <= 0) sampleRate = 48000;
   if (channels != 1 && channels != 2) channels = 2;
-  g_eq = std::make_unique<AudioEqualizer>(10, static_cast<uint32_t>(sampleRate));
+  g_eq = std::make_unique<AudioEqClass>(10, static_cast<uint32_t>(sampleRate));
   g_sampleRate = static_cast<uint32_t>(sampleRate);
   g_channels = channels;
   double gains[32] = {0};

@@ -5,18 +5,18 @@
  */
 
 import type {
-  CameraDevice,
-  PermissionResult,
-  PhotoCaptureOptions,
-  PhotoResult,
-  VideoCaptureOptions,
-  VideoResult,
+    CameraDevice,
+    PermissionResult,
+    PhotoCaptureOptions,
+    PhotoResult,
+    VideoCaptureOptions,
+    VideoResult,
 } from '../../specs/NativeCameraModule';
 import NativeCameraModule from '../../specs/NativeCameraModule';
 
 export type {
-  CameraDevice,
-  PermissionResult, PhotoCaptureOptions, PhotoResult, VideoCaptureOptions, VideoResult
+    CameraDevice,
+    PermissionResult, PhotoCaptureOptions, PhotoResult, VideoCaptureOptions, VideoResult
 };
 
 /**
@@ -440,6 +440,7 @@ export default NativeCameraEngine;
 
 // Export des composants React
 export { NativeCamera } from './components/NativeCamera';
+export { VideoControl } from './components/VideoControl/VideoControlSafe';
 export { useNativeCamera } from './hooks/useNativeCamera';
 export { useNativeCameraCapture } from './hooks/useNativeCameraCapture';
 

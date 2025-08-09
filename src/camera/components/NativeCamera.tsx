@@ -5,6 +5,7 @@
  */
 
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { Alert, Linking, StyleSheet, Text, View, requireNativeComponent } from 'react-native';
 import type { CameraDevice } from '../../../specs/NativeCameraModule';
 import { useNativeCamera } from '../hooks/useNativeCamera';
@@ -18,6 +19,7 @@ export interface NativeCameraProps {
   onDeviceChanged?: (device: CameraDevice | null) => void;
   enablePreview?: boolean;
   autoStart?: boolean;
+  showDebug?: boolean;
   children?: React.ReactNode;
 }
 
@@ -60,6 +62,7 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
   onDeviceChanged,
   enablePreview = true,
   autoStart = true,
+  showDebug = __DEV__,
   children,
 }, ref) => {
   // Hooks natifs
@@ -207,7 +210,6 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
       {enablePreview ? (
         <NativeCameraPreview 
           isActive={camera.isActive}
-          currentDevice={camera.currentDevice}
           style={StyleSheet.absoluteFillObject}
         />
       ) : (
@@ -219,8 +221,21 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
         </View>
       )}
 
+      {/* Informations de debug (optionnel) */}
+      {showDebug && (
+        <View style={styles.debugInfo} pointerEvents="none">
+          <Text style={styles.debugText}>
+            {camera.currentDevice?.name} | {camera.devices.length} devices
+          </Text>
+          <Text style={styles.debugText}>
+            Active: {camera.isActive ? 'OUI' : 'NON'} | 
+            Zoom: {capture.zoomLevel.toFixed(1)}x
+          </Text>
+        </View>
+      )}
+
       {/* Overlay pour les contrôles et autres éléments */}
-      <View style={styles.overlay}>
+      <View style={styles.overlay} pointerEvents="box-none">
         {children}
       </View>
 
@@ -237,19 +252,6 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
           <Text style={styles.recordingText}>REC</Text>
         </View>
       )}
-
-      {/* Informations de debug en développement */}
-      {__DEV__ && (
-        <View style={styles.debugInfo}>
-          <Text style={styles.debugText}>
-            {camera.currentDevice?.name} | {camera.devices.length} devices
-          </Text>
-          <Text style={styles.debugText}>
-            Active: {camera.isActive ? 'OUI' : 'NON'} | 
-            Zoom: {capture.zoomLevel.toFixed(1)}x
-          </Text>
-        </View>
-      )}
     </View>
   );
 });
@@ -260,13 +262,16 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
  */
 interface NativeCameraPreviewProps {
   isActive: boolean;
-  currentDevice: CameraDevice | null;
   style?: any;
 }
 
-const RCTNaayaPreview = requireNativeComponent('NaayaPreview');
+type NaayaPreviewNativeProps = {
+  style?: StyleProp<ViewStyle>;
+};
 
-const NativeCameraPreview: React.FC<NativeCameraPreviewProps> = ({ isActive, currentDevice, style }) => {
+const RCTNaayaPreview = requireNativeComponent<NaayaPreviewNativeProps>('NaayaPreview');
+
+const NativeCameraPreview: React.FC<NativeCameraPreviewProps> = ({ isActive, style }) => {
   return (
     <View style={[style, styles.previewContainer]}>
       {isActive ? (

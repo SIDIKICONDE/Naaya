@@ -11,11 +11,15 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/blur": "^4.4.1",
     "@react-native-community/slider": "^4.5.7",
     "@react-native/new-app-screen": "0.80.2",
     "react": "19.1.0",
     "react-native": "0.80.2",
+    "react-native-linear-gradient": "^2.8.3",
     "react-native-reanimated": "^3.8.0",
+    "react-native-svg": "^15.12.1",
+    "react-native-video": "^6.16.1",
     "react-native-vision-camera": "^3.9.0"
   },
   "devDependencies": {
@@ -37,7 +41,7 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.0",
-    "typescript": "5.0.4"
+    "typescript": "^5.5.4"
   },
   "engines": {
     "node": ">=18"
@@ -52,7 +56,8 @@
     "ios": {
       "modulesProvider": {
         "NativeCameraModule": "NativeCameraModuleProvider",
-        "NativeCameraFiltersModule": "NativeCameraFiltersModuleProvider"
+        "NativeCameraFiltersModule": "NativeCameraFiltersModuleProvider",
+        "NativeAudioEqualizerModule": "NativeAudioEqualizerModuleProvider"
       }
     }
   }

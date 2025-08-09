@@ -72,6 +72,15 @@ public class LegacyVideoRecorder {
     public int height;
     public int fps;
     public String deviceId; // "front" | "back" ou id
+    // Avancés
+    public String saveDirectory;  // chemin absolu optionnel
+    public String fileNamePrefix; // préfixe fichier
+    public String
+        orientation; // portrait|portraitUpsideDown|landscapeLeft|landscapeRight|auto
+    public String stabilization; // off|standard|cinematic|auto
+    public boolean lockAE;
+    public boolean lockAWB;
+    public boolean lockAF;
   }
 
   public synchronized boolean start(StartOptions opt) {
@@ -135,8 +144,23 @@ public class LegacyVideoRecorder {
         recorder.setVideoEncodingBitRate(profile.videoBitRate);
       }
 
-      File dir = resolveOutputDir();
-      outputFile = new File(dir, generateFileName("mp4"));
+      File dir;
+      if (opt != null && opt.saveDirectory != null &&
+          !opt.saveDirectory.isEmpty()) {
+        dir = new File(opt.saveDirectory);
+      } else {
+        dir = resolveOutputDir();
+      }
+      if (!dir.exists()) {
+        dir.mkdirs();
+      }
+      String prefix = (opt != null && opt.fileNamePrefix != null &&
+                       !opt.fileNamePrefix.isEmpty())
+                          ? opt.fileNamePrefix
+                          : "video";
+      String ts = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US)
+                      .format(new Date());
+      outputFile = new File(dir, prefix + "_" + ts + ".mp4");
       recorder.setOutputFile(outputFile.getAbsolutePath());
 
       if (opt != null && opt.maxDurationSec > 0) {

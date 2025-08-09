@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { SafeAreaView, View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { VideoPreviewScreen } from '../videoLibrary/screens/VideoPreviewScreen';
 import { RealCameraViewScreen } from './RealCameraViewScreen';
 import { TeleprompterScreen } from './TeleprompterScreen';
 import { TextEditorScreen } from './TextEditorScreen';
 
-type AppRouteName = 'Camera' | 'Teleprompter' | 'Editeur';
+type AppRouteName = 'Camera' | 'Teleprompter' | 'Editeur' | 'Vidéos';
 
 export const AppNavigator: React.FC = () => {
   const [route, setRoute] = useState<AppRouteName>('Teleprompter');
@@ -30,10 +31,24 @@ export const AppNavigator: React.FC = () => {
         >
           <Text style={[styles.navButtonText, route === 'Editeur' && styles.navButtonTextActive]}>Éditeur</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, route === 'Vidéos' && styles.navButtonActive]}
+          onPress={() => setRoute('Vidéos')}
+        >
+          <Text style={[styles.navButtonText, route === 'Vidéos' && styles.navButtonTextActive]}>Vidéos</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.screenContainer}>
-        {route === 'Camera' ? <RealCameraViewScreen /> : route === 'Teleprompter' ? <TeleprompterScreen /> : <TextEditorScreen />}
+        {route === 'Camera' ? (
+          <RealCameraViewScreen />
+        ) : route === 'Teleprompter' ? (
+          <TeleprompterScreen />
+        ) : route === 'Editeur' ? (
+          <TextEditorScreen />
+        ) : (
+          <VideoPreviewScreen />
+        )}
       </View>
     </SafeAreaView>
   );

@@ -1,11 +1,19 @@
 {
-  "extends": "@react-native/typescript-config",
+  "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
+    "types": ["react", "react-native", "jest"],
+    "lib": ["es2019", "dom"],
     "baseUrl": ".",
     "paths": {
       "@teleprompter/*": ["src/teleprompter/*"],
       "@ui/*": ["src/ui/*"],
-      "@screens/*": ["src/screens/*"]
+      "@screens/*": ["src/screens/*"],
+      "@components/*": ["src/camera/components/*"],
+      "system@components/*": ["src/camera/components/*"]
     }
-  }
+  },
+  "include": [
+    "src/**/*",
+    "specs/**/*"
+  ]
 }

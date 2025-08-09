@@ -2,7 +2,13 @@ package com.naaya.audio;
 
 public final class NativeEqProcessor {
   static {
-    // chargée via React Native CMake (libappmodules)
+    // S'assurer que la lib native est chargée
+    try {
+      System.loadLibrary("appmodules");
+    } catch (Throwable ignore) {
+      // RN charge généralement la lib automatiquement; ce fallback est
+      // inoffensif
+    }
   }
 
   public static native boolean eqIsEnabled();
@@ -12,4 +18,3 @@ public final class NativeEqProcessor {
   public static native void
   nativeProcessShortInterleaved(short[] pcm, int frames, int channels);
 }
-

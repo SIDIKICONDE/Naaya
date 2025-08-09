@@ -1,17 +1,17 @@
 #include "NativeCameraFiltersModule.h"
 #include <mutex>
 #include <string>
+
+// État global filtres accessible depuis ObjC/ObjC++ (toujours défini pour le lint)
+static std::mutex g_naaya_filters_mutex;
+static bool g_naaya_filters_hasFilter = false;
+static std::string g_naaya_filters_name;
+static double g_naaya_filters_intensity = 1.0;
 #ifdef __cplusplus
 #if __has_include(<NaayaJSI.h>)
 #include "Camera/filters/FilterManager.hpp"
 #include "Camera/filters/FilterFactory.hpp"
 #include <iostream>
-
-// État global filtres accessible depuis ObjC/ObjC++
-static std::mutex g_naaya_filters_mutex;
-static bool g_naaya_filters_hasFilter = false;
-static std::string g_naaya_filters_name;
-static double g_naaya_filters_intensity = 1.0;
 
 namespace facebook::react {
 

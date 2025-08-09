@@ -32,6 +32,10 @@
 		AAB10100AB0000000000000A /* FFmpegFilterProcessor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */; };
 		AAB10100BB0000000000000B /* FilterFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAB00100BB0000000000000B /* FilterFactory.cpp */; };
 		AAC096ADA7142E7CE3F08237 /* libPods-Naaya.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */; };
+		AAE1B0010000000000000001 /* NativeAudioEqualizerModule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0010000000000000001 /* NativeAudioEqualizerModule.cpp */; };
+		AAE1B0020000000000000001 /* AudioEqualizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0020000000000000001 /* AudioEqualizer.cpp */; };
+		AAE1B0030000000000000001 /* BiquadFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0030000000000000001 /* BiquadFilter.cpp */; };
+		AAE1B0040000000000000001 /* AudioBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AAE1F0040000000000000001 /* AudioBuffer.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +76,14 @@
 		AAB001009B00000000000009 /* FilterManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FilterManager.cpp; path = ../shared/Camera/filters/FilterManager.cpp; sourceTree = "<group>"; };
 		AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FFmpegFilterProcessor.cpp; path = ../shared/Camera/filters/FFmpegFilterProcessor.cpp; sourceTree = "<group>"; };
 		AAB00100BB0000000000000B /* FilterFactory.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FilterFactory.cpp; path = ../shared/Camera/filters/FilterFactory.cpp; sourceTree = "<group>"; };
+		AAE1F0010000000000000001 /* NativeAudioEqualizerModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NativeAudioEqualizerModule.cpp; path = ../shared/NativeAudioEqualizerModule.cpp; sourceTree = "<group>"; };
+		AAE1F0020000000000000001 /* AudioEqualizer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AudioEqualizer.cpp; path = ../shared/Audio/core/AudioEqualizer.cpp; sourceTree = "<group>"; };
+		AAE1F0030000000000000001 /* BiquadFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BiquadFilter.cpp; path = ../shared/Audio/core/BiquadFilter.cpp; sourceTree = "<group>"; };
+		AAE1F0040000000000000001 /* AudioBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AudioBuffer.cpp; path = ../shared/Audio/utils/AudioBuffer.cpp; sourceTree = "<group>"; };
+		AAE1F0050000000000000001 /* AudioEqualizer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AudioEqualizer.h; path = ../shared/Audio/core/AudioEqualizer.h; sourceTree = "<group>"; };
+		AAE1F0060000000000000001 /* BiquadFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BiquadFilter.h; path = ../shared/Audio/core/BiquadFilter.h; sourceTree = "<group>"; };
+		AAE1F0070000000000000001 /* AudioBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AudioBuffer.h; path = ../shared/Audio/utils/AudioBuffer.h; sourceTree = "<group>"; };
+		AAE1F0080000000000000001 /* Constants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Constants.h; path = ../shared/Audio/utils/Constants.h; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FC51CB1D553B4BE7C153058D /* libPods-Naaya.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Naaya.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -113,6 +125,14 @@
 				AAB001009B00000000000009 /* FilterManager.cpp */,
 				AAB00100AB0000000000000A /* FFmpegFilterProcessor.cpp */,
 				AAB00100BB0000000000000B /* FilterFactory.cpp */,
+				AAE1F0010000000000000001 /* NativeAudioEqualizerModule.cpp */,
+				AAE1F0020000000000000001 /* AudioEqualizer.cpp */,
+				AAE1F0030000000000000001 /* BiquadFilter.cpp */,
+				AAE1F0040000000000000001 /* AudioBuffer.cpp */,
+				AAE1F0050000000000000001 /* AudioEqualizer.h */,
+				AAE1F0060000000000000001 /* BiquadFilter.h */,
+				AAE1F0070000000000000001 /* AudioBuffer.h */,
+				AAE1F0080000000000000001 /* Constants.h */,
 				AA4445555B00000000000001 /* PermissionManagerIOS.h */,
 				AA4445555C00000000000001 /* PermissionManagerIOS.mm */,
 				AA4445555B00000000000002 /* PhotoCaptureIOS.h */,
@@ -339,6 +359,10 @@
 				AAB101009B00000000000009 /* FilterManager.cpp in Sources */,
 				AAB10100AB0000000000000A /* FFmpegFilterProcessor.cpp in Sources */,
 				AAB10100BB0000000000000B /* FilterFactory.cpp in Sources */,
+				AAE1B0010000000000000001 /* NativeAudioEqualizerModule.cpp in Sources */,
+				AAE1B0020000000000000001 /* AudioEqualizer.cpp in Sources */,
+				AAE1B0030000000000000001 /* BiquadFilter.cpp in Sources */,
+				AAE1B0040000000000000001 /* AudioBuffer.cpp in Sources */,
 				AA4445555A00000000000001 /* PermissionManagerIOS.mm in Sources */,
 				AA4445555A00000000000002 /* PhotoCaptureIOS.mm in Sources */,
 				AA4445555A00000000000003 /* VideoCaptureIOS.mm in Sources */,
@@ -357,7 +381,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8GNN55S9HG;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Naaya/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -371,7 +397,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sidikiconde.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = Naaya;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -385,7 +411,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8GNN55S9HG;
 				INFOPLIST_FILE = Naaya/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -398,7 +426,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sidikiconde.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = Naaya;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

@@ -55,6 +55,12 @@ bool VideoCapture::startRecording(const VideoCaptureOptions& options) {
     {
         std::lock_guard<std::mutex> lock(configMutex_);
         currentOptions_ = options;
+        if (!options.saveDirectory.empty()) {
+            saveDirectory_ = options.saveDirectory;
+        }
+        if (!options.fileNamePrefix.empty()) {
+            fileNamePrefix_ = options.fileNamePrefix;
+        }
     }
     totalPausedDuration_ = std::chrono::duration<double>(0);
     recordingStartTime_ = std::chrono::steady_clock::now();

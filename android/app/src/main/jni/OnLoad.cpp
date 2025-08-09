@@ -37,6 +37,8 @@
 #include <react/renderer/componentregistry/ComponentDescriptorProviderRegistry.h>
 #include <rncore.h>
 #include <NativeCameraModule.h>
+#include <NativeCameraFiltersModule.h>
+#include <NativeAudioEqualizerModule.h>
 #endif // __has_include(<DefaultComponentsRegistry.h>)
 
 #ifdef REACT_NATIVE_APP_CODEGEN_HEADER
@@ -72,6 +74,12 @@ std::shared_ptr<TurboModule> cxxModuleProvider(
   // Enregistrer nos modules C++ locaux
   if (name == NativeCameraModule::kModuleName) {
     return std::make_shared<NativeCameraModule>(jsInvoker);
+  }
+  if (name == NativeCameraFiltersModule::kModuleName) {
+    return std::make_shared<NativeCameraFiltersModule>(jsInvoker);
+  }
+  if (name == NativeAudioEqualizerModule::kModuleName) {
+    return std::make_shared<NativeAudioEqualizerModule>(jsInvoker);
   }
 
   // Sinon, déléguer à l'autolinking C++

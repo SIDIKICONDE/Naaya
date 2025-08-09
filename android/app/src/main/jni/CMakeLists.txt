@@ -10,14 +10,19 @@ include(${REACT_ANDROID_DIR}/cmake-utils/ReactNative-application.cmake)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/NativeCameraModule.cpp)
 # Filters TurboModule
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/NativeCameraFiltersModule.cpp)
+# Audio Equalizer TurboModule (expose NaayaEQ_* symbols)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/NativeAudioEqualizerModule.cpp)
 
 # Camera core
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/core/CameraManager.cpp)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/capture/PhotoCapture.cpp)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/capture/VideoCapture.cpp)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE VideoCaptureAndroid.cpp)
-# Audio bridge
+# Audio bridge + Coeur DSP EQ
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE AudioEQBridge.cpp)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Audio/core/AudioEqualizer.cpp)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Audio/core/BiquadFilter.cpp)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Audio/utils/AudioBuffer.cpp)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/controls/FlashController.cpp)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/controls/ZoomController.cpp)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/utils/PermissionManager.cpp)
@@ -30,8 +35,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE ../../../../../shared/Camera/filter
 # Define where CMake can find the additional header files. We need to crawl back the jni, main, src, app, android folders
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Camera)
-# Add Audio include root
+# Add Audio include dirs
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio/core)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ../../../../../shared/Audio/utils)
 # FFmpeg headers (copied into jni/)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # Add ffmpeg exported includes

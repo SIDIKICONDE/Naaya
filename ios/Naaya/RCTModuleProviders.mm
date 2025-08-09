@@ -10,6 +10,7 @@
 #import "RCTModuleProviders.h"
 #import <ReactCommon/RCTTurboModule.h>
 #import <React/RCTLog.h>
+#import "NativeCameraModuleProvider.h"
 
 @implementation RCTModuleProviders
 
@@ -22,6 +23,7 @@
     NSDictionary<NSString *, NSString *> * moduleMapping = @{
       		@"NativeCameraModule": @"NativeCameraModuleProvider", // Naaya
 		@"NativeCameraFiltersModule": @"NativeCameraFiltersModuleProvider", // Naaya
+		@"NativeAudioEqualizerModule": @"NativeAudioEqualizerModuleProvider", // Naaya
     };
 
     NSMutableDictionary *dict = [[NSMutableDictionary alloc] initWithCapacity:moduleMapping.count];

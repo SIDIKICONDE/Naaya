@@ -101,6 +101,9 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 @property(nonatomic, strong) AVCaptureAudioDataOutput* audioOutput;
 @property(nonatomic, strong) dispatch_queue_t audioQueue;
 @property(nonatomic, assign) BOOL enableAudio;
+// Orientation/Stabilisation forcées par options
+@property(nonatomic, assign) NSInteger forcedOrientation; // -1 = auto
+@property(nonatomic, assign) NSInteger stabilizationMode; // -1 = auto
 // EQ temps réel
 @property(nonatomic, assign) double eqSampleRate;
 @property(nonatomic, assign) int eqChannels;
@@ -119,6 +122,8 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
     _eqSampleRate = 48000.0;
     _eqChannels = 1;
     _eqConfigured = NO;
+    _forcedOrientation = -1;
+    _stabilizationMode = -1;
   }
   return self;
 }
@@ -170,6 +175,9 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
   // Déterminer FPS/format/orientation & transform
   AVCaptureConnection* conn = [output connectionWithMediaType:AVMediaTypeVideo];
   AVCaptureVideoOrientation vOrient = conn.isVideoOrientationSupported ? conn.videoOrientation : AVCaptureVideoOrientationPortrait;
+  if (self.forcedOrientation >= 0) {
+    vOrient = (AVCaptureVideoOrientation)self.forcedOrientation;
+  }
   BOOL isFront = NO;
   AVCaptureDeviceInput* input = NaayaGetCurrentInput();
   if (input) {
@@ -202,6 +210,15 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
   if (conn.isVideoOrientationSupported) {
     conn.videoOrientation = vOrient;
   }
+  #if TARGET_OS_IOS
+  if (conn.isVideoStabilizationSupported) {
+    if (self.stabilizationMode >= 0) {
+      conn.preferredVideoStabilizationMode = (AVCaptureVideoStabilizationMode)self.stabilizationMode;
+    } else {
+      conn.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeAuto;
+    }
+  }
+  #endif
 
   // Préparer writer (type selon extension)
   NSError* err = nil;
@@ -494,6 +511,45 @@ protected:
       NSString* codec = options.codec.empty() ? @"auto" : [NSString stringWithUTF8String:options.codec.c_str()];
       int fps = fps_ > 0 ? fps_ : 60;
       int bitrate = options.videoBitrate > 0 ? options.videoBitrate : 12 * 1000 * 1000;
+      // Orientation demandée
+      NSInteger forced = -1;
+      if (!options.orientation.empty()) {
+        std::string o = options.orientation;
+        if (o == "portrait") forced = (NSInteger)AVCaptureVideoOrientationPortrait;
+        else if (o == "portraitUpsideDown") forced = (NSInteger)AVCaptureVideoOrientationPortraitUpsideDown;
+        else if (o == "landscapeLeft") forced = (NSInteger)AVCaptureVideoOrientationLandscapeLeft;
+        else if (o == "landscapeRight") forced = (NSInteger)AVCaptureVideoOrientationLandscapeRight;
+      }
+      filteredRecorder_.forcedOrientation = forced;
+      // Stabilisation demandée (iOS uniquement)
+      NSInteger stab = -1;
+      if (!options.stabilization.empty()) {
+        std::string s = options.stabilization;
+        #if defined(AVCaptureVideoStabilizationModeAuto)
+        if (s == "off") stab = (NSInteger)AVCaptureVideoStabilizationModeOff;
+        else if (s == "standard") stab = (NSInteger)AVCaptureVideoStabilizationModeStandard;
+        else if (s == "cinematic") stab = (NSInteger)AVCaptureVideoStabilizationModeCinematic;
+        else if (s == "auto") stab = (NSInteger)AVCaptureVideoStabilizationModeAuto;
+        #endif
+      }
+      filteredRecorder_.stabilizationMode = stab;
+      // Verrous AE/AWB/AF
+      AVCaptureDeviceInput* input = NaayaGetCurrentInput();
+      if (input) {
+        NSError* cfgErr = nil;
+        if ([input.device lockForConfiguration:&cfgErr]) {
+          if (options.lockAE && [input.device isExposureModeSupported:AVCaptureExposureModeLocked]) {
+            input.device.exposureMode = AVCaptureExposureModeLocked;
+          }
+          if (options.lockAWB && [input.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
+            input.device.whiteBalanceMode = AVCaptureWhiteBalanceModeLocked;
+          }
+          if (options.lockAF && [input.device isFocusModeSupported:AVCaptureFocusModeLocked]) {
+            input.device.focusMode = AVCaptureFocusModeLocked;
+          }
+          [input.device unlockForConfiguration];
+        }
+      }
       if (![filteredRecorder_ startWithSession:session outputURL:outputURL_ codec:codec fps:fps bitrate:bitrate recordAudio:options.recordAudio]) {
         filteredRecorder_ = nil; // fallback
       } else {
@@ -574,6 +630,34 @@ protected:
       dispatch_resume(progressTimer_);
     }
 
+    // Appliquer orientation/stabilisation sur la connexion si demandé
+    AVCaptureConnection* mconn = [movie connectionWithMediaType:AVMediaTypeVideo];
+    if (mconn) {
+      if (!options.orientation.empty() && mconn.isVideoOrientationSupported) {
+        std::string o = options.orientation;
+        if (o == "portrait") mconn.videoOrientation = AVCaptureVideoOrientationPortrait;
+        else if (o == "portraitUpsideDown") mconn.videoOrientation = AVCaptureVideoOrientationPortraitUpsideDown;
+        else if (o == "landscapeLeft") mconn.videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
+        else if (o == "landscapeRight") mconn.videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+      }
+      #if TARGET_OS_IOS
+      if (mconn.isVideoStabilizationSupported) {
+        // Mac Catalyst/macOS headers peuvent marquer ces constantes indisponibles.
+        // On ne les référence que lorsqu'on compile iOS pur.
+        #if TARGET_OS_IOS
+        if (!options.stabilization.empty()) {
+          std::string s = options.stabilization;
+          if (s == "off") mconn.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeOff;
+          else if (s == "standard") mconn.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeStandard;
+          else if (s == "cinematic") mconn.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeCinematic;
+          else mconn.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeAuto;
+        } else {
+          mconn.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeAuto;
+        }
+        #endif
+      }
+      #endif
+    }
     // Démarrer l'enregistrement avec délégué
     [movie startRecordingToOutputFileURL:outputURL_ recordingDelegate:(NaayaMovieDelegate*)movieDelegate_];
     return true;

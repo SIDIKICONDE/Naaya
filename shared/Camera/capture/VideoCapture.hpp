@@ -27,6 +27,14 @@ struct VideoCaptureOptions {
     int height = 0;                 // Hauteur souhaitée (0 = auto)
     int fps = 0;                    // FPS souhaités (0 = auto)
     std::string deviceId;           // Id du device ou "front"/"back"
+    // Avancés
+    std::string orientation;        // portrait, landscapeLeft, ... (optionnel)
+    std::string stabilization;      // off|standard|cinematic|auto
+    bool lockAE = false;            // verrou expo
+    bool lockAWB = false;           // verrou balance des blancs
+    bool lockAF = false;            // verrou autofocus
+    std::string saveDirectory;      // dossier de sortie
+    std::string fileNamePrefix;     // préfixe fichier
     
     VideoCaptureOptions() = default;
 };

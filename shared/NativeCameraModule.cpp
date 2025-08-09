@@ -1,8 +1,10 @@
 #include "NativeCameraModule.h"
 
-// Includes système pour logging
-#include <iostream>
+#ifdef __cplusplus
+#if NAAYA_CAMERA_MODULE_ENABLED
 
+#include <string>
+#include <iostream>
 // Includes complets pour l'implémentation
 #include "Camera/core/CameraManager.hpp"
 #include "Camera/capture/PhotoCapture.hpp"
@@ -464,6 +466,35 @@ bool NativeCameraModule::startRecording(jsi::Runtime& rt, jsi::Object options) {
         auto v = options.getProperty(rt, "deviceId");
         if (v.isString()) optDeviceId = v.asString(rt).utf8(rt);
     }
+    // Ajouts avancés
+    if (options.hasProperty(rt, "orientation")) {
+        auto v = options.getProperty(rt, "orientation");
+        if (v.isString()) opts.orientation = v.asString(rt).utf8(rt);
+    }
+    if (options.hasProperty(rt, "stabilization")) {
+        auto v = options.getProperty(rt, "stabilization");
+        if (v.isString()) opts.stabilization = v.asString(rt).utf8(rt);
+    }
+    if (options.hasProperty(rt, "lockAE")) {
+        auto v = options.getProperty(rt, "lockAE");
+        if (v.isBool()) opts.lockAE = v.getBool();
+    }
+    if (options.hasProperty(rt, "lockAWB")) {
+        auto v = options.getProperty(rt, "lockAWB");
+        if (v.isBool()) opts.lockAWB = v.getBool();
+    }
+    if (options.hasProperty(rt, "lockAF")) {
+        auto v = options.getProperty(rt, "lockAF");
+        if (v.isBool()) opts.lockAF = v.getBool();
+    }
+    if (options.hasProperty(rt, "saveDirectory")) {
+        auto v = options.getProperty(rt, "saveDirectory");
+        if (v.isString()) opts.saveDirectory = v.asString(rt).utf8(rt);
+    }
+    if (options.hasProperty(rt, "fileNamePrefix")) {
+        auto v = options.getProperty(rt, "fileNamePrefix");
+        if (v.isString()) opts.fileNamePrefix = v.asString(rt).utf8(rt);
+    }
 
     std::lock_guard<std::mutex> lock(stateMutex_);
     if (!videoCapture_) return false;
@@ -590,3 +621,6 @@ jsi::Array NativeCameraModule::getSupportedFormats(jsi::Runtime& rt, jsi::String
 }
 
 } // namespace facebook::react
+
+#endif // NAAYA_CAMERA_MODULE_ENABLED
+#endif // __cplusplus

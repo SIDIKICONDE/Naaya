@@ -24,6 +24,14 @@ export interface VideoCaptureOptions {
   height?: number;
   fps?: number;
   deviceId?: string; // "front" | "back" ou id natif
+  // Ajouts avancés
+  orientation?: 'portrait' | 'portraitUpsideDown' | 'landscapeLeft' | 'landscapeRight' | 'auto';
+  stabilization?: 'off' | 'standard' | 'cinematic' | 'auto';
+  lockAE?: boolean;
+  lockAWB?: boolean;
+  lockAF?: boolean;
+  saveDirectory?: string;
+  fileNamePrefix?: string;
 }
 
 // Types pour les résultats

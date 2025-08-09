@@ -3,7 +3,7 @@
 #include <fbjni/fbjni.h>
 #include <string>
 #include <memory>
-#include "Camera/capture/VideoCapture.hpp"
+#include "../../../../../shared/Camera/capture/VideoCapture.hpp"
 
 namespace Camera {
 
@@ -49,6 +49,14 @@ class AndroidVideoCapture : public VideoCapture {
     jfieldID fHeight = env->GetFieldID(optsCls, "height", "I");
     jfieldID fFps = env->GetFieldID(optsCls, "fps", "I");
     jfieldID fDev = env->GetFieldID(optsCls, "deviceId", "Ljava/lang/String;");
+    // Advanced fields
+    jfieldID fSaveDir = env->GetFieldID(optsCls, "saveDirectory", "Ljava/lang/String;");
+    jfieldID fFilePrefix = env->GetFieldID(optsCls, "fileNamePrefix", "Ljava/lang/String;");
+    jfieldID fOrientation = env->GetFieldID(optsCls, "orientation", "Ljava/lang/String;");
+    jfieldID fStab = env->GetFieldID(optsCls, "stabilization", "Ljava/lang/String;");
+    jfieldID fLockAE = env->GetFieldID(optsCls, "lockAE", "Z");
+    jfieldID fLockAWB = env->GetFieldID(optsCls, "lockAWB", "Z");
+    jfieldID fLockAF = env->GetFieldID(optsCls, "lockAF", "Z");
 
     jstring jCodec = env->NewStringUTF(options.codec.c_str());
     env->SetObjectField(startOpts, fCodec, jCodec);
@@ -62,8 +70,25 @@ class AndroidVideoCapture : public VideoCapture {
     env->SetIntField(startOpts, fFps, (jint)options.fps);
     jstring jDev = env->NewStringUTF(options.deviceId.c_str());
     env->SetObjectField(startOpts, fDev, jDev);
+    // Advanced values
+    jstring jSave = env->NewStringUTF(options.saveDirectory.c_str());
+    env->SetObjectField(startOpts, fSaveDir, jSave);
+    jstring jPrefix = env->NewStringUTF(options.fileNamePrefix.c_str());
+    env->SetObjectField(startOpts, fFilePrefix, jPrefix);
+    jstring jOrient = env->NewStringUTF(options.orientation.c_str());
+    env->SetObjectField(startOpts, fOrientation, jOrient);
+    jstring jStab = env->NewStringUTF(options.stabilization.c_str());
+    env->SetObjectField(startOpts, fStab, jStab);
+    env->SetBooleanField(startOpts, fLockAE, (jboolean)options.lockAE);
+    env->SetBooleanField(startOpts, fLockAWB, (jboolean)options.lockAWB);
+    env->SetBooleanField(startOpts, fLockAF, (jboolean)options.lockAF);
+    // TODO: étendre StartOptions Java pour dossier/filename/orientation si besoin
     env->DeleteLocalRef(jDev);
     env->DeleteLocalRef(jCodec);
+    env->DeleteLocalRef(jSave);
+    env->DeleteLocalRef(jPrefix);
+    env->DeleteLocalRef(jOrient);
+    env->DeleteLocalRef(jStab);
 
     jmethodID mStart = env->GetMethodID(cls, "start", "(Lcom/naaya/camera/LegacyVideoRecorder$StartOptions;)Z");
     jboolean ok = env->CallBooleanMethod(inst, mStart, startOpts);
@@ -130,7 +155,7 @@ std::unique_ptr<VideoCapture> createAndroidVideoCapture() {
 }
 }
 #else
-#include "Camera/capture/VideoCapture.hpp"
+#include "../../../../../shared/Camera/capture/VideoCapture.hpp"
 #include <memory>
 namespace Camera { std::unique_ptr<VideoCapture> createAndroidVideoCapture() { return nullptr; } }
 #endif
