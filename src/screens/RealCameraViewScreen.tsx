@@ -34,6 +34,8 @@ export const RealCameraViewScreen: React.FC = () => {
   const [flashMode, setFlashMode] = useState<FlashMode>('off');
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [gridEnabled, setGridEnabled] = useState(false);
+  const [gridMode, setGridMode] = useState<'none' | 'thirds' | 'golden' | 'diagonals'>('thirds');
+  const [gridAspect, setGridAspect] = useState<'none' | '1:1' | '4:3' | '16:9' | '2.39:1' | '9:16'>('none');
   const [advancedOptions, setAdvancedOptions] = useState<AdvancedRecordingOptions>({
     recordAudio: true,
     container: 'mp4',
@@ -137,6 +139,35 @@ export const RealCameraViewScreen: React.FC = () => {
     );
   }, []);
 
+  // Calculer les dimensions selon le ratio choisi
+  const getRecordingDimensions = useCallback(() => {
+    if (gridAspect === 'none') {
+      return { width: advancedOptions.width, height: advancedOptions.height };
+    }
+
+    const parseRatio = (preset: typeof gridAspect): number => {
+      switch (preset) {
+        case '1:1': return 1;
+        case '4:3': return 4 / 3;
+        case '16:9': return 16 / 9;
+        case '2.39:1': return 2.39;
+        case '9:16': return 9 / 16;
+        default: return 16 / 9; // fallback
+      }
+    };
+
+    const targetRatio = parseRatio(gridAspect);
+    const baseHeight = 1080; // Base haute qualité
+    const width = Math.round(baseHeight * targetRatio);
+    
+    // Assurer que les dimensions sont paires (requis pour certains codecs)
+    const evenWidth = width % 2 === 0 ? width : width + 1;
+    
+    console.log(`[RealCameraViewScreen] Format ${gridAspect}: ${evenWidth}x${baseHeight}`);
+    
+    return { width: evenWidth, height: baseHeight };
+  }, [gridAspect, advancedOptions.width, advancedOptions.height]);
+
   // Gestion de l'enregistrement
   const handleRecordPress = useCallback(async () => {
     try {
@@ -172,13 +203,16 @@ export const RealCameraViewScreen: React.FC = () => {
           }
         } catch {}
 
+        // Utiliser les dimensions selon le format choisi
+        const { width, height } = getRecordingDimensions();
+
         const options = {
           recordAudio: wantAudio,
           container: advancedOptions.container,
           codec: advancedOptions.codec,
           audioCodec: advancedOptions.audioCodec,
-          width: advancedOptions.width,
-          height: advancedOptions.height,
+          width,
+          height,
           fps: advancedOptions.fps,
           orientation: advancedOptions.orientation,
           stabilization: advancedOptions.stabilization,
@@ -210,7 +244,7 @@ export const RealCameraViewScreen: React.FC = () => {
       Alert.alert('Enregistrement', 'Une erreur est survenue lors de la capture');
       setRecordingState('idle');
     }
-  }, [recordingState, advancedOptions]);
+  }, [recordingState, advancedOptions, getRecordingDimensions]);
 
   // Pause non supportée nativement pour l'instant
   // const handlePausePress = useCallback(() => {}, []);
@@ -284,6 +318,10 @@ export const RealCameraViewScreen: React.FC = () => {
             onTimerChange={setTimerSeconds}
             timerSeconds={timerSeconds}
             onGridToggle={() => setGridEnabled(!gridEnabled)}
+            gridMode={gridMode}
+            onGridModeChange={(m) => setGridMode(m)}
+            gridAspect={gridAspect}
+            onGridAspectChange={(a) => setGridAspect(a)}
             onSettingsOpen={() => console.log('Paramètres')}
             onAction={handleMenuAction}
             theme="dark"
@@ -295,8 +333,8 @@ export const RealCameraViewScreen: React.FC = () => {
             onClearFilter={clearFilter}
           />
 
-          {/* Grille (règle des tiers) */}
-          <GridOverlay visible={gridEnabled} />
+          {/* Grille avancée */}
+          <GridOverlay visible={gridEnabled} mode={gridMode} aspectMask={gridAspect} showCenter centerStyle="crosshair" />
 
           {/* RecordingBar */}
           {!isLoading && (

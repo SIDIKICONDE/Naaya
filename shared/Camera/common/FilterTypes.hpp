@@ -36,6 +36,9 @@ struct FilterParams {
     // Paramètres spécifiques par filtre
     std::string customFilterName;
     std::vector<double> customParams;
+    // Support LUT 3D (.cube) – lorsque customFilterName commence par "lut3d:",
+    // customLUTPath contient le chemin absolu vers le fichier .cube
+    std::string customLUTPath;
 };
 
 /**

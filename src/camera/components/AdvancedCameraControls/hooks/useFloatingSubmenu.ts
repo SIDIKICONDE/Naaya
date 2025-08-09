@@ -137,3 +137,28 @@ export const createTimerItems = (
     onPress: () => onTimerChange(10),
   },
 ];
+
+export const createGridItems = (
+  currentMode: 'none' | 'thirds' | 'golden' | 'diagonals',
+  onChange: (mode: 'none' | 'thirds' | 'golden' | 'diagonals') => void,
+  currentAspect: 'none' | '1:1' | '4:3' | '16:9' | '2.39:1' | '9:16',
+  onAspectChange: (aspect: 'none' | '1:1' | '4:3' | '16:9' | '2.39:1' | '9:16') => void,
+): { title: string; items: SubmenuItem[]; aspectItems: SubmenuItem[] } => {
+  const items: SubmenuItem[] = [
+    { id: 'mode:none', label: 'Aucune', icon: '✕', active: currentMode === 'none', onPress: () => onChange('none') },
+    { id: 'mode:thirds', label: 'Tiers', icon: '⊞', active: currentMode === 'thirds', onPress: () => onChange('thirds') },
+    { id: 'mode:golden', label: 'Nombre d’or', icon: 'Φ', active: currentMode === 'golden', onPress: () => onChange('golden') },
+    { id: 'mode:diagonals', label: 'Diagonales', icon: '⟂', active: currentMode === 'diagonals', onPress: () => onChange('diagonals') },
+  ];
+
+  const aspectItems: SubmenuItem[] = [
+    { id: 'aspect_none', label: 'Libre', icon: '□', active: currentAspect === 'none', onPress: () => onAspectChange('none') },
+    { id: 'aspect_1_1', label: '1:1', icon: '◼︎', active: currentAspect === '1:1', onPress: () => onAspectChange('1:1') },
+    { id: 'aspect_4_3', label: '4:3', icon: '▭', active: currentAspect === '4:3', onPress: () => onAspectChange('4:3') },
+    { id: 'aspect_16_9', label: '16:9', icon: '▭', active: currentAspect === '16:9', onPress: () => onAspectChange('16:9') },
+    { id: 'aspect_2_39_1', label: '2.39:1', icon: '▭', active: currentAspect === '2.39:1', onPress: () => onAspectChange('2.39:1') },
+    { id: 'aspect_9_16', label: '9:16', icon: '▯', active: currentAspect === '9:16', onPress: () => onAspectChange('9:16') },
+  ];
+
+  return { title: 'Grille', items, aspectItems };
+};

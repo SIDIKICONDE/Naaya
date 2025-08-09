@@ -192,6 +192,8 @@ std::vector<FilterInfo> FFmpegFilterProcessor::getSupportedFilters() const {
     filters.push_back({"vintage", "Vintage", FilterType::VINTAGE, "Effet vintage années 70", false, {"yuv420p", "rgb24"}});
     filters.push_back({"cool", "Cool", FilterType::COOL, "Effet froid bleuté", false, {"yuv420p", "rgb24"}});
     filters.push_back({"warm", "Warm", FilterType::WARM, "Effet chaud orangé", false, {"yuv420p", "rgb24"}});
+    // Filtre personnalisé LUT 3D (.cube). Usage: setFilter('lut3d:/abs/path.cube', intensity)
+    filters.push_back({"lut3d", "LUT 3D (.cube)", FilterType::CUSTOM, "Applique une LUT 3D au format .cube (DaVinci, etc.)", true, {"yuv420p", "rgb24"}});
     #else
     // Filtres de base en mode fallback
     filters.push_back({"sepia", "Sépia", FilterType::SEPIA, "Effet sépia (fallback)", false, {"yuv420p", "rgb24"}});
@@ -340,6 +342,19 @@ bool FFmpegFilterProcessor::configureFilter(const FilterState& filter, AVFilterC
 }
 
 std::string FFmpegFilterProcessor::getFFmpegFilterString(const FilterState& filter) const {
+    auto escapeForFFmpeg = [](const std::string& path) -> std::string {
+        std::string escaped;
+        escaped.reserve(path.size() + 8);
+        for (char c : path) {
+            if (c == '\'' || c == ':') {
+                // Échapper les quotes simples et les deux-points (séparateur d'options)
+                escaped.push_back('\\');
+            }
+            escaped.push_back(c);
+        }
+        return escaped;
+    };
+
     switch (filter.type) {
         case FilterType::SEPIA:
             return "colorbalance=rs=" + std::to_string(filter.params.intensity * 0.3) + 
@@ -365,6 +380,21 @@ std::string FFmpegFilterProcessor::getFFmpegFilterString(const FilterState& filt
         
         case FilterType::WARM:
             return "colorbalance=rs=0.3:gs=0.1:bs=-0.2";
+        
+        case FilterType::CUSTOM: {
+            // Convention: customFilterName peut contenir un schéma "lut3d:<absolute_path>"
+            const std::string& name = filter.params.customFilterName;
+            const std::string lutPrefix = "lut3d:";
+            if (name.rfind(lutPrefix, 0) == 0 && name.size() > lutPrefix.size()) {
+                std::string path = name.substr(lutPrefix.size());
+                std::string escapedPath = escapeForFFmpeg(path);
+                // Utiliser une interpolation de haute qualité par défaut
+                // Note: certaines versions FFmpeg n'ont pas le paramètre 'strength'.
+                // On applique la LUT à 100% ici; le mix peut être fait au niveau prévisualisation.
+                return "lut3d=file='" + escapedPath + "':interp=tetrahedral";
+            }
+            return "";
+        }
         
         default:
             return "";

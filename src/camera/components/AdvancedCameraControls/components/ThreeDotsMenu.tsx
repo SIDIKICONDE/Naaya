@@ -7,6 +7,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Modal,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,8 +16,9 @@ import {
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
-import { FilterModalScreen } from '../../filters/FilterModalScreen';
-import { createFlashItems, createTimerItems, useFloatingSubmenu } from '../hooks/useFloatingSubmenu';
+import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
+import { CompactFilterControls } from '../../filters/CompactFilterControls';
+import { createFlashItems, createGridItems, createTimerItems, useFloatingSubmenu } from '../hooks/useFloatingSubmenu';
 import type { CameraMode, FlashMode } from '../types';
 import { FloatingSubmenu } from './FloatingSubmenu';
 
@@ -46,6 +49,11 @@ export interface ThreeDotsMenuProps {
   onTimerChange: (seconds: number) => void;
   timerSeconds: number;
   onGridToggle: () => void;
+  // État avancé de la grille (optionnel)
+  gridMode?: 'none' | 'thirds' | 'golden' | 'diagonals';
+  onGridModeChange?: (mode: 'none' | 'thirds' | 'golden' | 'diagonals') => void;
+  gridAspect?: 'none' | '1:1' | '4:3' | '16:9' | '2.39:1' | '9:16';
+  onGridAspectChange?: (aspect: 'none' | '1:1' | '4:3' | '16:9' | '2.39:1' | '9:16') => void;
   onSettingsOpen: () => void;
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   theme?: 'light' | 'dark';
@@ -77,6 +85,10 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   onTimerChange,
   timerSeconds,
   onGridToggle,
+  gridMode = 'thirds',
+  onGridModeChange,
+  gridAspect = 'none',
+  onGridAspectChange,
   onSettingsOpen,
   position = 'top-right',
   theme = 'dark',
@@ -167,8 +179,36 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
 
 
   const handleGridToggle = () => {
-    onGridToggle();
-    closeMenu();
+    // Si des callbacks avancés existent, ouvrir un sous-menu combiné
+    if (onGridModeChange || onGridAspectChange) {
+      closeMenu();
+      setTimeout(() => {
+        const { items, aspectItems } = createGridItems(
+          gridMode,
+          (mode) => {
+            onGridModeChange?.(mode);
+            // activer la grille si on choisit autre que none
+            if (mode !== 'none') onGridToggle();
+            hideSubmenu();
+          },
+          gridAspect,
+          (aspect) => {
+            onGridAspectChange?.(aspect);
+            onGridToggle();
+            hideSubmenu();
+          }
+        );
+        // Fusionner les deux listes dans un seul sous-menu (titre implicite)
+        showSubmenu([
+          ...items,
+          { id: 'sep', label: '———', icon: ' ', onPress: () => {} },
+          ...aspectItems,
+        ]);
+      }, 200);
+    } else {
+      onGridToggle();
+      closeMenu();
+    }
   };
 
   const handleSettingsOpen = () => {
@@ -180,9 +220,11 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   };
 
   const handleFiltersOpen = () => {
-    console.log('[ThreeDotsMenu] handleFiltersOpen: ouverture de la page modale filtres');
+    console.log('[ThreeDotsMenu] handleFiltersOpen: ouverture du modal filtres');
+    // Ouvrir immédiatement le modal filtres et fermer le menu sans délai
+    console.log('[ThreeDotsMenu] setShowFilterControls(true)');
     setShowFilterControls(true);
-    closeMenu();
+    setIsMenuOpen(false);
   };
 
   const menuOptions: MenuOption[] = [
@@ -333,15 +375,50 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
         />
       )}
 
-            {/* Page modale des filtres */}
+      {/* Filtres - Page modale plein écran */}
       {showFilterControls && onFilterChange && onClearFilter && (
-        <FilterModalScreen
+        <Modal
           visible={showFilterControls}
-          onClose={() => setShowFilterControls(false)}
-          currentFilter={currentFilter || null}
-          onFilterChange={onFilterChange}
-          onClearFilter={onClearFilter}
-        />
+          animationType="slide"
+          presentationStyle="fullScreen"
+          statusBarTranslucent={false}
+          onRequestClose={() => setShowFilterControls(false)}
+        >
+          <SafeAreaView style={styles.filterPageContainer}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Filtres</Text>
+              <TouchableOpacity
+                style={styles.filterModalClose}
+                onPress={() => setShowFilterControls(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.filterModalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.filterScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.filterSection}>
+                <CompactFilterControls
+                  currentFilter={currentFilter || null}
+                  onFilterChange={(name, intensity) => onFilterChange(name, intensity)}
+                  onClearFilter={onClearFilter}
+                  disabled={false}
+                  showLabels={true}
+                  style={styles.compactFilterControls}
+                />
+              </View>
+
+              <View style={styles.advancedSection}>
+                <AdvancedFilterControls
+                  currentFilter={currentFilter || null}
+                  onFilterChange={(name, intensity, params) => onFilterChange(name, intensity, params)}
+                  disabled={false}
+                  visible={true}
+                />
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       )}
     </>
   );
@@ -376,6 +453,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  filterPageContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  filterScroll: {
+    flex: 1,
+  },
+  filterSection: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  advancedSection: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
   },
   menuContainer: {
     backgroundColor: 'rgba(20, 20, 20, 0.95)',
@@ -482,5 +575,45 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
-
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  filterModalContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 540,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  filterModalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterModalCloseText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  compactFilterControls: {
+    backgroundColor: 'transparent',
+  },
 });
