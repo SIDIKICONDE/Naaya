@@ -96,6 +96,18 @@
       double getMaxZoom(jsi::Runtime& rt);
       bool setZoom(jsi::Runtime& rt, double level);
 
+      // Contrôles balance des blancs
+      jsi::String getWhiteBalanceMode(jsi::Runtime& rt);
+      bool setWhiteBalanceMode(jsi::Runtime& rt, jsi::String mode);
+      double getWhiteBalanceTemperature(jsi::Runtime& rt);
+      bool setWhiteBalanceTemperature(jsi::Runtime& rt, double kelvin);
+      double getWhiteBalanceTint(jsi::Runtime& rt);
+      bool setWhiteBalanceTint(jsi::Runtime& rt, double tint);
+      jsi::Object getWhiteBalanceGains(jsi::Runtime& rt);
+      bool setWhiteBalanceGains(jsi::Runtime& rt, double red, double green, double blue);
+      jsi::Array getSupportedWhiteBalanceModes(jsi::Runtime& rt);
+      jsi::Object getWhiteBalanceTemperatureRange(jsi::Runtime& rt);
+
       // Utilitaires
       jsi::Object getPreviewSize(jsi::Runtime& rt);
       jsi::Array getSupportedFormats(jsi::Runtime& rt, jsi::String deviceId);
@@ -120,6 +132,18 @@
       double getMinZoomInternal();
       double getMaxZoomInternal();
       bool setZoomInternal(double level);
+
+      // Balance des blancs (méthodes internes)
+      std::string getWhiteBalanceModeInternal();
+      bool setWhiteBalanceModeInternal(const std::string& mode);
+      double getWhiteBalanceTemperatureInternal();
+      bool setWhiteBalanceTemperatureInternal(double kelvin);
+      double getWhiteBalanceTintInternal();
+      bool setWhiteBalanceTintInternal(double tint);
+      std::tuple<double, double, double> getWhiteBalanceGainsInternal();
+      bool setWhiteBalanceGainsInternal(double red, double green, double blue);
+      std::vector<std::string> getSupportedWhiteBalanceModesInternal();
+      std::pair<double, double> getWhiteBalanceTemperatureRangeInternal();
 
       // Progression rec (durée/taille)
       jsi::Object getRecordingProgressInternal(jsi::Runtime& rt);

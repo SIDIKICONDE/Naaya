@@ -5,7 +5,7 @@ Interface d'égaliseur audio professionnelle complète et modulaire pour React N
 ## 🎵 Caractéristiques
 
 - **Interface moderne et intuitive** avec thèmes clair/sombre
-- **31 bandes de fréquences professionnelles** (mode pro) ou 10 bandes simplifiées
+- **10 bandes de fréquences** (mode simple uniquement)
 - **Visualisation en temps réel** du spectre audio
 - **Préréglages professionnels** organisés par catégories :
   - Genres musicaux (Rock, Jazz, Electronic, Classical)
@@ -81,7 +81,6 @@ const {
   // Configuration
   exportConfig,        // Exporter la configuration JSON
   importConfig,        // Importer une configuration
-  switchBandMode,      // Basculer entre mode simple/pro
 } = useEqualiser({
   enableSpectrum: true,
   autoSave: true,

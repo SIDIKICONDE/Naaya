@@ -73,30 +73,35 @@ const PresetCard: React.FC<{
   }, [isSelected, animatedScale, animatedOpacity]);
 
   const handlePressIn = () => {
-    Animated.spring(animatedScale, {
-      toValue: 0.96,
-      stiffness: 400,
-      damping: 15,
+    if (disabled) return;
+    Animated.timing(animatedScale, {
+      toValue: 0.95,
+      duration: 100,
       useNativeDriver: true,
     }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(animatedScale, {
+    if (disabled) return;
+    Animated.timing(animatedScale, {
       toValue: isSelected ? 1.02 : 1,
-      stiffness: 400,
-      damping: 15,
+      duration: 150,
       useNativeDriver: true,
     }).start();
   };
 
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.9}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
+      style={styles.touchableContainer}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      delayPressIn={0}
+      delayPressOut={0}
+      delayLongPress={0}
     >
       <Animated.View
         style={[
@@ -109,6 +114,8 @@ const PresetCard: React.FC<{
             opacity: animatedOpacity,
           },
         ]}
+        pointerEvents="box-none"
+        needsOffscreenAlphaCompositing={false}
       >
         <Text style={[styles.presetIcon, isSelected && styles.presetIconSelected]}>
           {preset.icon}
@@ -131,23 +138,12 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Créer un préréglage "Custom" si nécessaire
-  const isCustomPreset = !currentPreset || !presets.find(p => p.id === currentPreset);
+  // Utiliser tous les presets disponibles, y compris custom
   const allPresets = React.useMemo(() => {
-    if (isCustomPreset) {
-      const customPreset: EqualizerPreset = {
-        id: 'custom',
-        name: 'Personnalisé',
-        icon: '🎛️',
-        description: 'Réglages personnalisés',
-        bands: {},
-      };
-      return [customPreset, ...presets];
-    }
     return presets;
-  }, [presets, isCustomPreset]);
+  }, [presets]);
 
-  const effectiveCurrentPreset = isCustomPreset ? 'custom' : currentPreset;
+  const effectiveCurrentPreset = currentPreset || 'flat';
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -192,6 +188,11 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
         decelerationRate="fast"
         snapToInterval={PRESET_CARD_WIDTH + 8}
         snapToAlignment="start"
+        scrollEnabled={true}
+        nestedScrollEnabled={false}
+        directionalLockEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={false}
       >
         {allPresets.map((preset) => (
           <PresetCard
@@ -199,13 +200,9 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
             preset={preset}
             isSelected={preset.id === effectiveCurrentPreset}
             onPress={() => {
-              if (preset.id === 'custom') {
-                // Ne rien faire pour le preset custom, c'est juste indicatif
-                return;
-              }
               onPresetSelect(preset.id);
             }}
-            disabled={disabled || preset.id === 'custom'}
+            disabled={disabled}
           />
         ))}
       </ScrollView>
@@ -291,8 +288,8 @@ const styles = StyleSheet.create({
   },
   presetCardCustom: {
     backgroundColor: THEME_COLORS.surfaceLight,
-    borderColor: THEME_COLORS.warning + '60',
-    borderStyle: 'dashed',
+    borderColor: THEME_COLORS.warning,
+    borderStyle: 'solid',
   },
   presetIcon: {
     fontSize: 18,
@@ -310,5 +307,10 @@ const styles = StyleSheet.create({
   },
   presetNameSelected: {
     color: '#FFFFFF',
+  },
+  touchableContainer: {
+    // Zone de toucher étendue pour améliorer la réactivité
+    minWidth: PRESET_CARD_WIDTH + 16,
+    minHeight: PRESET_CARD_HEIGHT + 16,
   },
 });

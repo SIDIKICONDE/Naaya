@@ -2,19 +2,19 @@
  * Modal de configuration pour import/export
  */
 
-import Clipboard from '@react-native-clipboard/clipboard';
 import React, { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { EqualiserTheme } from '../types';
 
@@ -39,17 +39,23 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
 
   const handleCopy = async () => {
     try {
-      // Copier dans le presse-papiers
-      if (Platform.OS !== 'web') {
-        await Clipboard.setString(exportedConfig);
-      } else {
-        // Web
+      if (Platform.OS === 'web') {
         await navigator.clipboard.writeText(exportedConfig);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        // Utiliser Share API pour mobile
+        const result = await Share.share({ 
+          message: exportedConfig,
+          title: 'Configuration Égaliseur'
+        });
+        if (result.action === Share.sharedAction) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de copier la configuration');
+      Alert.alert('Erreur', 'Impossible de partager la configuration');
     }
   };
 
@@ -71,6 +77,7 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
       animationType="slide"
       transparent
       onRequestClose={onClose}
+      presentationStyle={Platform.OS === 'ios' ? 'overFullScreen' : undefined}
     >
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -105,7 +112,7 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
             >
               <Text style={[
                 styles.modeButtonText,
-                { color: mode === 'export' ? '#FFFFFF' : theme.text }
+                mode === 'export' ? styles.modeButtonTextActive : { color: theme.text }
               ]}>
                 📤 Exporter
               </Text>
@@ -124,7 +131,7 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
             >
               <Text style={[
                 styles.modeButtonText,
-                { color: mode === 'import' ? '#FFFFFF' : theme.text }
+                mode === 'import' ? styles.modeButtonTextActive : { color: theme.text }
               ]}>
                 📥 Importer
               </Text>
@@ -190,10 +197,8 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.primaryButton, 
-                    { 
-                      backgroundColor: theme.primary,
-                      opacity: importText ? 1 : 0.5,
-                    }
+                    { backgroundColor: theme.primary },
+                    !importText && styles.disabledButton,
                   ]}
                   onPress={handleImport}
                   disabled={!importText}
@@ -332,5 +337,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '500',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  modeButtonTextActive: {
+    color: '#FFFFFF',
   },
 });

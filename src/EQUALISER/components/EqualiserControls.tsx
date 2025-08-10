@@ -3,9 +3,10 @@
  * Gains d'entrée/sortie et actions d'import/export
  */
 
+import Slider from '@react-native-community/slider';
+import { Download, Info, Upload } from 'lucide-react-native';
 import React, { useCallback } from 'react';
 import {
-  Slider,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -169,44 +170,38 @@ export const EqualiserControls: React.FC<EqualiserControlsProps> = ({
         <TouchableOpacity
           style={[
             styles.actionButton,
-            {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-              opacity: disabled ? 0.5 : 1,
-            },
+            disabled ? styles.actionButtonDisabled : null,
+            { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
           onPress={onImport}
           disabled={disabled}
         >
-          <Text style={[styles.actionButtonText, { color: theme.text }]}>
-            📥 Importer
-          </Text>
+          <View style={styles.actionContent}>
+            <Download size={16} color={theme.text} />
+            <Text style={[styles.actionButtonText, { color: theme.text }]}>Importer</Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
             styles.actionButton,
-            {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-              opacity: disabled ? 0.5 : 1,
-            },
+            disabled ? styles.actionButtonDisabled : null,
+            { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
           onPress={onExport}
           disabled={disabled}
         >
-          <Text style={[styles.actionButtonText, { color: theme.text }]}>
-            📤 Exporter
-          </Text>
+          <View style={styles.actionContent}>
+            <Upload size={16} color={theme.text} />
+            <Text style={[styles.actionButtonText, { color: theme.text }]}>Exporter</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
       {/* Informations supplémentaires */}
-      <View style={[styles.infoBox, { backgroundColor: theme.primary + '10' }]}>
-        <Text style={[styles.infoIcon, { color: theme.primary }]}>ℹ️</Text>
-        <Text style={[styles.infoText, { color: theme.primary }]}>
-          Ajustez les gains avec précaution. Des valeurs élevées peuvent causer de la distorsion.
-        </Text>
+      <View style={[styles.infoBox, { backgroundColor: theme.primary + '10', borderLeftColor: theme.primary }]}>
+        <Info size={16} color={theme.primary} />
+        <Text style={[styles.infoText, { color: theme.primary }]}>Ajustez les gains avec précaution. Des valeurs élevées peuvent causer de la distorsion.</Text>
       </View>
     </View>
   );
@@ -217,16 +212,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   gainsContainer: {
-    gap: 20,
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
   },
   gainControl: {
-    gap: 8,
+    flex: 1,
+    gap: 6,
   },
   gainHeader: {
     flexDirection: 'row',
@@ -249,17 +247,17 @@ const styles = StyleSheet.create({
   },
   slider: {
     flex: 1,
-    height: 40,
+    height: 32,
   },
   sliderLabel: {
-    fontSize: 10,
-    width: 24,
+    fontSize: 9,
+    width: 20,
     textAlign: 'center',
   },
   metersContainer: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
+    gap: 12,
+    marginBottom: 12,
   },
   meter: {
     flex: 1,
@@ -282,14 +280,22 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   actionButtonText: {
     fontSize: 14,
@@ -300,6 +306,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     gap: 8,
+    borderLeftWidth: 3,
   },
   infoIcon: {
     fontSize: 16,

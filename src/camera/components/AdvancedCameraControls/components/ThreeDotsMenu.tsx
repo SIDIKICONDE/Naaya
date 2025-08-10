@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
-import { EqualiserMain } from '../../../../EQUALISER';
+import { EqualiserMain } from '../../../../EQUALISER/components/EqualiserMain';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
 import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
 import { CompactFilterControls } from '../../filters/CompactFilterControls';
@@ -107,6 +107,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   const [showAdvancedControls, setShowAdvancedControls] = useState(false);
   const [showFilterControls, setShowFilterControls] = useState(false);
   const [showAudioControls, setShowAudioControls] = useState(false);
+
   
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -235,6 +236,10 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
     setIsMenuOpen(false);
   };
 
+
+
+
+
   const menuOptions: MenuOption[] = [
     {
       id: 'flash',
@@ -281,6 +286,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       label: 'Audio',
       action: handleAudioOpen,
     },
+
     {
       id: 'zoomReset',
       icon: ICONS.ZOOM,
@@ -453,6 +459,8 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
           </SafeAreaView>
         </Modal>
       )}
+
+
     </>
   );
 };

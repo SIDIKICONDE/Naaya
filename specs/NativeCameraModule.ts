@@ -105,6 +105,18 @@ export interface Spec extends TurboModule {
   readonly getMaxZoom: () => number;
   readonly setZoom: (level: number) => boolean;
   
+  // Contrôles balance des blancs
+  readonly getWhiteBalanceMode: () => string;
+  readonly setWhiteBalanceMode: (mode: string) => boolean;
+  readonly getWhiteBalanceTemperature: () => number;
+  readonly setWhiteBalanceTemperature: (kelvin: number) => boolean;
+  readonly getWhiteBalanceTint: () => number;
+  readonly setWhiteBalanceTint: (tint: number) => boolean;
+  readonly getWhiteBalanceGains: () => {red: number, green: number, blue: number};
+  readonly setWhiteBalanceGains: (red: number, green: number, blue: number) => boolean;
+  readonly getSupportedWhiteBalanceModes: () => string[];
+  readonly getWhiteBalanceTemperatureRange: () => {min: number, max: number};
+
   // Utilitaires
   readonly getPreviewSize: () => {width: number, height: number};
   readonly getSupportedFormats: (deviceId: string) => Array<{width: number, height: number, fps: number, pixelFormat: string}>;

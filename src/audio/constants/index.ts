@@ -21,6 +21,24 @@ export const DEFAULT_FREQUENCY_BANDS: EqualizerBand[] = [
 // Préréglages populaires
 export const EQUALIZER_PRESETS: EqualizerPreset[] = [
   {
+    id: 'custom',
+    name: 'Personnalisé',
+    icon: '🎛️',
+    description: 'Réglages personnalisés',
+    bands: {
+      'band-32': 0,
+      'band-64': 0,
+      'band-125': 0,
+      'band-250': 0,
+      'band-500': 0,
+      'band-1k': 0,
+      'band-2k': 0,
+      'band-4k': 0,
+      'band-8k': 0,
+      'band-16k': 0,
+    },
+  },
+  {
     id: 'flat',
     name: 'Flat',
     icon: '⚪',

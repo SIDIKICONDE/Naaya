@@ -5,12 +5,12 @@
 
 import React, { useMemo } from 'react';
 import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
+    Dimensions,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
-import Svg, { Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { EqualiserBand, EqualiserTheme } from '../types';
 
 interface FrequencyResponseGraphProps {
@@ -32,7 +32,7 @@ export const FrequencyResponseGraph: React.FC<FrequencyResponseGraphProps> = ({
 }) => {
   const graphWidth = screenWidth - 64; // Padding
   const graphHeight = height;
-  const padding = { top: 20, right: 20, bottom: 40, left: 40 };
+  const padding = { top: 24, right: 20, bottom: 48, left: 48 };
   const plotWidth = graphWidth - padding.left - padding.right;
   const plotHeight = graphHeight - padding.top - padding.bottom;
 
@@ -183,7 +183,7 @@ export const FrequencyResponseGraph: React.FC<FrequencyResponseGraphProps> = ({
 
             return (
               <G key={`band-${index}`}>
-                <circle
+                <Circle
                   cx={x}
                   cy={y}
                   r={6}
@@ -191,7 +191,7 @@ export const FrequencyResponseGraph: React.FC<FrequencyResponseGraphProps> = ({
                   stroke={band.color || theme.primary}
                   strokeWidth={2}
                 />
-                <circle
+                <Circle
                   cx={x}
                   cy={y}
                   r={3}
@@ -204,14 +204,14 @@ export const FrequencyResponseGraph: React.FC<FrequencyResponseGraphProps> = ({
           {/* Labels */}
           {showLabels && (
             <>
-              {/* Labels de fréquence */}
+           {/* Labels de fréquence */}
               {frequencyGrid.map((grid, index) => (
                 <SvgText
                   key={`freq-label-${index}`}
                   x={grid.x}
-                  y={plotHeight + 20}
+                 y={plotHeight + 24}
                   fill={theme.textSecondary}
-                  fontSize="10"
+                 fontSize="11"
                   textAnchor="middle"
                 >
                   {grid.label}
@@ -219,13 +219,13 @@ export const FrequencyResponseGraph: React.FC<FrequencyResponseGraphProps> = ({
               ))}
 
               {/* Labels de gain */}
-              {gainGrid.map((grid, index) => (
+               {gainGrid.map((grid, index) => (
                 <SvgText
                   key={`gain-label-${index}`}
-                  x={-10}
-                  y={grid.y + 4}
+                  x={-12}
+                  y={grid.y + 5}
                   fill={theme.textSecondary}
-                  fontSize="10"
+                  fontSize="11"
                   textAnchor="end"
                 >
                   {grid.label}

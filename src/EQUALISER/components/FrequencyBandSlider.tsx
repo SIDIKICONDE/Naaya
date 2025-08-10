@@ -14,8 +14,8 @@ import {
   Vibration,
   View,
 } from 'react-native';
-import { EQUALISER_LIMITS } from '../constants';
-import { EqualiserBand, EqualiserTheme } from '../types';
+import { EqualiserBand, EqualiserTheme } from '../../EQUALISER/types';
+import { EQUALISER_LIMITS } from '../constants/index';
 
 interface FrequencyBandSliderProps {
   band: EqualiserBand;
@@ -101,7 +101,7 @@ export const FrequencyBandSlider: React.FC<FrequencyBandSliderProps> = ({
   const panResponder = React.useMemo(
     () => PanResponder.create({
       onStartShouldSetPanResponder: () => !disabled,
-      onMoveShouldSetPanResponder: () => !disabled,
+      onMoveShouldSetPanResponder: (_, gestureState) => !disabled && (Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2),
       onPanResponderTerminationRequest: () => false,
       
       onPanResponderGrant: () => {
@@ -180,7 +180,12 @@ export const FrequencyBandSlider: React.FC<FrequencyBandSliderProps> = ({
       activeOpacity={1}
     >
       {/* Label de fréquence */}
-      <Text style={[styles.frequencyLabel, { color: theme.textSecondary }]}>
+      <Text
+        style={[styles.frequencyLabel, { color: theme.textSecondary }]}
+        numberOfLines={1}
+        ellipsizeMode="clip"
+        allowFontScaling={false}
+      >
         {band.label}
       </Text>
 
@@ -277,10 +282,15 @@ export const FrequencyBandSlider: React.FC<FrequencyBandSliderProps> = ({
       </View>
 
       {/* Valeur du gain */}
-      <Text style={[
-        styles.gainValue,
-        { color: band.gain === 0 ? theme.textSecondary : gainColor }
-      ]}>
+      <Text
+        style={[
+          styles.gainValue,
+          { color: band.gain === 0 ? theme.textSecondary : gainColor },
+        ]}
+        numberOfLines={1}
+        ellipsizeMode="clip"
+        allowFontScaling={false}
+      >
         {band.gain.toFixed(1)} dB
       </Text>
 
@@ -320,9 +330,12 @@ const styles = StyleSheet.create({
   },
   frequencyLabel: {
     fontSize: 11,
+    lineHeight: 13,
+    height: 16,
     fontWeight: '600',
     marginBottom: 8,
     textAlign: 'center',
+    includeFontPadding: false,
   },
   sliderContainer: {
     width: TOUCH_AREA,
@@ -402,9 +415,12 @@ const styles = StyleSheet.create({
   },
   gainValue: {
     fontSize: 10,
+    lineHeight: 12,
+    height: 14,
     fontWeight: '600',
     marginTop: 8,
     textAlign: 'center',
+    includeFontPadding: false,
   },
   soloButton: {
     width: 24,

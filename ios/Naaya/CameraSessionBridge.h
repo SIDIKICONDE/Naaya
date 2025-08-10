@@ -25,6 +25,18 @@ void NaayaSetAudioInput(AVCaptureDeviceInput* input);
 int NaayaGetFlashMode(void);
 void NaayaSetFlashMode(int mode);
 
+// Balance des blancs globale
+void NaayaSetWhiteBalanceMode(const char* mode);
+void NaayaSetWhiteBalanceTemperature(double kelvin);
+void NaayaSetWhiteBalanceTint(double tint);
+void NaayaSetWhiteBalanceGains(double red, double green, double blue);
+const char* NaayaGetWhiteBalanceMode(void);
+double NaayaGetWhiteBalanceTemperature(void);
+double NaayaGetWhiteBalanceTint(void);
+void NaayaGetWhiteBalanceGains(double* red, double* green, double* blue);
+const char** NaayaGetSupportedWhiteBalanceModes(int* count);
+void NaayaGetWhiteBalanceTemperatureRange(double* min, double* max);
+
 #ifdef __cplusplus
 }
 #endif
@@ -52,6 +64,19 @@ void NaayaSetAudioInput(struct AVCaptureDeviceInput* input);
 // État global simple du mode flash (0=off,1=on,2=auto,3=torch)
 int NaayaGetFlashMode(void);
 void NaayaSetFlashMode(int mode);
+
+// Balance des blancs globale (C only)
+void NaayaSetWhiteBalanceMode(const char* mode);
+void NaayaSetWhiteBalanceTemperature(double kelvin);
+void NaayaSetWhiteBalanceTint(double tint);
+void NaayaSetWhiteBalanceGains(double red, double green, double blue);
+const char* NaayaGetWhiteBalanceMode(void);
+double NaayaGetWhiteBalanceTemperature(void);
+double NaayaGetWhiteBalanceTint(void);
+void NaayaGetWhiteBalanceGains(double* red, double* green, double* blue);
+const char** NaayaGetSupportedWhiteBalanceModes(int* count);
+void NaayaGetWhiteBalanceTemperatureRange(double* min, double* max);
+
 #ifdef __cplusplus
 }
 #endif

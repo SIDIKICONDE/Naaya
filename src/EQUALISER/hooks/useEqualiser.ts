@@ -2,11 +2,12 @@
  * Hook React pour l'égaliseur professionnel
  */
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useReducer, useRef } from 'react';
 import { PROFESSIONAL_PRESETS } from '../constants';
 import { EqualiserService } from '../services/EqualiserService';
+import NativeEQBridge from '../services/equaliser/NativeEQBridge';
 import {
-  AudioAnalysis,
   EqualiserPreset,
   EqualiserState,
   SpectrumAnalyserData,
@@ -38,7 +39,6 @@ interface UseEqualiserReturn extends EqualiserState {
   // Configuration
   exportConfig: () => string;
   importConfig: (json: string) => Promise<void>;
-  switchBandMode: (mode: 'simple' | 'professional') => Promise<void>;
   
   // Données
   presets: EqualiserPreset[];
@@ -50,8 +50,7 @@ type Action =
   | { type: 'SET_STATE'; payload: Partial<EqualiserState> }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: Error | null }
-  | { type: 'SET_SPECTRUM_DATA'; payload: SpectrumAnalyserData | null }
-  | { type: 'SET_AUDIO_ANALYSIS'; payload: AudioAnalysis | null };
+  | { type: 'SET_SPECTRUM_DATA'; payload: SpectrumAnalyserData | null };
 
 interface State extends EqualiserState {
   isLoading: boolean;
@@ -68,8 +67,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, error: action.payload };
     case 'SET_SPECTRUM_DATA':
       return { ...state, spectrumData: action.payload };
-    case 'SET_AUDIO_ANALYSIS':
-      return { ...state, audioAnalysis: action.payload as any };
     default:
       return state;
   }
@@ -131,9 +128,9 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
     dispatch({ type: 'SET_STATE', payload: EqualiserService.getState() });
     dispatch({ type: 'SET_LOADING', payload: false });
 
-    // Démarrer l'analyse si activée
-    if (enableSpectrum && state.enabled) {
-      EqualiserService.startSpectrumAnalysis(spectrumUpdateInterval);
+    // Démarrer l'analyse si activée et non bypass
+    if (enableSpectrum && state.enabled && !state.bypassed) {
+      EqualiserService.startSpectrumAnalysis(spectrumUpdateInterval).catch(() => {});
     }
 
     // Nettoyage
@@ -141,10 +138,10 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
       isMountedRef.current = false;
       unsubscribers.forEach(unsub => unsub());
       if (enableSpectrum) {
-        EqualiserService.stopSpectrumAnalysis();
+        EqualiserService.stopSpectrumAnalysis().catch(() => {});
       }
     };
-  }, [enableSpectrum, spectrumUpdateInterval]);
+  }, [enableSpectrum, spectrumUpdateInterval, state.enabled, state.bypassed]);
 
   // Actions avec gestion d'erreur
   const wrapAsync = useCallback(<T extends any[], R>(
@@ -206,7 +203,9 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
       await EqualiserService.importConfiguration(config);
       if (autoSave) {
         // Sauvegarder la configuration si l'auto-save est activé
-        localStorage.setItem('equaliser-config', json);
+        AsyncStorage.setItem('equaliser-config', json).catch(error => {
+          console.warn('Erreur sauvegarde égaliseur:', error);
+        });
       }
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error as Error });
@@ -218,9 +217,22 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
   useEffect(() => {
     if (autoSave && !state.isLoading) {
       const config = exportConfig();
-      localStorage.setItem('equaliser-config', config);
+      AsyncStorage.setItem('equaliser-config', config).catch(error => {
+        console.warn('Erreur sauvegarde égaliseur:', error);
+      });
     }
   }, [autoSave, state.bands, state.currentPreset, state.enabled, exportConfig, state.isLoading]);
+
+  // Filtrer les presets UI pour ne montrer que ceux supportés nativement (mêmes noms)
+  const uiPresets = React.useMemo(() => {
+    try {
+      const native = NativeEQBridge.getAvailablePresets().map(n => n.toLowerCase());
+      if (native.length === 0) return PROFESSIONAL_PRESETS; // fallback: tout afficher
+      return PROFESSIONAL_PRESETS.filter(p => native.includes(p.name.toLowerCase()));
+    } catch {
+      return PROFESSIONAL_PRESETS;
+    }
+  }, []);
 
   return {
     // État
@@ -244,10 +256,9 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
     // Configuration
     exportConfig,
     importConfig,
-    switchBandMode: wrapAsync(EqualiserService.switchBandConfiguration.bind(EqualiserService)),
     
     // Données
-    presets: PROFESSIONAL_PRESETS,
+    presets: uiPresets,
   };
 }
 

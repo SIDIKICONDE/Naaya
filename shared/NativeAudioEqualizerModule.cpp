@@ -273,16 +273,24 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
         return jsi::Value(self.isBandEnabled(rt, args[0].asNumber(), args[1].asNumber()));
     }};
     
-    // Global controls
-    methodMap_["setMasterGain"] = MethodMetadata{2, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* args, size_t count) -> jsi::Value {
+    // Global controls (compat couche JS: pas d'ID requis)
+    methodMap_["setMasterGain"] = MethodMetadata{1, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
         auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
-        self.setMasterGain(rt, args[0].asNumber(), args[1].asNumber());
+        self.ensureDefaultEqualizer(rt);
+        double gainDb = args[0].asNumber();
+        self.setMasterGain(rt, self.defaultEqualizerId_, gainDb);
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_eq_mutex);
+          g_naaya_eq_master_gain = gainDb;
+          g_naaya_eq_dirty.store(true);
+        }
         return jsi::Value::undefined();
     }};
     
-    methodMap_["getMasterGain"] = MethodMetadata{1, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* args, size_t count) -> jsi::Value {
+    methodMap_["getMasterGain"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
         auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
-        return jsi::Value(self.getMasterGain(rt, args[0].asNumber()));
+        self.ensureDefaultEqualizer(rt);
+        return jsi::Value(self.getMasterGain(rt, self.defaultEqualizerId_));
     }};
     
     methodMap_["setBypass"] = MethodMetadata{2, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* args, size_t count) -> jsi::Value {
@@ -392,11 +400,14 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
     methodMap_["setBandGain"] = MethodMetadata{2, [](jsi::Runtime& rt, TurboModule& turboModule, const jsi::Value* args, size_t count) -> jsi::Value {
         auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
         self.ensureDefaultEqualizer(rt);
-        self.setBandGain(rt, self.defaultEqualizerId_, args[0].asNumber(), args[1].asNumber());
+        double idx = args[0].asNumber();
+        if (idx < 0) idx = 0;
+        if (idx > 31) idx = 31;
+        self.setBandGain(rt, self.defaultEqualizerId_, idx, args[1].asNumber());
         {
           std::lock_guard<std::mutex> lk(g_naaya_eq_mutex);
-          size_t idx = static_cast<size_t>(args[0].asNumber());
-          if (idx < 32) g_naaya_eq_band_gains[idx] = args[1].asNumber();
+          size_t sidx = static_cast<size_t>(idx);
+          if (sidx < 32) g_naaya_eq_band_gains[sidx] = args[1].asNumber();
           g_naaya_eq_dirty.store(true);
         }
         return jsi::Value::undefined();

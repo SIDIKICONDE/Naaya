@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
-import { TINT_PRESETS } from '@teleprompter/constants';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { TINT_PRESETS } from '../teleprompter/constants';
 
 export interface ColorPickerModalProps {
   visible: boolean;

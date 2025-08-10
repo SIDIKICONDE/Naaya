@@ -26,7 +26,7 @@
 
 import React from 'react';
 import { Modal, View, useColorScheme } from 'react-native';
-import { EqualiserMain } from './components';
+import { EqualiserMain } from './components/EqualiserMain';
 
 interface EqualiserIntegrationProps {
   visible: boolean;

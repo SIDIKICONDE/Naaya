@@ -16,6 +16,16 @@
 
 #if defined(__APPLE__)
 extern "C" void NaayaSetFlashMode(int mode);
+extern "C" void NaayaSetWhiteBalanceMode(const char* mode);
+extern "C" void NaayaSetWhiteBalanceTemperature(double kelvin);
+extern "C" void NaayaSetWhiteBalanceTint(double tint);
+extern "C" void NaayaSetWhiteBalanceGains(double red, double green, double blue);
+extern "C" const char* NaayaGetWhiteBalanceMode(void);
+extern "C" double NaayaGetWhiteBalanceTemperature(void);
+extern "C" double NaayaGetWhiteBalanceTint(void);
+extern "C" void NaayaGetWhiteBalanceGains(double* red, double* green, double* blue);
+extern "C" const char** NaayaGetSupportedWhiteBalanceModes(int* count);
+extern "C" void NaayaGetWhiteBalanceTemperatureRange(double* min, double* max);
 #endif
 
 namespace facebook::react {
@@ -590,6 +600,63 @@ bool NativeCameraModule::setZoom(jsi::Runtime& rt, double level) {
     return setZoomInternal(level);
 }
 
+// === MÉTHODES BALANCE DES BLANCS JSI ===
+
+jsi::String NativeCameraModule::getWhiteBalanceMode(jsi::Runtime& rt) {
+    std::string mode = getWhiteBalanceModeInternal();
+    return jsi::String::createFromUtf8(rt, mode);
+}
+
+bool NativeCameraModule::setWhiteBalanceMode(jsi::Runtime& rt, jsi::String mode) {
+    return setWhiteBalanceModeInternal(mode.utf8(rt));
+}
+
+double NativeCameraModule::getWhiteBalanceTemperature(jsi::Runtime& rt) {
+    return getWhiteBalanceTemperatureInternal();
+}
+
+bool NativeCameraModule::setWhiteBalanceTemperature(jsi::Runtime& rt, double kelvin) {
+    return setWhiteBalanceTemperatureInternal(kelvin);
+}
+
+double NativeCameraModule::getWhiteBalanceTint(jsi::Runtime& rt) {
+    return getWhiteBalanceTintInternal();
+}
+
+bool NativeCameraModule::setWhiteBalanceTint(jsi::Runtime& rt, double tint) {
+    return setWhiteBalanceTintInternal(tint);
+}
+
+jsi::Object NativeCameraModule::getWhiteBalanceGains(jsi::Runtime& rt) {
+    auto [red, green, blue] = getWhiteBalanceGainsInternal();
+    jsi::Object result = jsi::Object(rt);
+    result.setProperty(rt, "red", jsi::Value(red));
+    result.setProperty(rt, "green", jsi::Value(green));
+    result.setProperty(rt, "blue", jsi::Value(blue));
+    return result;
+}
+
+bool NativeCameraModule::setWhiteBalanceGains(jsi::Runtime& rt, double red, double green, double blue) {
+    return setWhiteBalanceGainsInternal(red, green, blue);
+}
+
+jsi::Array NativeCameraModule::getSupportedWhiteBalanceModes(jsi::Runtime& rt) {
+    auto modes = getSupportedWhiteBalanceModesInternal();
+    jsi::Array result = jsi::Array(rt, modes.size());
+    for (size_t i = 0; i < modes.size(); i++) {
+        result.setValueAtIndex(rt, i, jsi::String::createFromUtf8(rt, modes[i]));
+    }
+    return result;
+}
+
+jsi::Object NativeCameraModule::getWhiteBalanceTemperatureRange(jsi::Runtime& rt) {
+    auto [min, max] = getWhiteBalanceTemperatureRangeInternal();
+    jsi::Object result = jsi::Object(rt);
+    result.setProperty(rt, "min", jsi::Value(min));
+    result.setProperty(rt, "max", jsi::Value(max));
+    return result;
+}
+
 jsi::Object NativeCameraModule::getPreviewSize(jsi::Runtime& rt) {
     jsi::Object result = jsi::Object(rt);
     int width = 1920;
@@ -634,6 +701,115 @@ jsi::Array NativeCameraModule::getSupportedFormats(jsi::Runtime& rt, jsi::String
         result.setValueAtIndex(rt, i, std::move(obj));
     }
     return result;
+}
+
+// === MÉTHODES INTERNES BALANCE DES BLANCS ===
+
+std::string NativeCameraModule::getWhiteBalanceModeInternal() {
+#if defined(__APPLE__)
+    const char* mode = NaayaGetWhiteBalanceMode();
+    return mode ? std::string(mode) : std::string("auto");
+#else
+    // Android: implémentation à venir
+    return std::string("auto");
+#endif
+}
+
+bool NativeCameraModule::setWhiteBalanceModeInternal(const std::string& mode) {
+#if defined(__APPLE__)
+    NaayaSetWhiteBalanceMode(mode.c_str());
+    return true;
+#else
+    // Android: implémentation à venir
+    return false;
+#endif
+}
+
+double NativeCameraModule::getWhiteBalanceTemperatureInternal() {
+#if defined(__APPLE__)
+    return NaayaGetWhiteBalanceTemperature();
+#else
+    // Android: implémentation à venir
+    return 6500.0; // valeur par défaut
+#endif
+}
+
+bool NativeCameraModule::setWhiteBalanceTemperatureInternal(double kelvin) {
+#if defined(__APPLE__)
+    NaayaSetWhiteBalanceTemperature(kelvin);
+    return true;
+#else
+    // Android: implémentation à venir
+    return false;
+#endif
+}
+
+double NativeCameraModule::getWhiteBalanceTintInternal() {
+#if defined(__APPLE__)
+    return NaayaGetWhiteBalanceTint();
+#else
+    // Android: implémentation à venir
+    return 0.0;
+#endif
+}
+
+bool NativeCameraModule::setWhiteBalanceTintInternal(double tint) {
+#if defined(__APPLE__)
+    NaayaSetWhiteBalanceTint(tint);
+    return true;
+#else
+    // Android: implémentation à venir
+    return false;
+#endif
+}
+
+std::tuple<double, double, double> NativeCameraModule::getWhiteBalanceGainsInternal() {
+#if defined(__APPLE__)
+    double red = 1.0, green = 1.0, blue = 1.0;
+    NaayaGetWhiteBalanceGains(&red, &green, &blue);
+    return std::make_tuple(red, green, blue);
+#else
+    // Android: implémentation à venir
+    return std::make_tuple(1.0, 1.0, 1.0);
+#endif
+}
+
+bool NativeCameraModule::setWhiteBalanceGainsInternal(double red, double green, double blue) {
+#if defined(__APPLE__)
+    NaayaSetWhiteBalanceGains(red, green, blue);
+    return true;
+#else
+    // Android: implémentation à venir
+    return false;
+#endif
+}
+
+std::vector<std::string> NativeCameraModule::getSupportedWhiteBalanceModesInternal() {
+#if defined(__APPLE__)
+    int count = 0;
+    const char** modes = NaayaGetSupportedWhiteBalanceModes(&count);
+    std::vector<std::string> result;
+    for (int i = 0; i < count; i++) {
+        if (modes[i]) {
+            result.push_back(std::string(modes[i]));
+        }
+    }
+    return result;
+#else
+    // Android: implémentation à venir
+    return {"auto", "incandescent", "fluorescent", "daylight", "cloudy"};
+#endif
+}
+
+std::pair<double, double> NativeCameraModule::getWhiteBalanceTemperatureRangeInternal() {
+#if defined(__APPLE__)
+    double min = 2500.0, max = 8000.0;
+    NaayaGetWhiteBalanceTemperatureRange(&min, &max);
+    return std::make_pair(min, max);
+#else
+    // Android: implémentation à venir
+    return std::make_pair(2500.0, 8000.0);
+#endif
 }
 
 } // namespace facebook::react

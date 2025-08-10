@@ -94,11 +94,14 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({
 
   const handlePresetSelect = useCallback(async (presetId: string) => {
     try {
+      if (!enabled) {
+        try { await setEnabled(true); } catch {}
+      }
       await setPreset(presetId);
     } catch (err) {
       console.error('Erreur lors de l\'application du préréglage:', err);
     }
-  }, [setPreset]);
+  }, [enabled, setEnabled, setPreset]);
 
   const handleReset = useCallback(async () => {
     try {
@@ -180,7 +183,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({
             <PresetSelector
               currentPreset={currentPreset}
               onPresetSelect={handlePresetSelect}
-              disabled={!enabled}
+              disabled={false}
               showHeader={false}
             />
           </View>

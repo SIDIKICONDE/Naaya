@@ -184,6 +184,15 @@ class Camera2VideoRecorder {
                         if (opt.lockAWB && Build.VERSION.SDK_INT >= 23) {
                           b.set(CaptureRequest.CONTROL_AWB_LOCK, true);
                         }
+                        // Support pour modes de balance des blancs
+                        if (opt.whiteBalanceMode != null &&
+                            Build.VERSION.SDK_INT >= 21) {
+                          Integer wbMode =
+                              parseWhiteBalanceMode(opt.whiteBalanceMode);
+                          if (wbMode != null) {
+                            b.set(CaptureRequest.CONTROL_AWB_MODE, wbMode);
+                          }
+                        }
                         if (opt.lockAF) {
                           b.set(CaptureRequest.CONTROL_AF_MODE,
                                 CaptureRequest.CONTROL_AF_MODE_OFF);
@@ -606,6 +615,33 @@ class Camera2VideoRecorder {
     vEx.release();
     aEx.release();
     return true;
+  }
+
+  private Integer parseWhiteBalanceMode(String mode) {
+    if (mode == null)
+      return null;
+    switch (mode.toLowerCase()) {
+    case "auto":
+      return CaptureRequest.CONTROL_AWB_MODE_AUTO;
+    case "incandescent":
+      return CaptureRequest.CONTROL_AWB_MODE_INCANDESCENT;
+    case "fluorescent":
+      return CaptureRequest.CONTROL_AWB_MODE_FLUORESCENT;
+    case "warm_fluorescent":
+      return CaptureRequest.CONTROL_AWB_MODE_WARM_FLUORESCENT;
+    case "daylight":
+      return CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT;
+    case "cloudy_daylight":
+      return CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT;
+    case "twilight":
+      return CaptureRequest.CONTROL_AWB_MODE_TWILIGHT;
+    case "shade":
+      return CaptureRequest.CONTROL_AWB_MODE_SHADE;
+    case "off":
+      return CaptureRequest.CONTROL_AWB_MODE_OFF;
+    default:
+      return null;
+    }
   }
 
   private void closeCamera() {

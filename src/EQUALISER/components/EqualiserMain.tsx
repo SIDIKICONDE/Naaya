@@ -3,26 +3,27 @@
  * Interface complète avec design moderne et modulaire
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import { BarChart3, HelpCircle, Sliders, X } from 'lucide-react-native';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { EQUALISER_THEMES, HELP_MESSAGES } from '../constants';
+import { EQUALISER_THEMES, HELP_MESSAGES } from '../constants/index';
 import { useEqualiser } from '../hooks/useEqualiser';
 import { ConfigurationModal } from './ConfigurationModal';
 import { EqualiserControls } from './EqualiserControls';
-import { FrequencyBandSlider } from './FrequencyBandSlider';
+// import { FrequencyBandSlider } from './FrequencyBandSlider';
 import { FrequencyResponseGraph } from './FrequencyResponseGraph';
 import { PresetManager } from './PresetManager';
 import { SpectrumAnalyser } from './SpectrumAnalyser';
+import TenBandSliderRow from './TenBandSliderRow';
 
 interface EqualiserMainProps {
   theme?: 'light' | 'dark';
@@ -41,7 +42,7 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
   const [showConfig, setShowConfig] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [viewMode, setViewMode] = useState<'bands' | 'graph'>('bands');
-  const [bandMode, setBandMode] = useState<'simple' | 'professional'>('simple');
+  // Mode unique: simple (10 bandes)
 
   const {
     enabled,
@@ -64,7 +65,6 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
     setOutputGain,
     exportConfig,
     importConfig,
-    switchBandMode,
     presets,
   } = useEqualiser({
     enableSpectrum: true,
@@ -83,17 +83,30 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
 
   // Gestionnaires
   const handleBandGainChange = useCallback((bandId: string, gain: number) => {
+    if (!enabled) {
+      // Activer automatiquement l'égaliseur au premier mouvement
+      setEnabled(true).catch(() => {});
+    }
     setBandGain(bandId, gain);
-  }, [setBandGain]);
+  }, [enabled, setEnabled, setBandGain]);
 
   const handleBandSolo = useCallback((bandId: string) => {
     setSoloBand(soloedBand === bandId ? null : bandId);
   }, [soloedBand, setSoloBand]);
 
-  const handleBandModeChange = useCallback(async (mode: 'simple' | 'professional') => {
-    setBandMode(mode);
-    await switchBandMode(mode);
-  }, [switchBandMode]);
+  // Plus de changement de configuration de bandes: 10 bandes fixes
+
+  const handlePresetSelect = useCallback(async (presetId: string) => {
+    if (!enabled) {
+      try { await setEnabled(true); } catch {}
+    }
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: setPreset exceeded 5s')), 5000);
+      });
+      await Promise.race([setPreset(presetId), timeoutPromise]);
+    } catch (e) {}
+  }, [enabled, setEnabled, setPreset]);
 
   const handleExport = useCallback(() => {
     // La configuration sera affichée dans le modal
@@ -109,15 +122,10 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
     }
   }, [importConfig]);
 
-  // Grouper les bandes par plage de fréquences
-  const groupedBands = useMemo(() => {
-    const groups = {
-      bass: bands.filter(b => b.frequency < 250),
-      midrange: bands.filter(b => b.frequency >= 250 && b.frequency < 2000),
-      treble: bands.filter(b => b.frequency >= 2000),
-    };
-    return groups;
-  }, [bands]);
+  // Tri des bandes par index/fréquence pour l'affichage en ligne unique
+  // const sortedBands = useMemo(() => {
+  //   return [...bands].sort((a, b) => a.index - b.index);
+  // }, [bands]);
 
   if (isLoading) {
     return (
@@ -134,56 +142,61 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Égaliseur Professionnel
-          </Text>
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, { 
-              backgroundColor: enabled ? colors.success : colors.textSecondary 
-            }]} />
-            <Text style={[styles.statusText, { color: colors.textSecondary }]}>
-              {enabled ? 'Actif' : 'Inactif'}
-              {bypassed && ' (Bypass)'}
-            </Text>
-          </View>
-        </View>
-        
-        <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={[styles.iconButton, { backgroundColor: colors.surface }]}
-            onPress={() => setShowHelp(!showHelp)}
-          >
-            <Text style={[styles.iconButtonText, { color: colors.text }]}>?</Text>
-          </TouchableOpacity>
-          
-          {onClose && (
-            <TouchableOpacity 
-              style={[styles.iconButton, { backgroundColor: colors.surface }]}
-              onPress={onClose}
-            >
-              <Text style={[styles.iconButtonText, { color: colors.text }]}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Message d'aide */}
-      {showHelp && (
-        <View style={[styles.helpBanner, { backgroundColor: colors.primary + '20' }]}>
-          <Text style={[styles.helpText, { color: colors.primary }]}>
-            {HELP_MESSAGES.gain}
-          </Text>
-        </View>
-      )}
-
       <Animated.ScrollView
         style={{ opacity: fadeAnim }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="always"
+        stickyHeaderIndices={[0]}
       >
+        {/* Header sticky */}
+        <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.title, { color: colors.text }]}>Égaliseur Professionnel</Text>
+            <View style={styles.statusContainer}>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: enabled ? colors.success : colors.textSecondary },
+                ]}
+              />
+              <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+                {enabled ? 'Actif' : 'Inactif'}
+                {bypassed && ' (Bypass)'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[styles.iconButton, { backgroundColor: colors.surface }]}
+              onPress={() => setShowHelp(!showHelp)}
+              accessibilityLabel="Aide"
+            >
+              <HelpCircle size={18} color={colors.text} />
+            </TouchableOpacity>
+            {onClose && (
+              <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: colors.surface }]}
+                onPress={onClose}
+                accessibilityLabel="Fermer"
+              >
+                <X size={18} color={colors.text} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Message d'aide */}
+        {showHelp && (
+          <View
+            style={[
+              styles.helpBanner,
+              { backgroundColor: colors.primary + '20', borderLeftColor: colors.primary },
+            ]}
+          >
+            <Text style={[styles.helpText, { color: colors.primary }]}>{HELP_MESSAGES.gain}</Text>
+          </View>
+        )}
         {/* Contrôles principaux */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={styles.mainControls}>
@@ -220,15 +233,27 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
 
             <View style={styles.controlItem}>
               <TouchableOpacity
-                style={[styles.modeButton, { 
-                  backgroundColor: colors.primary + '20',
-                  borderColor: colors.primary,
-                }]}
+                style={[
+                  styles.modeButton,
+                  {
+                    backgroundColor: colors.primary + '20',
+                    borderColor: colors.primary,
+                  },
+                ]}
                 onPress={() => setViewMode(viewMode === 'bands' ? 'graph' : 'bands')}
+                accessibilityLabel={viewMode === 'bands' ? 'Passer au graphique' : 'Passer aux bandes'}
               >
-                <Text style={[styles.modeButtonText, { color: colors.primary }]}>
-                  {viewMode === 'bands' ? '📊 Graphique' : '🎚️ Bandes'}
-                </Text>
+                {viewMode === 'bands' ? (
+                  <View style={styles.modeContent}>
+                    <BarChart3 size={16} color={colors.primary} />
+                    <Text style={[styles.modeButtonText, { color: colors.primary }]}>Graphique</Text>
+                  </View>
+                ) : (
+                  <View style={styles.modeContent}>
+                    <Sliders size={16} color={colors.primary} />
+                    <Text style={[styles.modeButtonText, { color: colors.primary }]}>Bandes</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -254,127 +279,25 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
           <PresetManager
             currentPreset={currentPreset}
             presets={presets}
-            onSelectPreset={setPreset}
+            onSelectPreset={handlePresetSelect}
             onReset={resetAllBands}
             theme={colors}
-            disabled={!enabled || bypassed}
+            disabled={false}
           />
         </View>
 
         {/* Vue des bandes ou graphique */}
         {viewMode === 'bands' ? (
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <View style={styles.bandModeSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.bandModeButton,
-                  bandMode === 'simple' && styles.bandModeButtonActive,
-                  { borderColor: colors.border }
-                ]}
-                onPress={() => handleBandModeChange('simple')}
-              >
-                <Text style={[
-                  styles.bandModeButtonText,
-                  { color: bandMode === 'simple' ? colors.primary : colors.textSecondary }
-                ]}>
-                  Simple (10 bandes)
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.bandModeButton,
-                  bandMode === 'professional' && styles.bandModeButtonActive,
-                  { borderColor: colors.border }
-                ]}
-                onPress={() => handleBandModeChange('professional')}
-              >
-                <Text style={[
-                  styles.bandModeButtonText,
-                  { color: bandMode === 'professional' ? colors.primary : colors.textSecondary }
-                ]}>
-                  Pro (31 bandes)
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Bandes de fréquences groupées */}
-            <View style={styles.bandsContainer}>
-              {/* Basses */}
-              <View style={styles.bandGroup}>
-                <Text style={[styles.bandGroupTitle, { color: colors.textSecondary }]}>
-                  BASSES
-                </Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.bandGroupContent}
-                >
-                  {groupedBands.bass.map(band => (
-                    <FrequencyBandSlider
-                      key={band.id}
-                      band={band}
-                      magnitude={spectrumData?.magnitudes[band.index] || 0}
-                      onGainChange={handleBandGainChange}
-                      onSolo={() => handleBandSolo(band.id)}
-                      isSoloed={soloedBand === band.id}
-                      disabled={!enabled || bypassed}
-                      theme={colors}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Médiums */}
-              <View style={styles.bandGroup}>
-                <Text style={[styles.bandGroupTitle, { color: colors.textSecondary }]}>
-                  MÉDIUMS
-                </Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.bandGroupContent}
-                >
-                  {groupedBands.midrange.map(band => (
-                    <FrequencyBandSlider
-                      key={band.id}
-                      band={band}
-                      magnitude={spectrumData?.magnitudes[band.index] || 0}
-                      onGainChange={handleBandGainChange}
-                      onSolo={() => handleBandSolo(band.id)}
-                      isSoloed={soloedBand === band.id}
-                      disabled={!enabled || bypassed}
-                      theme={colors}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Aigus */}
-              <View style={styles.bandGroup}>
-                <Text style={[styles.bandGroupTitle, { color: colors.textSecondary }]}>
-                  AIGUS
-                </Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.bandGroupContent}
-                >
-                  {groupedBands.treble.map(band => (
-                    <FrequencyBandSlider
-                      key={band.id}
-                      band={band}
-                      magnitude={spectrumData?.magnitudes[band.index] || 0}
-                      onGainChange={handleBandGainChange}
-                      onSolo={() => handleBandSolo(band.id)}
-                      isSoloed={soloedBand === band.id}
-                      disabled={!enabled || bypassed}
-                      theme={colors}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}> 
+            <TenBandSliderRow
+              bands={bands}
+              spectrumData={spectrumData}
+              soloedBandId={soloedBand}
+              disabled={bypassed}
+              theme={colors}
+              onGainChange={handleBandGainChange}
+              onSolo={handleBandSolo}
+            />
           </View>
         ) : (
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -397,17 +320,20 @@ export const EqualiserMain: React.FC<EqualiserMainProps> = ({
               onExport={handleExport}
               onImport={() => setShowConfig(true)}
               theme={colors}
-              disabled={!enabled}
+              disabled={false}
             />
           </View>
         )}
 
         {/* Message d'erreur */}
         {error && (
-          <View style={[styles.errorBanner, { backgroundColor: colors.danger + '20' }]}>
-            <Text style={[styles.errorText, { color: colors.danger }]}>
-              ⚠️ {error.message}
-            </Text>
+          <View
+            style={[
+              styles.errorBanner,
+              { backgroundColor: colors.danger + '20', borderLeftColor: colors.danger },
+            ]}
+          >
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error.message}</Text>
           </View>
         )}
       </Animated.ScrollView>
@@ -485,6 +411,7 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 12,
     borderRadius: 8,
+    borderLeftWidth: 3,
   },
   helpText: {
     fontSize: 14,
@@ -533,6 +460,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
+  modeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   modeButtonText: {
     fontSize: 14,
     fontWeight: '600',
@@ -543,21 +475,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  bandModeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  bandModeButtonActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
-  bandModeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bandsContainer: {
-    gap: 20,
+  // Styles legacy band mode supprimés
+  singleRowContent: {
+    paddingHorizontal: 4,
+    gap: 8,
   },
   bandGroup: {
     marginBottom: 16,
@@ -577,6 +498,7 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 12,
     borderRadius: 8,
+    borderLeftWidth: 3,
   },
   errorText: {
     fontSize: 14,

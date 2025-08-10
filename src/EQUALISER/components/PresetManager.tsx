@@ -46,6 +46,9 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  
+  // Calculer l'opacité basée sur l'état disabled
+  const opacityValue = disabled ? 0.5 : 1;
 
   // Filtrer les préréglages
   const filteredPresets = useMemo(() => {
@@ -62,7 +65,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
       filtered = filtered.filter(p => 
         p.name.toLowerCase().includes(query) ||
         p.description.toLowerCase().includes(query) ||
-        p.tags?.some(tag => tag.toLowerCase().includes(query))
+        p.metadata?.tags?.some(tag => tag.toLowerCase().includes(query))
       );
     }
 
@@ -109,7 +112,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
           <TouchableOpacity
             style={[styles.resetButton, { 
               backgroundColor: theme.danger + '20',
-              opacity: disabled ? 0.5 : 1,
+              opacity: opacityValue,
             }]}
             onPress={handleReset}
             disabled={disabled}
@@ -145,6 +148,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
         horizontal 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoriesContainer}
+        keyboardShouldPersistTaps="always"
       >
         {CATEGORIES.map(category => (
           <TouchableOpacity
@@ -175,10 +179,8 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
       </ScrollView>
 
       {/* Liste des préréglages */}
-      <ScrollView 
+      <View 
         style={styles.presetsList}
-        contentContainerStyle={styles.presetsContent}
-        showsVerticalScrollIndicator={false}
       >
         {filteredPresets.length === 0 ? (
           <View style={styles.emptyState}>
@@ -187,7 +189,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
             </Text>
           </View>
         ) : (
-          <View style={styles.presetsGrid}>
+          <View pointerEvents="box-none" style={styles.presetsGrid}>
             {filteredPresets.map(preset => (
               <TouchableOpacity
                 key={preset.id}
@@ -201,10 +203,12 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
                     borderColor: currentPreset === preset.id
                       ? theme.primary
                       : theme.border,
-                    opacity: disabled ? 0.5 : 1,
+                    opacity: opacityValue,
                   },
                 ]}
                 onPress={() => handlePresetSelect(preset.id)}
+                activeOpacity={0.8}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 disabled={disabled}
               >
                 <View style={styles.presetHeader}>
@@ -237,13 +241,13 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
                     <View
                       key={index}
                       style={[
-                        styles.previewBar,
-                        {
-                          backgroundColor: gain > 0 ? theme.primary : theme.secondary,
-                          height: Math.abs(gain) * 2 + 2,
-                          opacity: 0.8,
-                        },
-                      ]}
+                          styles.previewBar,
+                          {
+                            backgroundColor: gain > 0 ? theme.primary : theme.secondary,
+                            height: Math.abs(gain) * 2 + 2,
+                            opacity: 0.8 as const,
+                          },
+                        ]}
                     />
                   ))}
                 </View>
@@ -251,14 +255,14 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
             ))}
           </View>
         )}
-      </ScrollView>
+      </View>
 
       {/* Bouton pour créer un préréglage personnalisé */}
       {onCreateCustom && (
         <TouchableOpacity
           style={[styles.createButton, { 
             backgroundColor: theme.primary,
-            opacity: disabled ? 0.5 : 1,
+            opacity: opacityValue,
           }]}
           onPress={() => {
             // TODO: Implémenter la création de préréglage

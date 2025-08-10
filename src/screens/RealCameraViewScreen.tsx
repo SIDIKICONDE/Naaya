@@ -12,13 +12,13 @@ import {
   Text,
   View
 } from 'react-native';
-import GridOverlay from 'system@components/GridOverlay';
-import type { NativeCameraRef } from 'system@components/NativeCamera';
-import { NativeCamera } from 'system@components/NativeCamera';
 import { NativeCameraEngine } from '../camera';
 import { RecordingBar } from '../camera/components/AdvancedCameraControls/components/RecordingBar';
 import { ThreeDotsMenu } from '../camera/components/AdvancedCameraControls/components/ThreeDotsMenu';
 import type { FlashMode, RecordingState, ThemeConfig } from '../camera/components/AdvancedCameraControls/types';
+import { GridOverlay } from '../camera/components/GridOverlay';
+import type { NativeCameraRef } from '../camera/components/NativeCamera';
+import { NativeCamera } from '../camera/components/NativeCamera';
 import type { AdvancedRecordingOptions } from '../camera/components/VideoControl/types';
 import { useNativeCamera } from '../camera/hooks/useNativeCamera';
 

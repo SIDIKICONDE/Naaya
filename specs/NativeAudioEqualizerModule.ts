@@ -4,6 +4,8 @@ export interface Spec extends TurboModule {
   // Contrôle de l'égaliseur
   readonly setEQEnabled: (enabled: boolean) => void;
   readonly getEQEnabled: () => boolean;
+  readonly setMasterGain: (gainDb: number) => void;
+  readonly getMasterGain: () => number;
   
   // Gestion des bandes de fréquence
   readonly setBandGain: (bandIndex: number, gain: number) => void;

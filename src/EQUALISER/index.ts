@@ -2,12 +2,14 @@
  * Point d'entrée principal pour l'égaliseur professionnel
  */
 
-// Composants
-export {
-  ConfigurationModal, EqualiserControls, EqualiserMain,
-  FrequencyBandSlider, FrequencyResponseGraph, PresetManager,
-  SpectrumAnalyser
-} from './components';
+// Composants (export individuels pour éviter les cycles)
+export { ConfigurationModal } from './components/ConfigurationModal';
+export { EqualiserControls } from './components/EqualiserControls';
+export { EqualiserMain } from './components/EqualiserMain';
+export { FrequencyBandSlider } from './components/FrequencyBandSlider';
+export { FrequencyResponseGraph } from './components/FrequencyResponseGraph';
+export { PresetManager } from './components/PresetManager';
+export { SpectrumAnalyser } from './components/SpectrumAnalyser';
 
 // Hooks
 export {
@@ -25,6 +27,6 @@ export type {
 
 // Constantes
 export {
-  EQUALISER_LIMITS, EQUALISER_THEMES, HELP_MESSAGES, PROFESSIONAL_FREQUENCY_BANDS, PROFESSIONAL_PRESETS, SIMPLE_FREQUENCY_BANDS
+  EQUALISER_LIMITS, EQUALISER_THEMES, HELP_MESSAGES, PROFESSIONAL_PRESETS, SIMPLE_FREQUENCY_BANDS
 } from './constants';
 
