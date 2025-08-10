@@ -16,7 +16,7 @@ import type { FilterPresetsProps } from '../types';
 export const FilterPresets: React.FC<FilterPresetsProps> = memo(({ 
   onPresetSelect, 
   disabled 
-}) => {
+}: FilterPresetsProps) => {
   return (
     <View style={styles.presetsContainer}>
       <ScrollView 

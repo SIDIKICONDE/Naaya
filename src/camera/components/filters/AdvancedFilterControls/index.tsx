@@ -3,7 +3,7 @@
  * Pour les filtres de type COLOR_CONTROLS et personnalisés
  */
 
-import React, { memo, useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import type { AdvancedFilterParams } from '../../../../../specs/NativeCameraFiltersModule';
 import { FilterPresets } from './components/FilterPresets';
@@ -196,8 +196,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
             step={0.01}
             unit=""
             color="#FFD700"
-            onValueChange={(value) => handleParameterChange('brightness', value)}
-            onSlidingComplete={(value) => handleParameterComplete('brightness', value)}
+            onValueChange={(value: number) => handleParameterChange('brightness', value)}
+            onSlidingComplete={(value: number) => handleParameterComplete('brightness', value)}
             disabled={disabled}
           />
           <ParameterControl
@@ -208,8 +208,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
             step={0.01}
             unit=""
             color="#FF6B6B"
-            onValueChange={(value) => handleParameterChange('contrast', value)}
-            onSlidingComplete={(value) => handleParameterComplete('contrast', value)}
+            onValueChange={(value: number) => handleParameterChange('contrast', value)}
+            onSlidingComplete={(value: number) => handleParameterComplete('contrast', value)}
             disabled={disabled}
           />
         </ParameterSection>
@@ -227,8 +227,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
             step={0.01}
             unit=""
             color="#4ECDC4"
-            onValueChange={(value) => handleParameterChange('saturation', value)}
-            onSlidingComplete={(value) => handleParameterComplete('saturation', value)}
+            onValueChange={(value: number) => handleParameterChange('saturation', value)}
+            onSlidingComplete={(value: number) => handleParameterComplete('saturation', value)}
             disabled={disabled}
           />
           <ParameterControl
@@ -239,8 +239,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
             step={0.01}
             unit=""
             color="#9B59B6"
-            onValueChange={(value) => handleParameterChange('hue', value)}
-            onSlidingComplete={(value) => handleParameterComplete('hue', value)}
+            onValueChange={(value: number) => handleParameterChange('hue', value)}
+            onSlidingComplete={(value: number) => handleParameterComplete('hue', value)}
             disabled={disabled}
           />
         </ParameterSection>
@@ -258,8 +258,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
             step={0.01}
             unit=""
             color="#2C3E50"
-            onValueChange={(value) => handleParameterChange('shadows', value)}
-            onSlidingComplete={(value) => handleParameterComplete('shadows', value)}
+            onValueChange={(value: number) => handleParameterChange('shadows', value)}
+            onSlidingComplete={(value: number) => handleParameterComplete('shadows', value)}
             disabled={disabled}
           />
           <ParameterControl
@@ -270,8 +270,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
             step={0.01}
             unit=""
             color="#F1C40F"
-            onValueChange={(value) => handleParameterChange('highlights', value)}
-            onSlidingComplete={(value) => handleParameterComplete('highlights', value)}
+            onValueChange={(value: number) => handleParameterChange('highlights', value)}
+            onSlidingComplete={(value: number) => handleParameterComplete('highlights', value)}
             disabled={disabled}
           />
         </ParameterSection>

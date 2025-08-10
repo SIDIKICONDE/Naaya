@@ -3,7 +3,7 @@ export * from './constants';
 export * from './hooks';
 export { TeleprompterControls } from './TeleprompterControls';
 export { TeleprompterView } from './TeleprompterView';
-export { TeleprompterPlayer } from './TeleprompterPlayer';
-export { TeleprompterPlayer as Teleprompter } from './TeleprompterPlayer';
+export { default as TeleprompterPlayer } from './TeleprompterPlayer';
+export { default as Teleprompter } from './TeleprompterPlayer';
 
 

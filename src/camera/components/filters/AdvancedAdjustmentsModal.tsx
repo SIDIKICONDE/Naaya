@@ -78,7 +78,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                     <Text style={styles.sliderLabel}>Teinte</Text>
                     <CustomSlider
                       value={hslHue[c]}
-                      onValueChange={(v) => setHslHue((s) => ({ ...s, [c]: Math.round(v) }))}
+                      onValueChange={(v: number) => setHslHue((s) => ({ ...s, [c]: Math.round(v) }))}
                       minimumValue={-100}
                       maximumValue={100}
                       width={200}
@@ -89,14 +89,14 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                       thumbColor="#FFF"
                       accentColor="#9B59B6"
                       showValue
-                      valueFormatter={(v) => `${Math.round(v)}`}
+                      valueFormatter={(v: number) => `${Math.round(v)}`}
                     />
                   </View>
                   <View style={styles.sliderContainer}>
                     <Text style={styles.sliderLabel}>Saturation</Text>
                     <CustomSlider
                       value={hslSaturation[c]}
-                      onValueChange={(v) => setHslSaturation((s) => ({ ...s, [c]: Math.round(v) }))}
+                      onValueChange={(v: number) => setHslSaturation((s) => ({ ...s, [c]: Math.round(v) }))}
                       minimumValue={-100}
                       maximumValue={100}
                       width={200}
@@ -107,14 +107,14 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                       thumbColor="#FFF"
                       accentColor="#2ECC71"
                       showValue
-                      valueFormatter={(v) => `${Math.round(v)}`}
+                      valueFormatter={(v: number) => `${Math.round(v)}`}
                     />
                   </View>
                   <View style={styles.sliderContainer}>
                     <Text style={styles.sliderLabel}>Luminance</Text>
                     <CustomSlider
                       value={hslLuminance[c]}
-                      onValueChange={(v) => setHslLuminance((s) => ({ ...s, [c]: Math.round(v) }))}
+                      onValueChange={(v: number) => setHslLuminance((s) => ({ ...s, [c]: Math.round(v) }))}
                       minimumValue={-100}
                       maximumValue={100}
                       width={200}
@@ -125,7 +125,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                       thumbColor="#FFF"
                       accentColor="#F1C40F"
                       showValue
-                      valueFormatter={(v) => `${Math.round(v)}`}
+                      valueFormatter={(v: number) => `${Math.round(v)}`}
                     />
                   </View>
                 </View>
@@ -133,9 +133,9 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
             ))}
 
             <Text style={styles.sectionTitle}>ToneCurve</Text>
-            <CustomSlider value={tcMid1} onValueChange={setTcMid1} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v)=>`P2 Y ${Math.round(v)}`}/>
-            <CustomSlider value={tcMid2} onValueChange={setTcMid2} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v)=>`P3 Y ${Math.round(v)}`}/>
-            <CustomSlider value={tcMid3} onValueChange={setTcMid3} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v)=>`P4 Y ${Math.round(v)}`}/>
+            <CustomSlider value={tcMid1} onValueChange={setTcMid1} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v: number)=>`P2 Y ${Math.round(v)}`}/>
+            <CustomSlider value={tcMid2} onValueChange={setTcMid2} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v: number)=>`P3 Y ${Math.round(v)}`}/>
+            <CustomSlider value={tcMid3} onValueChange={setTcMid3} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v: number)=>`P4 Y ${Math.round(v)}`}/>
 
             <Text style={styles.sectionTitle}>Split Toning</Text>
             <View style={styles.splitToningBlock}>
@@ -156,7 +156,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                     thumbColor="#FFF" 
                     accentColor="#9B59B6" 
                     showValue 
-                    valueFormatter={(v) => `${Math.round(v)}°`}
+                    valueFormatter={(v: number) => `${Math.round(v)}°`}
                   />
                 </View>
                 <View style={styles.sliderContainer}>
@@ -174,7 +174,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                     thumbColor="#FFF" 
                     accentColor="#2ECC71" 
                     showValue 
-                    valueFormatter={(v) => `${Math.round(v)}%`}
+                    valueFormatter={(v: number) => `${Math.round(v)}%`}
                   />
                 </View>
               </View>
@@ -196,7 +196,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                     thumbColor="#FFF" 
                     accentColor="#9B59B6" 
                     showValue 
-                    valueFormatter={(v) => `${Math.round(v)}°`}
+                    valueFormatter={(v: number) => `${Math.round(v)}°`}
                   />
                 </View>
                 <View style={styles.sliderContainer}>
@@ -214,7 +214,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                     thumbColor="#FFF" 
                     accentColor="#2ECC71" 
                     showValue 
-                    valueFormatter={(v) => `${Math.round(v)}%`}
+                    valueFormatter={(v: number) => `${Math.round(v)}%`}
                   />
                 </View>
               </View>
@@ -236,7 +236,7 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
                     thumbColor="#FFF" 
                     accentColor="#F39C12" 
                     showValue 
-                    valueFormatter={(v) => `${Math.round(v)}`}
+                    valueFormatter={(v: number) => `${Math.round(v)}`}
                   />
                 </View>
               </View>
@@ -266,15 +266,15 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 12, fontWeight: '700', marginTop: 8, marginBottom: 4 },
   channelBlock: { marginBottom: 16, padding: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 },
   channelTitle: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
-  sliderGroup: { gap: 8 },
+  sliderGroup: { marginBottom: 8 },
   sliderContainer: { marginBottom: 6 },
   sliderLabel: { color: '#ccc', fontSize: 11, marginBottom: 4, fontWeight: '500' },
   splitToningBlock: { marginTop: 8, padding: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 },
   splitSection: { marginBottom: 16, padding: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6 },
   splitSectionTitle: { color: '#fff', fontSize: 13, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
   balanceSection: { padding: 10, backgroundColor: 'rgba(243,156,18,0.1)', borderRadius: 6 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 10 },
-  btn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
+  btn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, marginLeft: 12 },
   cancel: { backgroundColor: '#333' },
   apply: { backgroundColor: '#007AFF' },
   btnText: { color: '#fff', fontWeight: '600' },

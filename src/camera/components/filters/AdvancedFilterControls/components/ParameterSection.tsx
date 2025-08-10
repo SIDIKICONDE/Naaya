@@ -15,17 +15,17 @@ export const ParameterSection: React.FC<ParameterSectionProps> = memo(({
   title, 
   children, 
   expanded = true, 
-  onToggleExpanded 
+  onToggle 
 }) => {
   return (
     <View style={styles.sectionContainer}>
       <TouchableOpacity
         style={styles.sectionHeader}
-        onPress={onToggleExpanded}
-        disabled={!onToggleExpanded}
+        onPress={onToggle}
+        disabled={!onToggle}
       >
         <Text style={styles.sectionTitle}>{title}</Text>
-        {onToggleExpanded && (
+        {onToggle && (
           <Text style={styles.sectionToggle}>
             {expanded ? '▼' : '▶'}
           </Text>

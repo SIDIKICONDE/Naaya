@@ -4,9 +4,6 @@
   "terminal.integrated.fontSize": 13,
   "debug.console.fontSize": 13,
   
-  // Configuration de la police
-  "editor.fontFamily": "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
-  "terminal.integrated.fontFamily": "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
   
   // Configuration de l'espacement des lignes
   "editor.lineHeight": 1.5,

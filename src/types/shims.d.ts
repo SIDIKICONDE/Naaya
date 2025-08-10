@@ -1,22 +1,6 @@
 // Déclarations minimales pour corriger la résolution de types en attendant les types complets
 
-// Shim minimal pour 'react-native' si les types ne sont pas résolus dans l'environnement de test
-declare module 'react-native' {
-  export const Platform: { OS: 'ios' | 'android' | 'web' | 'windows' | 'macos'; select: (obj: any) => any };
-  export const Dimensions: { get: (what: 'window' | 'screen') => { width: number; height: number; scale?: number; fontScale?: number } };
-  export const PermissionsAndroid: {
-    request: (permission: string, rationale?: any) => Promise<string>;
-    RESULTS: { GRANTED: string; DENIED: string; NEVER_ASK_AGAIN: string };
-    PERMISSIONS: { RECORD_AUDIO: string };
-  };
-  // Composants utilisés (stubs any)
-  export const ActivityIndicator: any;
-  export const Alert: { alert: (title: string, message?: string, buttons?: any[]) => void };
-  export const SafeAreaView: any;
-  export const StyleSheet: { create: (styles: any) => any; absoluteFillObject: any };
-  export const Text: any;
-  export const View: any;
-}
+// Types personnalisés pour les modules externes
 
 declare module '@react-native-community/slider' {
   import * as React from 'react';
@@ -153,6 +137,24 @@ declare module 'react-native-gesture-handler' {
     anchorX?: number;
     anchorY?: number;
   };
+}
+
+// Déclaration de types pour react-native-linear-gradient
+declare module 'react-native-linear-gradient' {
+  import * as React from 'react';
+  import { ViewProps } from 'react-native';
+  
+  export interface LinearGradientProps extends ViewProps {
+    colors: string[];
+    start?: { x: number; y: number };
+    end?: { x: number; y: number };
+    locations?: number[];
+    useAngle?: boolean;
+    angle?: number;
+    angleCenter?: { x: number; y: number };
+  }
+  
+  export default class LinearGradient extends React.Component<LinearGradientProps> {}
 }
 
 

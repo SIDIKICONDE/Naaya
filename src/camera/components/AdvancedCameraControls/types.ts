@@ -11,6 +11,12 @@ export type InterfaceMode = 'minimal' | 'standard' | 'pro';
 export type LayoutOrientation = 'portrait' | 'landscape';
 export type GestureType = 'tap' | 'double-tap' | 'long-press' | 'swipe' | 'pinch';
 
+// Types de base pour les gestes
+export type GesturePoint = { x: number; y: number };
+export type SwipeDirection = 'up' | 'down' | 'left' | 'right';
+export type GestureVelocity = number;
+export type PinchScale = number;
+
 // Configuration du thème
 export interface ThemeConfig {
   isDark: boolean;
@@ -108,7 +114,7 @@ export interface AdvancedCameraControlsProps {
   onClearFilter?: () => Promise<boolean>;
   
   // Gestes
-  onGesture?: (type: GestureType, data: any) => void;
+  onGesture?: (type: GestureType, data: GesturePoint | { direction: SwipeDirection; velocity: GestureVelocity } | { scale: PinchScale; velocity: GestureVelocity }) => void;
   
   // Style
   style?: any;
@@ -142,11 +148,11 @@ export interface SlidePanelProps {
 
 // Props pour la zone de gestes
 export interface GestureAreaProps {
-  onTap?: (point: { x: number; y: number }) => void;
-  onDoubleTap?: (point: { x: number; y: number }) => void;
-  onLongPress?: (point: { x: number; y: number }) => void;
-  onSwipe?: (direction: 'up' | 'down' | 'left' | 'right', velocity: number) => void;
-  onPinch?: (scale: number, velocity: number) => void;
+  onTap?: (point: GesturePoint) => void;
+  onDoubleTap?: (point: GesturePoint) => void;
+  onLongPress?: (point: GesturePoint) => void;
+  onSwipe?: (direction: SwipeDirection, velocity: GestureVelocity) => void;
+  onPinch?: (scale: PinchScale, velocity: GestureVelocity) => void;
   disabled?: boolean;
   children?: React.ReactNode;
   style?: any;

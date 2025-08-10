@@ -447,6 +447,17 @@ protected:
   bool stopRecordingPlatform() override { return true; }
   bool isRecordingPlatform() const override { return false; }
 
+  // Contrôle du timer (implémentation iOS)
+  bool setTimerPlatform(int seconds) override {
+   
+    return seconds >= 0 && seconds <= 60; // Limite raisonnable pour iOS
+  }
+
+  int getTimerPlatform() const override {
+   
+    return 0; // Par défaut, pas de timer actif
+  }
+
 private:
   AVCaptureSession *captureSession_ = nil;
   AVCaptureDeviceInput *currentInput_ = nil;
@@ -557,6 +568,8 @@ std::unique_ptr<FlashController> CreateIOSFlashController() {
   };
   return std::make_unique<IOSFlashController>();
 }
+
+
 
 } // namespace Camera
 

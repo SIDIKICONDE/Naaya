@@ -111,3 +111,37 @@ void FlashController::reportError(const std::string& errorCode, const std::strin
 }
 
 } // namespace Camera
+
+// Implémentation par défaut de la plateforme et Factory
+namespace Camera {
+
+class DefaultFlashController : public FlashController {
+public:
+    DefaultFlashController() = default;
+    DefaultFlashController(const DefaultFlashController&) = delete;
+    DefaultFlashController& operator=(const DefaultFlashController&) = delete;
+    DefaultFlashController(DefaultFlashController&&) = delete;
+    DefaultFlashController& operator=(DefaultFlashController&&) = delete;
+
+protected:
+    bool initializePlatform() override { return true; }
+    void shutdownPlatform() override {}
+    bool hasFlashPlatform() const override { return true; }
+    bool setFlashModePlatform(FlashMode /*mode*/) override { return true; }
+    bool setTorchEnabledPlatform(bool /*enabled*/) override { return true; }
+    bool triggerFlashPlatform() override { return true; }
+    bool setFlashIntensityPlatform(double /*intensity*/) override { return true; }
+    double getFlashIntensityPlatform() const override { return 1.0; }
+    bool supportsVariableIntensityPlatform() const override { return true; }
+};
+
+std::unique_ptr<FlashController> FlashControllerFactory::create() {
+#if defined(__APPLE__)
+    // Fallback générique pour iOS pour le moment
+    return std::make_unique<DefaultFlashController>();
+#else
+    return std::make_unique<DefaultFlashController>();
+#endif
+}
+
+} // namespace Camera

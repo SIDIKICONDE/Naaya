@@ -13,10 +13,15 @@ import { useHaptics } from './hooks/useHaptics';
 import { ProLayout } from './layouts/ProLayout';
 import type {
   AdvancedCameraControlsProps,
+  FlashMode,
   GestureConfig,
+  GesturePoint,
   GestureType,
+  GestureVelocity,
   InterfaceMode,
+  PinchScale,
   RecordingMetadata,
+  SwipeDirection,
   ThemeConfig
 } from './types';
 
@@ -290,11 +295,11 @@ export const AdvancedCameraControls = memo<AdvancedCameraControlsProps>(({
     <View style={[StyleSheet.absoluteFillObject, style]} pointerEvents="box-none">
       {/* Zone de gestes */}
       <GestureArea
-        onTap={(point) => handleGesture('tap', { point })}
-        onDoubleTap={(point) => handleGesture('double-tap', { point })}
-        onLongPress={(point) => handleGesture('long-press', { point })}
-        onSwipe={(direction, velocity) => handleGesture('swipe', { direction, velocity })}
-        onPinch={(scale, velocity) => handleGesture('pinch', { scale, velocity })}
+        onTap={(point: GesturePoint) => handleGesture('tap', { point })}
+        onDoubleTap={(point: GesturePoint) => handleGesture('double-tap', { point })}
+        onLongPress={(point: GesturePoint) => handleGesture('long-press', { point })}
+        onSwipe={(direction: SwipeDirection, velocity: GestureVelocity) => handleGesture('swipe', { direction, velocity })}
+        onPinch={(scale: PinchScale, velocity: GestureVelocity) => handleGesture('pinch', { scale, velocity })}
         disabled={disabled}
         gestureConfig={currentGestureConfig}
         style={styles.gestureArea}
@@ -302,14 +307,12 @@ export const AdvancedCameraControls = memo<AdvancedCameraControlsProps>(({
         {/* Menu trois points */}
         <ThreeDotsMenu
           flashMode={flashMode}
-          onFlashModeChange={(mode) => {
+          onFlashModeChange={(mode: FlashMode) => {
             // Relayer à l'extérieur si fourni
             if (typeof onFlashPress === 'function') {
               onFlashPress();
             }
-            if (typeof (props as any).onFlashModeChange === 'function') {
-              (props as any).onFlashModeChange(mode);
-            }
+            // Note: onFlashModeChange est géré via onFlashPress
           }}
           onTimerChange={onTimerChange || (() => {})}
           timerSeconds={0}
@@ -317,7 +320,7 @@ export const AdvancedCameraControls = memo<AdvancedCameraControlsProps>(({
           onSettingsOpen={onSettingsOpen || (() => {})}
           position={isLandscape ? 'top-right' : 'bottom-right'} // Position footer pour compact
           theme={theme.isDark ? 'dark' : 'light'}
-          onAction={(action) => handleAction(action)}
+          onAction={(action: string) => handleAction(action)}
           cameraMode={cameraMode}
           currentFilter={currentFilter}
           onFilterChange={onFilterChange}
