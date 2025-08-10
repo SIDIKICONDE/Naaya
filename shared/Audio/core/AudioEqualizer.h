@@ -7,6 +7,14 @@
 #include <memory>
 #include <atomic>
 #include <mutex>
+#include <cstdint>
+
+// SIMD optimizations
+#ifdef __AVX2__
+#include <immintrin.h>
+#elif defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 
 namespace AudioEqualizer {
 

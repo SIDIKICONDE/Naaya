@@ -5,8 +5,44 @@
 #include <vector>
 #include <unordered_map>
 #include <mutex>
+#include <thread>
+#include <future>
+#include <queue>
+#include <condition_variable>
 
 namespace Camera {
+
+// Thread pool for parallel processing
+class ThreadPool {
+public:
+    ThreadPool(size_t numThreads = std::thread::hardware_concurrency());
+    ~ThreadPool();
+    
+    template<typename F>
+    auto enqueue(F&& f) -> std::future<decltype(f())> {
+        auto task = std::make_shared<std::packaged_task<decltype(f())()>>(
+            std::forward<F>(f)
+        );
+        
+        auto result = task->get_future();
+        {
+            std::unique_lock<std::mutex> lock(queueMutex_);
+            if (stop_) {
+                throw std::runtime_error("ThreadPool stopped");
+            }
+            tasks_.emplace([task](){ (*task)(); });
+        }
+        condition_.notify_one();
+        return result;
+    }
+    
+private:
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+    std::mutex queueMutex_;
+    std::condition_variable condition_;
+    bool stop_{false};
+};
 
 /**
  * Gestionnaire principal des filtres
@@ -37,9 +73,18 @@ public:
     bool processFrame(const void* inputData, size_t inputSize,
                      void* outputData, size_t outputSize);
     
+    // Traitement parallèle
+    bool processFrameParallel(const void* inputData, size_t inputSize,
+                             void* outputData, size_t outputSize);
+    
     // Configuration
     bool setInputFormat(const std::string& format, int width, int height);
     bool setOutputFormat(const std::string& format, int width, int height);
+    
+    // Configuration du parallélisme
+    void setParallelProcessing(bool enabled);
+    bool isParallelProcessingEnabled() const;
+    void setThreadPoolSize(size_t numThreads);
     
     // Informations
     bool isInitialized() const;
@@ -79,6 +124,14 @@ private:
     int inputHeight_{0};
     int outputWidth_{0};
     int outputHeight_{0};
+    
+    // Thread pool pour traitement parallèle
+    std::unique_ptr<ThreadPool> threadPool_;
+    bool parallelProcessingEnabled_{false};
+    size_t threadPoolSize_{4};
+    
+    // Buffers pour traitement parallèle
+    mutable std::vector<std::vector<uint8_t>> parallelBuffers_;
     
     // Méthodes privées
     bool findBestProcessor(const FilterState& filter, std::shared_ptr<IFilterProcessor>& processor);

@@ -132,32 +132,116 @@ void AudioEqualizer::processOptimized(const float* input, float* output, size_t 
         m_parametersChanged.store(false);
     }
     
-    // Process in blocks for better cache efficiency
-    size_t blockSize = std::min(numSamples, DEFAULT_BLOCK_SIZE);
+    // Optimisation: traiter par blocs plus grands pour améliorer la localité du cache
+    constexpr size_t OPTIMAL_BLOCK_SIZE = 1024;  // Augmenté pour meilleure efficacité cache
+    size_t blockSize = std::min(numSamples, OPTIMAL_BLOCK_SIZE);
     size_t processedSamples = 0;
+    
+    // Pré-calculer les filtres actifs pour éviter les vérifications répétées
+    std::vector<const EQBand*> activeBands;
+    activeBands.reserve(m_bands.size());
+    for (const auto& band : m_bands) {
+        if (band.enabled && std::abs(band.gain) > 0.01) {
+            activeBands.push_back(&band);
+        }
+    }
+    
+    // Si aucun filtre actif, appliquer seulement le gain master
+    if (activeBands.empty()) {
+        float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
+        if (std::abs(masterGainLinear - 1.0f) < 0.001f) {
+            // Pas de traitement nécessaire, copie directe
+            if (output != input) {
+                std::memcpy(output, input, numSamples * sizeof(float));
+            }
+        } else {
+            // Appliquer seulement le gain master avec SIMD
+            #ifdef __AVX2__
+            const __m256 gain = _mm256_set1_ps(masterGainLinear);
+            size_t simdSamples = numSamples & ~7;
+            
+            for (size_t i = 0; i < simdSamples; i += 8) {
+                __m256 data = _mm256_loadu_ps(input + i);
+                data = _mm256_mul_ps(data, gain);
+                _mm256_storeu_ps(output + i, data);
+            }
+            
+            // Traiter les échantillons restants
+            for (size_t i = simdSamples; i < numSamples; ++i) {
+                output[i] = input[i] * masterGainLinear;
+            }
+            #elif defined(__SSE2__)
+            const __m128 gain = _mm_set1_ps(masterGainLinear);
+            size_t simdSamples = numSamples & ~3;
+            
+            for (size_t i = 0; i < simdSamples; i += 4) {
+                __m128 data = _mm_loadu_ps(input + i);
+                data = _mm_mul_ps(data, gain);
+                _mm_storeu_ps(output + i, data);
+            }
+            
+            // Traiter les échantillons restants
+            for (size_t i = simdSamples; i < numSamples; ++i) {
+                output[i] = input[i] * masterGainLinear;
+            }
+            #else
+            for (size_t i = 0; i < numSamples; ++i) {
+                output[i] = input[i] * masterGainLinear;
+            }
+            #endif
+        }
+        return;
+    }
     
     while (processedSamples < numSamples) {
         size_t samplesToProcess = std::min(blockSize, numSamples - processedSamples);
         const float* blockInput = input + processedSamples;
         float* blockOutput = output + processedSamples;
         
-        // Copy input to output for first filter
-        std::memcpy(blockOutput, blockInput, samplesToProcess * sizeof(float));
-        
-        // Apply each band's filter
-        for (const auto& band : m_bands) {
-            if (band.enabled && std::abs(band.gain) > 0.01) {
-                // Process in-place
-                band.filter->process(blockOutput, blockOutput, samplesToProcess);
-            }
+        // Copier l'entrée vers la sortie pour le premier filtre
+        if (blockOutput != blockInput) {
+            std::memcpy(blockOutput, blockInput, samplesToProcess * sizeof(float));
         }
         
-        // Apply master gain in-place (avoid extra buffer/copies)
+        // Appliquer chaque bande de filtre active
+        for (const auto* band : activeBands) {
+            band->filter->process(blockOutput, blockOutput, samplesToProcess);
+        }
+        
+        // Appliquer le gain master avec SIMD
         float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
         if (std::abs(masterGainLinear - 1.0f) > 0.001f) {
+            #ifdef __AVX2__
+            const __m256 gain = _mm256_set1_ps(masterGainLinear);
+            size_t simdSamples = samplesToProcess & ~7;
+            
+            for (size_t i = 0; i < simdSamples; i += 8) {
+                __m256 data = _mm256_loadu_ps(blockOutput + i);
+                data = _mm256_mul_ps(data, gain);
+                _mm256_storeu_ps(blockOutput + i, data);
+            }
+            
+            for (size_t i = simdSamples; i < samplesToProcess; ++i) {
+                blockOutput[i] *= masterGainLinear;
+            }
+            #elif defined(__SSE2__)
+            const __m128 gain = _mm_set1_ps(masterGainLinear);
+            size_t simdSamples = samplesToProcess & ~3;
+            
+            for (size_t i = 0; i < simdSamples; i += 4) {
+                __m128 data = _mm_loadu_ps(blockOutput + i);
+                data = _mm_mul_ps(data, gain);
+                _mm_storeu_ps(blockOutput + i, data);
+            }
+            
+            for (size_t i = simdSamples; i < samplesToProcess; ++i) {
+                blockOutput[i] *= masterGainLinear;
+            }
+            #else
             for (size_t i = 0; i < samplesToProcess; ++i) {
                 blockOutput[i] *= masterGainLinear;
             }
+            #endif
         }
         
         processedSamples += samplesToProcess;
@@ -167,9 +251,26 @@ void AudioEqualizer::processOptimized(const float* input, float* output, size_t 
 void AudioEqualizer::processStereo(const float* inputL, const float* inputR,
                                   float* outputL, float* outputR, size_t numSamples) {
     if (m_bypass.load()) {
-        // Bypass mode - just copy input to output
-        std::memcpy(outputL, inputL, numSamples * sizeof(float));
-        std::memcpy(outputR, inputR, numSamples * sizeof(float));
+        // Bypass mode - copie SIMD optimisée
+        if (outputL != inputL || outputR != inputR) {
+            #ifdef __AVX2__
+            size_t simdSamples = numSamples & ~7;
+            for (size_t i = 0; i < simdSamples; i += 8) {
+                __m256 dataL = _mm256_loadu_ps(inputL + i);
+                __m256 dataR = _mm256_loadu_ps(inputR + i);
+                _mm256_storeu_ps(outputL + i, dataL);
+                _mm256_storeu_ps(outputR + i, dataR);
+            }
+            // Copier les échantillons restants
+            for (size_t i = simdSamples; i < numSamples; ++i) {
+                outputL[i] = inputL[i];
+                outputR[i] = inputR[i];
+            }
+            #else
+            std::memcpy(outputL, inputL, numSamples * sizeof(float));
+            std::memcpy(outputR, inputR, numSamples * sizeof(float));
+            #endif
+        }
         return;
     }
     
@@ -180,9 +281,19 @@ void AudioEqualizer::processStereo(const float* inputL, const float* inputR,
         m_parametersChanged.store(false);
     }
     
-    // Process in blocks
-    size_t blockSize = std::min(numSamples, DEFAULT_BLOCK_SIZE);
+    // Optimisation: traiter par blocs plus grands
+    constexpr size_t OPTIMAL_BLOCK_SIZE = 1024;
+    size_t blockSize = std::min(numSamples, OPTIMAL_BLOCK_SIZE);
     size_t processedSamples = 0;
+    
+    // Pré-calculer les filtres actifs
+    std::vector<const EQBand*> activeBands;
+    activeBands.reserve(m_bands.size());
+    for (const auto& band : m_bands) {
+        if (band.enabled && std::abs(band.gain) > 0.01) {
+            activeBands.push_back(&band);
+        }
+    }
     
     while (processedSamples < numSamples) {
         size_t samplesToProcess = std::min(blockSize, numSamples - processedSamples);
@@ -191,25 +302,44 @@ void AudioEqualizer::processStereo(const float* inputL, const float* inputR,
         float* blockOutputL = outputL + processedSamples;
         float* blockOutputR = outputR + processedSamples;
         
-        // Copy input to output for first filter
-        std::memcpy(blockOutputL, blockInputL, samplesToProcess * sizeof(float));
-        std::memcpy(blockOutputR, blockInputR, samplesToProcess * sizeof(float));
-        
-        // Apply each band's filter
-        for (const auto& band : m_bands) {
-            if (band.enabled && std::abs(band.gain) > 0.01) {
-                band.filter->processStereo(blockOutputL, blockOutputR,
-                                          blockOutputL, blockOutputR, samplesToProcess);
-            }
+        // Copier l'entrée vers la sortie
+        if (blockOutputL != blockInputL || blockOutputR != blockInputR) {
+            std::memcpy(blockOutputL, blockInputL, samplesToProcess * sizeof(float));
+            std::memcpy(blockOutputR, blockInputR, samplesToProcess * sizeof(float));
         }
         
-        // Apply master gain in-place (avoid extra buffer/copies)
+        // Appliquer chaque bande de filtre active
+        for (const auto* band : activeBands) {
+            band->filter->processStereo(blockOutputL, blockOutputR,
+                                       blockOutputL, blockOutputR, samplesToProcess);
+        }
+        
+        // Appliquer le gain master avec SIMD pour les deux canaux
         float masterGainLinear = static_cast<float>(dbToLinear(m_masterGain.load()));
         if (std::abs(masterGainLinear - 1.0f) > 0.001f) {
+            #ifdef __AVX2__
+            const __m256 gain = _mm256_set1_ps(masterGainLinear);
+            size_t simdSamples = samplesToProcess & ~7;
+            
+            for (size_t i = 0; i < simdSamples; i += 8) {
+                __m256 dataL = _mm256_loadu_ps(blockOutputL + i);
+                __m256 dataR = _mm256_loadu_ps(blockOutputR + i);
+                dataL = _mm256_mul_ps(dataL, gain);
+                dataR = _mm256_mul_ps(dataR, gain);
+                _mm256_storeu_ps(blockOutputL + i, dataL);
+                _mm256_storeu_ps(blockOutputR + i, dataR);
+            }
+            
+            for (size_t i = simdSamples; i < samplesToProcess; ++i) {
+                blockOutputL[i] *= masterGainLinear;
+                blockOutputR[i] *= masterGainLinear;
+            }
+            #else
             for (size_t i = 0; i < samplesToProcess; ++i) {
                 blockOutputL[i] *= masterGainLinear;
                 blockOutputR[i] *= masterGainLinear;
             }
+            #endif
         }
         
         processedSamples += samplesToProcess;

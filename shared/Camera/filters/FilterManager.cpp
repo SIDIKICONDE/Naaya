@@ -2,11 +2,50 @@
 #include <iostream>
 #include <algorithm>
 #include <cstring>
+#include <thread>
+#include <future>
+#include <immintrin.h>
 
 namespace Camera {
 
+// ThreadPool implementation
+ThreadPool::ThreadPool(size_t numThreads) {
+    for (size_t i = 0; i < numThreads; ++i) {
+        workers_.emplace_back([this] {
+            while (true) {
+                std::function<void()> task;
+                {
+                    std::unique_lock<std::mutex> lock(queueMutex_);
+                    condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                    if (stop_ && tasks_.empty()) {
+                        return;
+                    }
+                    task = std::move(tasks_.front());
+                    tasks_.pop();
+                }
+                task();
+            }
+        });
+    }
+}
+
+ThreadPool::~ThreadPool() {
+    {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        stop_ = true;
+    }
+    condition_.notify_all();
+    for (std::thread& worker : workers_) {
+        worker.join();
+    }
+}
+
 FilterManager::FilterManager() {
     std::cout << "[FilterManager] Construction" << std::endl;
+    // Initialiser le thread pool avec le nombre optimal de threads
+    size_t numThreads = std::min(std::thread::hardware_concurrency(), 8u);
+    threadPool_ = std::make_unique<ThreadPool>(numThreads);
+    parallelBuffers_.resize(numThreads);
 }
 
 FilterManager::~FilterManager() {
@@ -202,9 +241,24 @@ bool FilterManager::processFrame(const void* inputData, size_t inputSize,
     }
     
     if (activeFilters_.empty()) {
-        // Pas de filtres actifs, copier directement
+        // Pas de filtres actifs, copier directement avec SIMD si possible
         if (inputSize <= outputSize) {
+            // Utiliser memcpy optimisé ou copie SIMD
+            #ifdef __AVX2__
+            const size_t simdSize = inputSize & ~31;  // Align to 32 bytes for AVX2
+            const uint8_t* src = static_cast<const uint8_t*>(inputData);
+            uint8_t* dst = static_cast<uint8_t*>(outputData);
+            
+            for (size_t i = 0; i < simdSize; i += 32) {
+                __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(src + i));
+                _mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + i), data);
+            }
+            
+            // Copy remaining bytes
+            std::memcpy(dst + simdSize, src + simdSize, inputSize - simdSize);
+            #else
             std::memcpy(outputData, inputData, inputSize);
+            #endif
             return true;
         } else {
             setLastError("Taille de sortie insuffisante");
@@ -212,46 +266,183 @@ bool FilterManager::processFrame(const void* inputData, size_t inputSize,
         }
     }
     
-    // Traiter chaque filtre en séquence
+    // Optimisation: réutiliser les buffers temporaires
+    static thread_local std::vector<uint8_t> tempBuffer1;
+    static thread_local std::vector<uint8_t> tempBuffer2;
+    
+    // Préallouer les buffers si nécessaire
+    if (tempBuffer1.size() < inputSize) {
+        tempBuffer1.resize(inputSize * 2);  // Prévoir de la marge
+    }
+    if (tempBuffer2.size() < inputSize) {
+        tempBuffer2.resize(inputSize * 2);
+    }
+    
+    // Utiliser double buffering pour éviter les copies
     void* currentInput = const_cast<void*>(inputData);
-    size_t currentInputSize = inputSize;
+    void* currentOutput = tempBuffer1.data();
+    size_t currentSize = inputSize;
+    bool useBuffer1 = true;
     
-    // Buffer temporaire pour le traitement en chaîne
-    std::vector<uint8_t> tempBuffer;
-    
-    for (const auto& filter : activeFilters_) {
+    // Traiter chaque filtre avec double buffering
+    for (size_t i = 0; i < activeFilters_.size(); ++i) {
+        const auto& filter = activeFilters_[i];
         std::shared_ptr<IFilterProcessor> processor;
+        
         if (!findBestProcessor(filter, processor)) {
             setLastError("Aucun processeur pour le filtre: " + std::to_string(static_cast<int>(filter.type)));
             return false;
         }
         
-        // Déterminer la taille de sortie nécessaire
-        size_t requiredOutputSize = currentInputSize; // Simplification
-        if (tempBuffer.size() < requiredOutputSize) {
-            tempBuffer.resize(requiredOutputSize);
+        // Dernier filtre: écrire directement dans outputData
+        if (i == activeFilters_.size() - 1) {
+            currentOutput = outputData;
+        } else {
+            // Alterner entre les buffers
+            currentOutput = useBuffer1 ? tempBuffer2.data() : tempBuffer1.data();
         }
         
         // Appliquer le filtre
-        if (!processor->applyFilter(filter, currentInput, currentInputSize, 
-                                  tempBuffer.data(), tempBuffer.size())) {
+        if (!processor->applyFilter(filter, currentInput, currentSize, 
+                                  currentOutput, outputSize)) {
             setLastError("Échec d'application du filtre");
             return false;
         }
         
-        // Mettre à jour pour le prochain filtre
-        currentInput = tempBuffer.data();
-        currentInputSize = requiredOutputSize;
+        // Préparer pour le prochain filtre
+        currentInput = currentOutput;
+        currentSize = outputSize;  // Supposer que la taille reste constante
+        useBuffer1 = !useBuffer1;
     }
     
-    // Copier le résultat final
-    if (currentInputSize <= outputSize) {
-        std::memcpy(outputData, currentInput, currentInputSize);
-        return true;
-    } else {
-        setLastError("Taille de sortie finale insuffisante");
+    return true;
+}
+
+bool FilterManager::processFrameParallel(const void* inputData, size_t inputSize,
+                                        void* outputData, size_t outputSize) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (!initialized_) {
+        setLastError("FilterManager non initialisé");
         return false;
     }
+    
+    if (activeFilters_.empty()) {
+        // Pas de filtres actifs, utiliser processFrame standard
+        return processFrame(inputData, inputSize, outputData, outputSize);
+    }
+    
+    // Pour le traitement parallèle d'images, diviser l'image en bandes horizontales
+    if (inputHeight_ <= 0 || inputWidth_ <= 0) {
+        // Pas d'informations sur les dimensions, utiliser le traitement séquentiel
+        return processFrame(inputData, inputSize, outputData, outputSize);
+    }
+    
+    // Calculer la taille d'une ligne
+    size_t bytesPerPixel = inputSize / (inputHeight_ * inputWidth_);
+    size_t bytesPerRow = inputWidth_ * bytesPerPixel;
+    
+    // Diviser en bandes pour traitement parallèle
+    size_t numThreads = std::min(static_cast<size_t>(inputHeight_), threadPoolSize_);
+    size_t rowsPerThread = inputHeight_ / numThreads;
+    size_t remainingRows = inputHeight_ % numThreads;
+    
+    std::vector<std::future<bool>> futures;
+    futures.reserve(numThreads);
+    
+    const uint8_t* inputBytes = static_cast<const uint8_t*>(inputData);
+    uint8_t* outputBytes = static_cast<uint8_t*>(outputData);
+    
+    size_t currentRow = 0;
+    for (size_t i = 0; i < numThreads; ++i) {
+        size_t rowsToProcess = rowsPerThread;
+        if (i < remainingRows) {
+            rowsToProcess++;
+        }
+        
+        if (rowsToProcess == 0) continue;
+        
+        size_t offset = currentRow * bytesPerRow;
+        size_t chunkSize = rowsToProcess * bytesPerRow;
+        
+        // Enqueue task for this chunk
+        futures.push_back(threadPool_->enqueue([this, i, inputBytes, outputBytes, offset, chunkSize]() {
+            // Assurer que le buffer local est assez grand
+            if (parallelBuffers_[i].size() < chunkSize * 2) {
+                parallelBuffers_[i].resize(chunkSize * 2);
+            }
+            
+            const void* chunkInput = inputBytes + offset;
+            void* chunkOutput = outputBytes + offset;
+            
+            // Traiter chaque filtre pour cette bande
+            void* currentInput = const_cast<void*>(chunkInput);
+            void* currentOutput = parallelBuffers_[i].data();
+            bool useFirstBuffer = true;
+            
+            for (size_t j = 0; j < activeFilters_.size(); ++j) {
+                const auto& filter = activeFilters_[j];
+                std::shared_ptr<IFilterProcessor> processor;
+                
+                if (!findBestProcessor(filter, processor)) {
+                    return false;
+                }
+                
+                // Dernier filtre: écrire directement dans la sortie
+                if (j == activeFilters_.size() - 1) {
+                    currentOutput = chunkOutput;
+                } else {
+                    // Alterner entre les buffers
+                    size_t bufferOffset = useFirstBuffer ? chunkSize : 0;
+                    currentOutput = parallelBuffers_[i].data() + bufferOffset;
+                }
+                
+                if (!processor->applyFilter(filter, currentInput, chunkSize, 
+                                          currentOutput, chunkSize)) {
+                    return false;
+                }
+                
+                currentInput = currentOutput;
+                useFirstBuffer = !useFirstBuffer;
+            }
+            
+            return true;
+        }));
+        
+        currentRow += rowsToProcess;
+    }
+    
+    // Attendre que tous les threads terminent
+    bool success = true;
+    for (auto& future : futures) {
+        if (!future.get()) {
+            success = false;
+        }
+    }
+    
+    return success;
+}
+
+void FilterManager::setParallelProcessing(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    parallelProcessingEnabled_ = enabled;
+    std::cout << "[FilterManager] Traitement parallèle: " << (enabled ? "activé" : "désactivé") << std::endl;
+}
+
+bool FilterManager::isParallelProcessingEnabled() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return parallelProcessingEnabled_;
+}
+
+void FilterManager::setThreadPoolSize(size_t numThreads) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    threadPoolSize_ = std::max(size_t(1), std::min(numThreads, size_t(16)));
+    
+    // Recréer le thread pool avec la nouvelle taille
+    threadPool_ = std::make_unique<ThreadPool>(threadPoolSize_);
+    parallelBuffers_.resize(threadPoolSize_);
+    
+    std::cout << "[FilterManager] Taille du pool de threads: " << threadPoolSize_ << std::endl;
 }
 
 bool FilterManager::setInputFormat(const std::string& format, int width, int height) {
