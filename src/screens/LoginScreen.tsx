@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  ActivityIndicator,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
-  Dimensions,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
@@ -25,11 +24,11 @@ export const LoginScreen = ({ navigation }: any) => {
   const [errors, setErrors] = useState({ email: '', password: '' });
 
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
   };
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     // Validation
     let hasError = false;
     const newErrors = { email: '', password: '' };
@@ -45,8 +44,8 @@ export const LoginScreen = ({ navigation }: any) => {
     if (!password) {
       newErrors.password = 'Le mot de passe est requis';
       hasError = true;
-    } else if (password.length < 6) {
-      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+    } else if (password.length < 8) {
+      newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères';
       hasError = true;
     }
 
@@ -54,9 +53,29 @@ export const LoginScreen = ({ navigation }: any) => {
 
     if (!hasError) {
       setLoading(true);
-      // Simulation d'une connexion
+      
+      // WARNING: This is a mock authentication for development only!
+      // TODO: Implement real authentication with secure backend API
+      // SECURITY ISSUES:
+      // 1. No actual authentication is performed
+      // 2. Credentials are not validated against a secure backend
+      // 3. No secure token/session management
+      // 4. Password is stored in plain text in component state
+      // 
+      // For production, implement:
+      // - Secure HTTPS API endpoint for authentication
+      // - Token-based authentication (JWT, OAuth, etc.)
+      // - Secure credential storage (Keychain/Keystore)
+      // - Password hashing on backend
+      // - Rate limiting and account lockout mechanisms
+      
+      // Simulation d'une connexion - À REMPLACER PAR UNE VRAIE AUTHENTIFICATION
       setTimeout(() => {
         setLoading(false);
+        
+        // In production, only navigate after successful authentication
+        // and store secure session token
+        console.warn('⚠️ Using mock authentication - NOT SECURE FOR PRODUCTION');
         navigation.navigate('MainApp');
       }, 2000);
     }

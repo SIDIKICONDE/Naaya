@@ -16,9 +16,12 @@ export class VideoLibrary {
     compressionEnabled: false,
     thumbnailGeneration: true,
   };
+  private configLoaded: boolean = false;
+  private configLoadPromise: Promise<void> | null = null;
 
   private constructor() {
-    this.loadConfig();
+    // Don't call async methods in constructor
+    // Config will be loaded lazily on first use
   }
 
   static getInstance(): VideoLibrary {
@@ -29,9 +32,24 @@ export class VideoLibrary {
   }
 
   /**
+   * Ensures config is loaded before operations
+   */
+  private async ensureConfigLoaded(): Promise<void> {
+    if (this.configLoaded) return;
+    
+    if (!this.configLoadPromise) {
+      this.configLoadPromise = this.loadConfig();
+    }
+    
+    await this.configLoadPromise;
+  }
+
+  /**
    * Ajoute une vidéo à la bibliothèque
    */
   async addVideo(result: VideoResult): Promise<SavedVideoEntry> {
+    await this.ensureConfigLoaded();
+    
     const entry: SavedVideoEntry = {
       id: this.generateId(),
       createdAt: Date.now(),
@@ -60,6 +78,7 @@ export class VideoLibrary {
     filters?: VideoFilterOptions,
     sortBy: VideoSortOption = 'date-desc'
   ): Promise<SavedVideoEntry[]> {
+    await this.ensureConfigLoaded();
     let items = await this.loadAll();
 
     // Appliquer les filtres
@@ -77,6 +96,7 @@ export class VideoLibrary {
    * Supprime une vidéo par ID
    */
   async removeVideo(id: string): Promise<void> {
+    await this.ensureConfigLoaded();
     const all = await this.loadAll();
     const next = all.filter(v => v.id !== id);
     await this.saveAll(next);
@@ -86,6 +106,7 @@ export class VideoLibrary {
    * Récupère une vidéo par ID
    */
   async getById(id: string): Promise<SavedVideoEntry | undefined> {
+    await this.ensureConfigLoaded();
     const all = await this.loadAll();
     return all.find(v => v.id === id);
   }
@@ -94,6 +115,7 @@ export class VideoLibrary {
    * Met à jour les métadonnées d'une vidéo
    */
   async updateVideo(id: string, updates: Partial<SavedVideoEntry>): Promise<SavedVideoEntry | null> {
+    await this.ensureConfigLoaded();
     const all = await this.loadAll();
     const index = all.findIndex(v => v.id === id);
     
@@ -121,6 +143,7 @@ export class VideoLibrary {
     oldestVideo?: Date;
     newestVideo?: Date;
   }> {
+    await this.ensureConfigLoaded();
     const videos = await this.loadAll();
     
     if (videos.length === 0) {
@@ -148,6 +171,7 @@ export class VideoLibrary {
    * Met à jour la configuration
    */
   async updateConfig(newConfig: Partial<VideoLibraryConfig>): Promise<void> {
+    await this.ensureConfigLoaded();
     this.config = { ...this.config, ...newConfig };
     await AsyncStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
   }
@@ -155,7 +179,8 @@ export class VideoLibrary {
   /**
    * Récupère la configuration actuelle
    */
-  getConfig(): VideoLibraryConfig {
+  async getConfig(): Promise<VideoLibraryConfig> {
+    await this.ensureConfigLoaded();
     return { ...this.config };
   }
 
@@ -187,6 +212,9 @@ export class VideoLibrary {
       }
     } catch {
       // Utiliser la config par défaut
+    } finally {
+      this.configLoaded = true;
+      this.configLoadPromise = null;
     }
   }
 

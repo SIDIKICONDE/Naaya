@@ -4,6 +4,7 @@
 import { errorCodes, isErrorWithCode, keepLocalCopy, pick, types } from '@react-native-documents/picker';
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -200,6 +201,38 @@ export const CompactFilterControls: React.FC<CompactFilterControlsProps> = memo(
                 onPress={async () => {
                   const path = lutPath.trim();
                   if (!path) return;
+                  
+                  // Validation de sécurité du chemin
+                  // 1. Interdire les traversées de répertoire
+                  if (path.includes('../') || path.includes('..\\')) {
+                    Alert.alert('Erreur', 'Chemin invalide : traversée de répertoire non autorisée');
+                    return;
+                  }
+                  
+                  // 2. Vérifier l'extension du fichier
+                  if (!path.toLowerCase().endsWith('.cube')) {
+                    Alert.alert('Erreur', 'Le fichier doit avoir l\'extension .cube');
+                    return;
+                  }
+                  
+                  // 3. Vérifier l'existence et la taille du fichier
+                  try {
+                    const exists = await RNFS.exists(path);
+                    if (!exists) {
+                      Alert.alert('Erreur', 'Le fichier spécifié n\'existe pas');
+                      return;
+                    }
+                    
+                    const stat = await RNFS.stat(path);
+                    if (stat.size > 10 * 1024 * 1024) {
+                      Alert.alert('Erreur', 'Le fichier est trop volumineux (max 10MB)');
+                      return;
+                    }
+                  } catch (error) {
+                    Alert.alert('Erreur', 'Impossible de vérifier le fichier');
+                    return;
+                  }
+                  
                   setLutModalVisible(false);
                   setLutPath('');
                   // Intensité à 1.0 par défaut pour les LUTs

@@ -88,7 +88,7 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
   };
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const debounceTimerRef = useRef<number | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // Synchroniser avec le service
@@ -136,6 +136,11 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
     // Nettoyage
     return () => {
       isMountedRef.current = false;
+      // Clear debounce timer on cleanup
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       unsubscribers.forEach(unsub => unsub());
       if (enableSpectrum) {
         EqualiserService.stopSpectrumAnalysis().catch(() => {});
@@ -172,10 +177,11 @@ export function useEqualiser(options: UseEqualiserOptions = {}): UseEqualiserRet
 
     // Debounce l'appel au service
     debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
       EqualiserService.setBandGain(bandId, gain).catch(error => {
         dispatch({ type: 'SET_ERROR', payload: error });
       });
-    }, debounceDelay) as unknown as number;
+    }, debounceDelay);
   }, [state.bands, debounceDelay]);
 
   // Actions d'analyse

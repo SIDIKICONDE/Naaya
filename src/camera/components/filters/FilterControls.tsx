@@ -35,8 +35,29 @@ export interface FilterControlsProps {
 
 const FilterButton: React.FC<{ filter: FilterInfo; isSelected: boolean; onPress: () => void; disabled?: boolean; }> = memo(({ filter, isSelected, onPress, disabled }) => {
   const scaleAnim = useMemo(() => new Animated.Value(1), []);
-  const handlePressIn = useCallback(() => { Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [scaleAnim]);
-  const handlePressOut = useCallback(() => { Animated.timing(scaleAnim, { toValue: 1, duration: 100, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [scaleAnim]);
+  const animationRef = React.useRef<Animated.CompositeAnimation | null>(null);
+  
+  React.useEffect(() => {
+    return () => {
+      // Nettoyer les animations en cours lors du démontage
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+    };
+  }, []);
+  
+  const handlePressIn = useCallback(() => { 
+    if (animationRef.current) animationRef.current.stop();
+    animationRef.current = Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    animationRef.current.start(); 
+  }, [scaleAnim]);
+  
+  const handlePressOut = useCallback(() => { 
+    if (animationRef.current) animationRef.current.stop();
+    animationRef.current = Animated.timing(scaleAnim, { toValue: 1, duration: 100, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    animationRef.current.start(); 
+  }, [scaleAnim]);
+  
   const handlePress = useCallback(() => { if (!disabled) onPress(); }, [onPress, disabled]);
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
@@ -206,6 +227,39 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(({ currentFilt
                 onPress={async () => {
                   const path = lutPath.trim();
                   if (!path) { return; }
+                  
+                  // Validation de sécurité du chemin
+                  // 1. Interdire les traversées de répertoire
+                  if (path.includes('../') || path.includes('..\\')) {
+                    Alert.alert('Erreur', 'Chemin invalide : traversée de répertoire non autorisée');
+                    return;
+                  }
+                  
+                  // 2. Vérifier l'extension du fichier
+                  if (!path.toLowerCase().endsWith('.cube')) {
+                    Alert.alert('Erreur', 'Le fichier doit avoir l\'extension .cube');
+                    return;
+                  }
+                  
+                  // 3. Vérifier l'existence du fichier
+                  try {
+                    const exists = await RNFS.exists(path);
+                    if (!exists) {
+                      Alert.alert('Erreur', 'Le fichier spécifié n\'existe pas');
+                      return;
+                    }
+                    
+                    // 4. Vérifier la taille du fichier (limite à 10MB)
+                    const stat = await RNFS.stat(path);
+                    if (stat.size > 10 * 1024 * 1024) {
+                      Alert.alert('Erreur', 'Le fichier est trop volumineux (max 10MB)');
+                      return;
+                    }
+                  } catch (error) {
+                    Alert.alert('Erreur', 'Impossible de vérifier le fichier');
+                    return;
+                  }
+                  
                   setLutModalVisible(false);
                   setLutPath('');
                   await onFilterChange(`lut3d:${path}`, pendingLUTIntensity);

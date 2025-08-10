@@ -148,7 +148,9 @@ export class ProfessionalEqualiserService {
     this.listeners.get(event)?.forEach(callback => {
       try {
         callback(data);
-      } catch (error) {}
+      } catch (error) {
+        console.error(`[ProfessionalEqualiserService] Error in event listener for '${event}':`, error);
+      }
     });
   }
 
@@ -408,7 +410,9 @@ export class ProfessionalEqualiserService {
             this.updateState({ spectrumData });
             this.emit('spectrumData', spectrumData);
           }
-          } catch (error) {}
+        } catch (error) {
+          console.error('[ProfessionalEqualiserService] Error processing spectrum data:', error);
+        }
       }, intervalMs) as unknown as number;
     } catch (error) {
       this.emit('error', error as Error);

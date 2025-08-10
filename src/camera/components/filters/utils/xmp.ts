@@ -178,15 +178,21 @@ export async function buildAndSaveLUTCubeFromXMP(xmp: string, cubeSize = 33): Pr
 }
 
 export function buildCubeContent(detailed: XmpDetailedAdjustments, cubeSize = 33): string {
-  const lines: string[] = [];
-  lines.push('# Generated from XMP');
-  lines.push(`LUT_3D_SIZE ${cubeSize}`);
+  // Pré-allocation pour éviter les réallocations dynamiques
+  const totalPoints = cubeSize * cubeSize * cubeSize;
+  const lines: string[] = new Array(totalPoints + 2);
+  lines[0] = '# Generated from XMP';
+  lines[1] = `LUT_3D_SIZE ${cubeSize}`;
+  
+  let lineIndex = 2;
+  const cubeSizeMinus1 = cubeSize - 1;
+  
   for (let b = 0; b < cubeSize; b++) {
     for (let g = 0; g < cubeSize; g++) {
       for (let r = 0; r < cubeSize; r++) {
-        let R = r / (cubeSize - 1);
-        let G = g / (cubeSize - 1);
-        let B = b / (cubeSize - 1);
+        let R = r / cubeSizeMinus1;
+        let G = g / cubeSizeMinus1;
+        let B = b / cubeSizeMinus1;
         // Convert to HSL
         let { h, s, l } = rgbToHsl(R, G, B);
         // HSL per channel adjustments
@@ -233,7 +239,7 @@ export function buildCubeContent(detailed: XmpDetailedAdjustments, cubeSize = 33
         } else {
           [R, G, B] = hslToRgb(h, s, l);
         }
-        lines.push(`${clamp01(R).toFixed(6)} ${clamp01(G).toFixed(6)} ${clamp01(B).toFixed(6)}`);
+        lines[lineIndex++] = `${clamp01(R).toFixed(6)} ${clamp01(G).toFixed(6)} ${clamp01(B).toFixed(6)}`;
       }
     }
   }
@@ -252,18 +258,70 @@ function hueToChannel(hueDeg: number): HSLChannel {
   return 'magenta';
 }
 
+// Cache pour les courbes de tons déjà calculées
+const toneCurveCache = new Map<string, Map<number, number>>();
+
 function applyToneCurve(points: Array<{x:number;y:number}>, v: number): number {
-  // piecewise linear interpolation
-  let prev = points[0];
-  for (let i = 1; i < points.length; i++) {
-    const curr = points[i];
-    if (v <= curr.x) {
-      const t = (v - prev.x) / Math.max(1, (curr.x - prev.x));
-      return Math.round(prev.y + t * (curr.y - prev.y));
+  // Créer une clé unique pour cette courbe
+  const curveKey = points.map(p => `${p.x},${p.y}`).join('|');
+  
+  // Vérifier le cache
+  let curveMap = toneCurveCache.get(curveKey);
+  if (!curveMap) {
+    curveMap = new Map<number, number>();
+    toneCurveCache.set(curveKey, curveMap);
+    
+    // Limiter la taille du cache global (éviter les fuites mémoire)
+    if (toneCurveCache.size > 100) {
+      const firstKey = toneCurveCache.keys().next().value;
+      toneCurveCache.delete(firstKey);
     }
-    prev = curr;
   }
-  return points[points.length - 1].y;
+  
+  // Vérifier si cette valeur est déjà calculée
+  const cached = curveMap.get(v);
+  if (cached !== undefined) {
+    return cached;
+  }
+  
+  // Calcul optimisé avec binary search pour les grandes courbes
+  let result: number;
+  if (points.length > 10) {
+    // Binary search pour les grandes courbes
+    let left = 0, right = points.length - 1;
+    while (left < right - 1) {
+      const mid = Math.floor((left + right) / 2);
+      if (v <= points[mid].x) {
+        right = mid;
+      } else {
+        left = mid;
+      }
+    }
+    const prev = points[left];
+    const curr = points[right];
+    const denominator = curr.x - prev.x;
+    const t = denominator === 0 ? 0 : (v - prev.x) / denominator;
+    result = Math.round(prev.y + t * (curr.y - prev.y));
+  } else {
+    // Algorithme original pour les petites courbes
+    let prev = points[0];
+    for (let i = 1; i < points.length; i++) {
+      const curr = points[i];
+      if (v <= curr.x) {
+        const denominator = curr.x - prev.x;
+        const t = denominator === 0 ? 0 : (v - prev.x) / denominator;
+        result = Math.round(prev.y + t * (curr.y - prev.y));
+        curveMap.set(v, result);
+        return result;
+      }
+      prev = curr;
+    }
+    result = points[points.length - 1].y;
+  }
+  
+  // Mettre en cache et retourner
+  curveMap.set(v, result);
+  return result;
 }
 
 function clamp01(v: number): number { return Math.max(0, Math.min(1, v)); }

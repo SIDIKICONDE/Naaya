@@ -32,7 +32,7 @@ export const SpectrumAnalyser: React.FC<SpectrumAnalyserProps> = ({
   showLabels = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | null>(null);
   const peakHoldRef = useRef<number[]>([]);
   const peakDecayRef = useRef<number[]>([]);
 
@@ -210,13 +210,21 @@ export const SpectrumAnalyser: React.FC<SpectrumAnalyserProps> = ({
   }
 
   // Version Canvas pour le web
+  // Style compatible DOM pour <canvas>
+  const canvasStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    backgroundColor: theme.surface,
+  };
+
   return (
-    <View style={[styles.container, { height }]}>
+    <View style={[styles.container, { height }]}> 
       <canvas
         ref={canvasRef}
         width={800}
         height={height}
-        style={[styles.canvas, { backgroundColor: theme.surface }]}
+        style={canvasStyle}
       />
     </View>
   );

@@ -5,12 +5,12 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View
+    ActivityIndicator,
+    Alert,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
 import { NativeCameraEngine } from '../camera';
 import { RecordingBar } from '../camera/components/AdvancedCameraControls/components/RecordingBar';
@@ -258,7 +258,9 @@ export const RealCameraViewScreen: React.FC = () => {
         try {
           const { duration } = await NativeCameraEngine.getRecordingProgress();
           setRecordingDuration(Math.floor(duration || 0));
-        } catch {}
+        } catch (error) {
+          console.error('[RealCameraViewScreen] Error getting recording progress:', error);
+        }
       }, 500);
       return () => {
         if (progressTimerRef.current) {
