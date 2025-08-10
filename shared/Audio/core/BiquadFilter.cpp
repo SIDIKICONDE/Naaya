@@ -176,14 +176,53 @@ void BiquadFilter::calculateAllpass(double frequency, double sampleRate, double 
 }
 
 void BiquadFilter::process(const float* input, float* output, size_t numSamples) {
-#if defined(__SSE2__)
+#if defined(__AVX2__)
+    // Use AVX2 optimized version on x86_64
+    processAVX2(input, output, numSamples);
+#elif defined(__SSE2__)
     // Use SSE2 optimized version on x86
     processSSE2(input, output, numSamples);
+#elif defined(__ARM_NEON)
+    // Use NEON optimized version on ARM
+    processNEON(input, output, numSamples);
 #else
-    // Fallback to scalar processing
-    for (size_t i = 0; i < numSamples; ++i) {
-        output[i] = processSample(input[i]);
+    // Fallback to optimized scalar processing with Direct Form II Transposed
+    double y1 = m_y1, y2 = m_y2;
+    
+    // Process in blocks for better cache efficiency
+    constexpr size_t BLOCK_SIZE = 32;
+    size_t fullBlocks = numSamples / BLOCK_SIZE;
+    size_t remaining = numSamples % BLOCK_SIZE;
+    
+    for (size_t block = 0; block < fullBlocks; ++block) {
+        size_t offset = block * BLOCK_SIZE;
+        for (size_t i = 0; i < BLOCK_SIZE; ++i) {
+            double x = static_cast<double>(input[offset + i]);
+            double w = x - m_b1 * y1 - m_b2 * y2;
+            double y = m_a0 * w + m_a1 * y1 + m_a2 * y2;
+            
+            y2 = y1;
+            y1 = preventDenormal(w);
+            
+            output[offset + i] = static_cast<float>(y);
+        }
     }
+    
+    // Process remaining samples
+    size_t offset = fullBlocks * BLOCK_SIZE;
+    for (size_t i = 0; i < remaining; ++i) {
+        double x = static_cast<double>(input[offset + i]);
+        double w = x - m_b1 * y1 - m_b2 * y2;
+        double y = m_a0 * w + m_a1 * y1 + m_a2 * y2;
+        
+        y2 = y1;
+        y1 = preventDenormal(w);
+        
+        output[offset + i] = static_cast<float>(y);
+    }
+    
+    m_y1 = y1;
+    m_y2 = y2;
 #endif
 }
 
@@ -248,8 +287,74 @@ void BiquadFilter::processNEON(const float* input, float* output, size_t numSamp
 }
 #endif
 
+#ifdef __AVX2__
+void BiquadFilter::processAVX2(const float* input, float* output, size_t numSamples) {
+    // Process 8 samples at a time using AVX2
+    // Note: Biquad filters are inherently sequential, so we process in chunks
+    // but still maintain state between samples
+    
+    double y1 = m_y1, y2 = m_y2;
+    
+    // Process in blocks of 8 for AVX2
+    size_t simdSamples = numSamples & ~7;
+    size_t i = 0;
+    
+    // Coefficients as AVX vectors
+    __m256d a0_vec = _mm256_set1_pd(m_a0);
+    __m256d a1_vec = _mm256_set1_pd(m_a1);
+    __m256d a2_vec = _mm256_set1_pd(m_a2);
+    __m256d b1_vec = _mm256_set1_pd(m_b1);
+    __m256d b2_vec = _mm256_set1_pd(m_b2);
+    
+    // Process 4 samples at a time (using double precision for stability)
+    for (; i + 3 < simdSamples; i += 4) {
+        // Load 4 floats and convert to double
+        __m128 input_float = _mm_loadu_ps(&input[i]);
+        __m256d x_vec = _mm256_cvtps_pd(input_float);
+        
+        // Process each sample (still sequential due to feedback)
+        alignas(32) double x_arr[4];
+        alignas(32) double y_arr[4];
+        _mm256_store_pd(x_arr, x_vec);
+        
+        for (int j = 0; j < 4; ++j) {
+            double x = x_arr[j];
+            double w = x - m_b1 * y1 - m_b2 * y2;
+            double y = m_a0 * w + m_a1 * y1 + m_a2 * y2;
+            
+            y2 = y1;
+            y1 = preventDenormal(w);
+            y_arr[j] = y;
+        }
+        
+        // Convert back to float and store
+        __m256d y_vec = _mm256_load_pd(y_arr);
+        __m128 output_float = _mm256_cvtpd_ps(y_vec);
+        _mm_storeu_ps(&output[i], output_float);
+    }
+    
+    // Process remaining samples
+    for (; i < numSamples; ++i) {
+        double x = static_cast<double>(input[i]);
+        double w = x - m_b1 * y1 - m_b2 * y2;
+        double y = m_a0 * w + m_a1 * y1 + m_a2 * y2;
+        
+        y2 = y1;
+        y1 = preventDenormal(w);
+        
+        output[i] = static_cast<float>(y);
+    }
+    
+    m_y1 = y1;
+    m_y2 = y2;
+}
+#endif
+
 #ifdef __SSE2__
 void BiquadFilter::processSSE2(const float* input, float* output, size_t numSamples) {
+    // Optimized SSE2 implementation with Direct Form II Transposed
+    double y1 = m_y1, y2 = m_y2;
+    
     // Process in blocks of 4 samples for SSE efficiency
     size_t simdSamples = numSamples & ~3;
     
@@ -257,21 +362,36 @@ void BiquadFilter::processSSE2(const float* input, float* output, size_t numSamp
     for (size_t i = 0; i < simdSamples; i += 4) {
         __m128 in = _mm_loadu_ps(&input[i]);
         alignas(16) float temp[4];
-        _mm_storeu_ps(temp, in);
+        _mm_store_ps(temp, in);
         
-        // Process each sample
+        // Process each sample with Direct Form II Transposed
         for (int j = 0; j < 4; ++j) {
-            temp[j] = processSample(temp[j]);
+            double x = static_cast<double>(temp[j]);
+            double w = x - m_b1 * y1 - m_b2 * y2;
+            double y = m_a0 * w + m_a1 * y1 + m_a2 * y2;
+            
+            y2 = y1;
+            y1 = preventDenormal(w);
+            temp[j] = static_cast<float>(y);
         }
         
-        __m128 out = _mm_loadu_ps(temp);
+        __m128 out = _mm_load_ps(temp);
         _mm_storeu_ps(&output[i], out);
     }
     
     // Process remaining samples
     for (size_t i = simdSamples; i < numSamples; ++i) {
-        output[i] = processSample(input[i]);
+        double x = static_cast<double>(input[i]);
+        double w = x - m_b1 * y1 - m_b2 * y2;
+        double y = m_a0 * w + m_a1 * y1 + m_a2 * y2;
+        
+        y2 = y1;
+        y1 = preventDenormal(w);
+        output[i] = static_cast<float>(y);
     }
+    
+    m_y1 = y1;
+    m_y2 = y2;
 }
 #endif
 

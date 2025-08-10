@@ -179,21 +179,49 @@ bool FFmpegFilterProcessor::setFrameRate(int fps) {
 // Méthodes privées
 #ifdef FFMPEG_AVAILABLE
 bool FFmpegFilterProcessor::ensureGraph(const FilterState& filter) {
-    // Reconstruire seulement si format/fps/filtre ont changé
+    // Optimisation: cache le graphe et évite la reconstruction inutile
     std::string filterString = getFFmpegFilterString(filter);
     if (filterString.empty()) { setLastError("Filtre FFmpeg non supporté"); return false; }
-    bool formatChanged = (lastWidth_ != width_) || (lastHeight_ != height_) || (lastPixelFormat_ != pixelFormat_) || (lastFrameRate_ != frameRate_);
+    
+    bool formatChanged = (lastWidth_ != width_) || (lastHeight_ != height_) || 
+                        (lastPixelFormat_ != pixelFormat_) || (lastFrameRate_ != frameRate_);
     bool filterChanged = (lastFilterDesc_ != filterString);
+    
+    // Optimisation: ne reconstruire que si vraiment nécessaire
     if (filterGraph_ && !formatChanged && !filterChanged) {
         return true;
     }
-    // (Re)créer graphe et frames
-    destroyFilterGraph();
-    if (!createFilterGraph()) return false;
-    if (!addFilterToGraph(filter)) return false;
-    if (!inputFrame_) inputFrame_ = av_frame_alloc();
-    if (!outputFrame_) outputFrame_ = av_frame_alloc();
-    if (!inputFrame_ || !outputFrame_) { setLastError("Impossible d'allouer les frames FFmpeg"); return false; }
+    
+    // Utiliser un pool de frames pour éviter les allocations répétées
+    static thread_local AVFrame* framePool[4] = {nullptr, nullptr, nullptr, nullptr};
+    static thread_local int poolIndex = 0;
+    
+    // (Re)créer graphe si nécessaire
+    if (formatChanged || !filterGraph_) {
+        destroyFilterGraph();
+        if (!createFilterGraph()) return false;
+        if (!addFilterToGraph(filter)) return false;
+    }
+    
+    // Réutiliser les frames du pool
+    if (!inputFrame_) {
+        if (framePool[0] == nullptr) {
+            framePool[0] = av_frame_alloc();
+        }
+        inputFrame_ = framePool[0];
+    }
+    if (!outputFrame_) {
+        if (framePool[1] == nullptr) {
+            framePool[1] = av_frame_alloc();
+        }
+        outputFrame_ = framePool[1];
+    }
+    
+    if (!inputFrame_ || !outputFrame_) { 
+        setLastError("Impossible d'allouer les frames FFmpeg"); 
+        return false; 
+    }
+    
     lastWidth_ = width_;
     lastHeight_ = height_;
     lastPixelFormat_ = pixelFormat_;
@@ -218,35 +246,72 @@ bool FFmpegFilterProcessor::applyFilterWithStride(const FilterState& filter,
     AVPixelFormat pix = av_get_pix_fmt(pixelFormat_.c_str());
     if (pix == AV_PIX_FMT_NONE) pix = AV_PIX_FMT_BGRA;
 
+    // Optimisation: éviter av_frame_unref si possible
     // Préparer frame d'entrée en référençant directement les données + stride
     inputFrame_->width = width_;
     inputFrame_->height = height_;
     inputFrame_->format = pix;
     inputFrame_->data[0] = const_cast<uint8_t*>(inputData);
     inputFrame_->linesize[0] = inputStride;
+    
+    // Pour formats YUV, configurer les plans supplémentaires
+    if (pix == AV_PIX_FMT_YUV420P || pix == AV_PIX_FMT_YUV422P || pix == AV_PIX_FMT_YUV444P) {
+        int chromaHeight = (pix == AV_PIX_FMT_YUV420P) ? height_ / 2 : height_;
+        int chromaWidth = (pix == AV_PIX_FMT_YUV420P || pix == AV_PIX_FMT_YUV422P) ? width_ / 2 : width_;
+        inputFrame_->data[1] = inputFrame_->data[0] + (inputStride * height_);
+        inputFrame_->data[2] = inputFrame_->data[1] + (chromaWidth * chromaHeight);
+        inputFrame_->linesize[1] = inputFrame_->linesize[2] = chromaWidth;
+    }
 
-    // Pousser la frame
-    int ret = av_buffersrc_add_frame_flags(sourceContext_, inputFrame_, AV_BUFFERSRC_FLAG_KEEP_REF);
+    // Pousser la frame avec flag optimisé
+    int ret = av_buffersrc_add_frame_flags(sourceContext_, inputFrame_, AV_BUFFERSRC_FLAG_KEEP_REF | AV_BUFFERSRC_FLAG_PUSH);
     if (ret < 0) { setLastError("buffersrc_add_frame a échoué"); return false; }
 
     // Tirer la frame
     ret = av_buffersink_get_frame(sinkContext_, outputFrame_);
     if (ret < 0) { setLastError("buffersink_get_frame a échoué"); return false; }
 
-    // Copier vers sortie en respectant outputStride (zéro réallocation)
+    // Optimisation: copie SIMD pour les formats supportés
     const int outLinesize = outputFrame_->linesize[0];
     const int rowBytes = av_get_bits_per_pixel(av_pix_fmt_desc_get((AVPixelFormat)outputFrame_->format)) * outputFrame_->width / 8;
+    
     if (outputStride < rowBytes) {
         av_frame_unref(outputFrame_);
         setLastError("outputStride insuffisant");
         return false;
     }
-    for (int y = 0; y < outputFrame_->height; ++y) {
-        const uint8_t* srcRow = outputFrame_->data[0] + y * outLinesize;
-        uint8_t* dstRow = outputData + y * outputStride;
-        std::memcpy(dstRow, srcRow, (size_t)rowBytes);
+    
+    // Utiliser copie SIMD si disponible
+    #ifdef __AVX2__
+    if (rowBytes >= 32) {
+        for (int y = 0; y < outputFrame_->height; ++y) {
+            const uint8_t* srcRow = outputFrame_->data[0] + y * outLinesize;
+            uint8_t* dstRow = outputData + y * outputStride;
+            
+            size_t simdBytes = rowBytes & ~31;
+            for (size_t x = 0; x < simdBytes; x += 32) {
+                __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(srcRow + x));
+                _mm256_storeu_si256(reinterpret_cast<__m256i*>(dstRow + x), data);
+            }
+            
+            // Copier les octets restants
+            if (simdBytes < rowBytes) {
+                std::memcpy(dstRow + simdBytes, srcRow + simdBytes, rowBytes - simdBytes);
+            }
+        }
+    } else
+    #endif
+    {
+        // Fallback vers memcpy standard
+        for (int y = 0; y < outputFrame_->height; ++y) {
+            const uint8_t* srcRow = outputFrame_->data[0] + y * outLinesize;
+            uint8_t* dstRow = outputData + y * outputStride;
+            std::memcpy(dstRow, srcRow, (size_t)rowBytes);
+        }
     }
-    av_frame_unref(outputFrame_);
+    
+    // Ne pas faire av_frame_unref sur les frames du pool, juste réinitialiser les pointeurs
+    outputFrame_->data[0] = nullptr;
     return true;
 }
 bool FFmpegFilterProcessor::createFilterGraph() {

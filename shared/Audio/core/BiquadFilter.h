@@ -50,31 +50,45 @@ public:
 private:
     // Filter coefficients
     double m_a0, m_a1, m_a2;  // Feedforward coefficients
-    double m_b1, m_b2;        // Feedback coefficients (b0 is always 1)
+    double m_b1, m_b2;        // Feedback coefficients (b0 is normalized to 1)
     
-    // Filter state variables (DF-II transposé)
-    double m_y1, m_y2;  // State history
+    // Filter state (Direct Form II)
+    double m_y1, m_y2;        // Previous outputs for left/mono channel
+    double m_y1R, m_y2R;      // Previous outputs for right channel
     
-    // Stereo state variables
-    double m_y1R, m_y2R;
+    // Helper function
+    inline float processSample(float input) {
+        double x = static_cast<double>(input);
+        double w = x - m_b1 * m_y1 - m_b2 * m_y2;
+        double y = m_a0 * w + m_a1 * m_y1 + m_a2 * m_y2;
+        
+        m_y2 = m_y1;
+        m_y1 = preventDenormal(w);
+        
+        return static_cast<float>(y);
+    }
     
-    // Helper functions
+    // Prevent denormal numbers
+    inline double preventDenormal(double x) {
+        return (std::abs(x) < EPSILON) ? 0.0 : x;
+    }
+    
+    // Normalize coefficients
     void normalizeCoefficients(double& a0, double& a1, double& a2, 
                               double& b0, double& b1, double& b2);
     
-    // Denormal prevention
-    inline double preventDenormal(double value) {
-        return (std::abs(value) < DENORMAL_THRESHOLD) ? 0.0 : value;
-    }
+    // SIMD optimized processing methods
+    #ifdef __AVX2__
+    void processAVX2(const float* input, float* output, size_t numSamples);
+    #endif
     
-    // SIMD optimized processing functions
-#ifdef __ARM_NEON
-    void processNEON(const float* input, float* output, size_t numSamples);
-#endif
-    
-#ifdef __SSE2__
+    #ifdef __SSE2__
     void processSSE2(const float* input, float* output, size_t numSamples);
-#endif
+    #endif
+    
+    #ifdef __ARM_NEON
+    void processNEON(const float* input, float* output, size_t numSamples);
+    #endif
 };
 
 } // namespace AudioEqualizer
