@@ -1,0 +1,6 @@
+module Pods_Naaya {
+  umbrella header "Pods-Naaya-umbrella.h"
+
+  export *
+  module * { export * }
+}
