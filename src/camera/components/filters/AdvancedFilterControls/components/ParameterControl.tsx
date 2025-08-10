@@ -4,13 +4,13 @@
 
 import React, { memo, useMemo } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
-import NumberLineControl from './NumberLineControl';
 import { SLIDER_WIDTH } from '../constants';
 import type { ParameterControlProps } from '../types';
+import NumberLineControl from './NumberLineControl';
 
 export const ParameterControl: React.FC<ParameterControlProps> = memo(({ 
   label, 

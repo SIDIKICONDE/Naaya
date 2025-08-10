@@ -3,8 +3,8 @@
  * Utilise des types stricts pour améliorer les performances TypeScript
  */
 
-import type { AdvancedFilterParams, FilterState } from '../../../../specs/NativeCameraFiltersModule';
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { AdvancedFilterParams, FilterState } from '../../../../specs/NativeCameraFiltersModule';
 
 // Type union strict pour les noms de filtres
 export type FilterName = 

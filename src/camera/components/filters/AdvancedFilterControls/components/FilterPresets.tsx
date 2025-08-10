@@ -4,11 +4,11 @@
 
 import React, { memo } from 'react';
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { FILTER_PRESETS } from '../constants';
 import type { FilterPresetsProps } from '../types';

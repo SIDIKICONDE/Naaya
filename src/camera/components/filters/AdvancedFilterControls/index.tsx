@@ -31,6 +31,7 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
 
   // État local des paramètres avec optimisations
   const [params, setParams] = useState<AdvancedFilterParams>(DEFAULT_FILTER_PARAMS);
+  const latestParamsRef = useRef<AdvancedFilterParams>(DEFAULT_FILTER_PARAMS);
   const [isUpdating, setIsUpdating] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,58 +43,40 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
   ) => {
     if (disabled) return;
 
-    // Mettre à jour l'état local immédiatement
-    setParams(prev => ({
-      ...prev,
-      [paramName]: value
-    }));
-
     if (immediate) {
-      // Annuler le timer de debounce existant
+      // Mettre à jour l'état et appliquer immédiatement en utilisant un setter fonctionnel
+      let applied: AdvancedFilterParams | null = null;
+      setParams(prev => {
+        const next = { ...prev, [paramName]: value };
+        latestParamsRef.current = next;
+        applied = next;
+        return next;
+      });
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
-      
-      // Appliquer immédiatement
-      const newParams = { ...params, [paramName]: value };
       setIsUpdating(true);
-      onFilterChange('color_controls', currentFilter?.intensity || 0.5, newParams)
+      onFilterChange('color_controls', currentFilter?.intensity || 0.5, (applied || latestParamsRef.current))
         .finally(() => setIsUpdating(false))
         .catch(error => {
           console.error('[AdvancedFilterControls] Erreur application paramètres:', error);
         });
     } else {
-      // Annuler le timer de debounce existant
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      
-      // Créer un nouveau timer de debounce
-      debounceTimerRef.current = setTimeout(() => {
-        setIsUpdating(true);
-        onFilterChange('color_controls', currentFilter?.intensity || 0.5, params)
-          .finally(() => setIsUpdating(false))
-          .catch(error => {
-            console.error('[AdvancedFilterControls] Erreur application paramètres:', error);
-          });
-        debounceTimerRef.current = null;
-      }, 150);
+      // Mettre à jour uniquement la référence locale, pas l'état (évite re-render global pendant le drag)
+      latestParamsRef.current = { ...latestParamsRef.current, [paramName]: value } as AdvancedFilterParams;
     }
-  }, [params, currentFilter?.intensity, onFilterChange, disabled]);
+  }, [currentFilter?.intensity, onFilterChange, disabled]);
 
   // Fonction de réinitialisation des paramètres
   const resetParams = useCallback((newParams?: AdvancedFilterParams) => {
     const targetParams = newParams || DEFAULT_FILTER_PARAMS;
+    latestParamsRef.current = targetParams;
     setParams(targetParams);
-    
-    // Annuler le timer de debounce existant
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
-    
-    // Appliquer immédiatement
     setIsUpdating(true);
     onFilterChange('color_controls', currentFilter?.intensity || 0.5, targetParams)
       .finally(() => setIsUpdating(false))
@@ -129,7 +112,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
     paramName: keyof AdvancedFilterParams,
     value: number
   ) => {
-    updateParam(paramName, value, false); // Avec debounce
+    // Ne pas mettre à jour l'état parent pendant le drag pour éviter re-renders
+    updateParam(paramName, value, false);
   }, [updateParam]);
 
   // Application immédiate des paramètres (sans debounce)
@@ -137,7 +121,7 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
     paramName: keyof AdvancedFilterParams,
     value: number
   ) => {
-    updateParam(paramName, value, true); // Immédiat
+    updateParam(paramName, value, true);
   }, [updateParam]);
 
   // Gestion des presets

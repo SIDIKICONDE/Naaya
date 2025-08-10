@@ -4,10 +4,10 @@
 
 import React, { memo } from 'react';
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import type { ParameterSectionProps } from '../types';
 

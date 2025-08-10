@@ -76,7 +76,8 @@ const CompactFilterButton = memo<{
           onPressOut={handlePressOut}
           disabled={disabled}
         >
-          <Animated.View style={[styles.filterButton, styles.filterButtonDynamic, { borderColor, opacity: disabled ? 0.4 : 1 }]}>
+          {/** style dynamique mémoïsé pour éviter nouvelle ref chaque rendu */}
+          <Animated.View style={[styles.filterButton, styles.filterButtonDynamic, useMemo(() => ({ borderColor, opacity: disabled ? 0.4 : 1 }), [borderColor, disabled])]}>
             {isSelected ? <View style={styles.selectionOverlay} /> : null}
             <View style={styles.buttonContent}>
               <Text style={[styles.filterIcon, isSelected && styles.filterIconSelected]}>
@@ -152,6 +153,8 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
 
     // Optimisation : scroll automatique vers le filtre sélectionné
     const flatListRef = useRef<FlatList<FilterInfo>>(null);
+    const visibleRangeRef = useRef<{ first: number; last: number } | null>(null);
+    const lastAutoScrollIndexRef = useRef<number | null>(null);
     const getItemLayout = useCallback(
       (_: any, index: number) => ({
         length: 72, // largeur du bouton + marges
@@ -161,16 +164,39 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
       []
     );
 
+    const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+      if (viewableItems.length === 0) {
+        visibleRangeRef.current = null;
+        return;
+      }
+      const indices = viewableItems
+        .map(v => (typeof v.index === 'number' ? v.index : -1))
+        .filter(i => i >= 0)
+        .sort((a, b) => a - b);
+      if (indices.length) {
+        visibleRangeRef.current = { first: indices[0], last: indices[indices.length - 1] };
+      }
+    }, []);
+
+    const viewabilityConfig = useMemo(() => ({ itemVisiblePercentThreshold: 70, minimumViewTime: 50 }), []);
+
     React.useEffect(() => {
-      const selectedIndex = AVAILABLE_FILTERS.findIndex(
-        f => f.name === selectedFilter.name
-      );
-      if (selectedIndex > 0 && flatListRef.current) {
-        flatListRef.current.scrollToIndex({
-          index: selectedIndex,
-          animated: true,
-          viewPosition: 0.5,
-        });
+      const selectedIndex = AVAILABLE_FILTERS.findIndex((f) => f.name === selectedFilter.name);
+      const range = visibleRangeRef.current;
+      const list = flatListRef.current;
+      if (!list || selectedIndex <= 0) return;
+
+      // Éviter les scrolls répétitifs sur le même index
+      if (lastAutoScrollIndexRef.current === selectedIndex) return;
+
+      // Ne centrer que si l'élément n'est pas visible
+      if (!range || selectedIndex < range.first || selectedIndex > range.last) {
+        try {
+          list.scrollToIndex({ index: selectedIndex, animated: true, viewPosition: 0.5 });
+          lastAutoScrollIndexRef.current = selectedIndex;
+        } catch {
+          // ignore (sécurité)
+        }
       }
     }, [selectedFilter.name]);
 
@@ -191,6 +217,8 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
             maxToRenderPerBatch={10}
             windowSize={10}
             initialNumToRender={10}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
           />
         </View>
         {selectedFilter.name !== 'none' && (

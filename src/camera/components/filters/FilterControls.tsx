@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import CustomSlider from '../../../ui/CustomSlider';
+import ImportFilterModal from './ImportFilterModal';
 import {
   ANIMATION_CONFIG,
   AVAILABLE_FILTERS,
@@ -93,12 +94,12 @@ const FilterButton = memo<{
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           disabled={disabled}
-          style={({ pressed }) => [
+          style={useCallback(({ pressed }: { pressed: boolean }) => [
             styles.filterButton,
             isSelected && styles.filterButtonSelected,
             pressed && styles.filterButtonPressed,
             disabled && styles.filterButtonDisabled,
-          ]}
+          ], [isSelected, disabled])}
         >
           {filter.previewGradient ? (
             <LinearGradient
@@ -291,7 +292,7 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [localIntensity, setLocalIntensity] = useState(currentFilter?.intensity ?? 1.0);
     const [showPresets, setShowPresets] = useState(false);
-    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showImport, setShowImport] = useState<false | 'xmp' | 'lut3d'>(false);
 
     // Mémorisation du filtre sélectionné
     const selectedFilter = useMemo(() => {
@@ -313,9 +314,10 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
 
         if (filter.name === 'none') {
           await onClearFilter();
-        } else if (filter.name === 'lut3d' || filter.name === 'xmp') {
-          // Ouvrir les modals spécifiques (à implémenter)
-          setShowAdvanced(true);
+        } else if (filter.name === 'lut3d') {
+          setShowImport('lut3d');
+        } else if (filter.name === 'xmp') {
+          setShowImport('xmp');
         } else {
           const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0;
           setLocalIntensity(intensity);
@@ -366,6 +368,14 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
               />
             ))}
           </ScrollView>
+          {/* Modal d'import pour le mode compact */}
+          <ImportFilterModal
+            visible={Boolean(showImport)}
+            initialMode={showImport || undefined}
+            intensity={localIntensity}
+            onApply={onFilterChange}
+            onClose={() => setShowImport(false)}
+          />
         </View>
       );
     }
@@ -385,9 +395,9 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerButton}
-              onPress={() => setShowAdvanced(!showAdvanced)}
+              onPress={() => setShowImport('xmp')}
             >
-              <Text style={styles.headerButtonText}>⚙️</Text>
+              <Text style={styles.headerButtonText}>↗️</Text>
             </TouchableOpacity>
             {onClose && (
               <TouchableOpacity
@@ -446,6 +456,15 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
             disabled={disabled}
           />
         )}
+
+        {/* Modal d'import XMP / LUT 3D */}
+        <ImportFilterModal
+          visible={Boolean(showImport)}
+          initialMode={showImport || undefined}
+          intensity={localIntensity}
+          onApply={onFilterChange}
+          onClose={() => setShowImport(false)}
+        />
       </View>
     );
   }
