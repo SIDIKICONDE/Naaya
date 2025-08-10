@@ -62,11 +62,17 @@ protected:
     bool supportsVariableIntensityPlatform() const override { return true; }
 };
 
+// Déclaration de la fabrique iOS (définie dans ios/Naaya/CameraManagerIOS.mm)
+#if defined(__APPLE__)
+extern std::unique_ptr<FlashController> CreateIOSFlashController();
+#endif
+
 std::unique_ptr<FlashController> FlashControllerFactory::create() {
 #if defined(__APPLE__)
-    // Fallback: pas d'impl iOS spécifique pour le moment -> utiliser défaut
-    return std::make_unique<DefaultFlashController>();
+    // Utiliser l'implémentation iOS réelle si disponible
+    return CreateIOSFlashController();
 #else
+    // Par défaut (autres plateformes), retourner une implémentation neutre
     return std::make_unique<DefaultFlashController>();
 #endif
 }

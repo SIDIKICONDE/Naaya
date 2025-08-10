@@ -9,6 +9,8 @@ export const AVAILABLE_FILTERS: FilterInfo[] = [
   { name: 'none', displayName: 'Aucun', description: 'Aucun filtre', icon: '🔘', hasIntensity: false, defaultIntensity: 0, color: '#666666' },
   // Mettre "Couleur" en premier plan pour exposer rapidement les options avancées
   { name: 'color_controls', displayName: 'Couleur', description: 'Réglages avancés couleur', icon: '🎚️', hasIntensity: true, defaultIntensity: 0.5, color: '#007AFF' },
+  { name: 'xmp', displayName: 'XMP', description: 'Importer un preset Lightroom (.xmp) → Réglages avancés', icon: '📄', hasIntensity: true, defaultIntensity: 1.0, color: '#2ECC71' },
+  { name: 'lut3d', displayName: 'LUT (.cube)', description: 'Appliquer une LUT 3D au format .cube (DaVinci, etc.)', icon: '🎨', hasIntensity: true, defaultIntensity: 1.0, color: '#9B59B6' },
   { name: 'sepia', displayName: 'Sépia', description: 'Effet vintage sépia', icon: '🟤', hasIntensity: true, defaultIntensity: 0.8, color: '#8B4513' },
   { name: 'noir', displayName: 'N&B', description: 'Noir et blanc', icon: '⚫', hasIntensity: true, defaultIntensity: 1.0, color: '#404040' },
   { name: 'monochrome', displayName: 'Mono', description: 'Monochrome avec teinte', icon: '🔵', hasIntensity: true, defaultIntensity: 0.7, color: '#4169E1' },
@@ -20,6 +22,8 @@ export const AVAILABLE_FILTERS: FilterInfo[] = [
 export const COMPACT_FILTERS: CompactFilterInfo[] = [
   { name: 'none', displayName: 'Off', icon: '🔘', color: '#666666' },
   { name: 'color_controls', displayName: 'Couleur', icon: '🎚️', color: '#007AFF' },
+  { name: 'xmp', displayName: 'XMP', icon: '📄', color: '#2ECC71' },
+  { name: 'lut3d', displayName: 'LUT', icon: '🎨', color: '#9B59B6' },
   { name: 'sepia', displayName: 'Sépia', icon: '🟤', color: '#8B4513' },
   { name: 'noir', displayName: 'N&B', icon: '⚫', color: '#404040' },
   { name: 'vintage', displayName: 'Vintage', icon: '📼', color: '#CD853F' },

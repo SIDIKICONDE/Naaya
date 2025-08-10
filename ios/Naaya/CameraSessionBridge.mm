@@ -29,4 +29,15 @@ void NaayaSetMovieOutput(AVCaptureMovieFileOutput* output) { s_movie = output; }
 AVCaptureDeviceInput* NaayaGetAudioInput(void) { return s_audio; }
 void NaayaSetAudioInput(AVCaptureDeviceInput* input) { s_audio = input; }
 
+// Ajout: gestion globale simple du mode flash
+static int s_flashMode = 0; // 0=off, 1=on, 2=auto, 3=torch
+#ifdef __cplusplus
+extern "C" {
+#endif
+int NaayaGetFlashMode(void) { return s_flashMode; }
+void NaayaSetFlashMode(int mode) { s_flashMode = mode; }
+#ifdef __cplusplus
+}
+#endif
+
 

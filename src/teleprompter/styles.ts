@@ -40,6 +40,8 @@ export const controlsStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
   },
   secondaryText: {
     color: '#fff',
@@ -67,6 +69,8 @@ export const controlsStyles = StyleSheet.create({
   rowSpaceAroundTop: {
     justifyContent: 'space-around',
     marginTop: 6,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   wrapRow: {
     flexWrap: 'wrap',

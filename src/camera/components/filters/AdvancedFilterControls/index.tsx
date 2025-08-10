@@ -50,9 +50,8 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
     paramName: keyof AdvancedFilterParams,
     value: number
   ) => {
-    const newParams = { ...params, [paramName]: value };
-    setParams(newParams);
-  }, [params]);
+    setParams(prev => ({ ...prev, [paramName]: value }));
+  }, []);
 
   // Application des paramètres (avec debounce)
   const handleParameterComplete = useCallback(async (
@@ -62,30 +61,28 @@ export const AdvancedFilterControls: React.FC<AdvancedFilterControlsProps> = mem
     if (disabled) return;
 
     try {
-      const newParams = { ...params, [paramName]: value };
-      setParams(newParams);
-      
-      // Utiliser color_controls par défaut si aucun filtre n'est actif
+      let updated: AdvancedFilterParams | null = null;
+      setParams(prev => {
+        updated = { ...prev, [paramName]: value };
+        return updated!;
+      });
+
       const filterName = currentFilter?.name || 'color_controls';
       const intensity = currentFilter?.intensity || 0.5;
-      
-      await onFilterChange(filterName, intensity, newParams);
+      await onFilterChange(filterName, intensity, updated ?? { ...params, [paramName]: value });
     } catch (error) {
       console.error('[AdvancedFilterControls] Erreur paramètre:', error);
     }
-  }, [currentFilter, params, onFilterChange, disabled]);
+  }, [currentFilter, onFilterChange, disabled, params]);
 
   // Gestion des presets
   const handlePresetSelect = useCallback(async (presetParams: AdvancedFilterParams) => {
     if (disabled) return;
 
     try {
-      setParams(presetParams);
-      
-      // Utiliser color_controls par défaut si aucun filtre n'est actif
+      setParams(() => presetParams);
       const filterName = currentFilter?.name || 'color_controls';
       const intensity = currentFilter?.intensity || 0.5;
-      
       await onFilterChange(filterName, intensity, presetParams);
     } catch (error) {
       console.error('[AdvancedFilterControls] Erreur preset:', error);

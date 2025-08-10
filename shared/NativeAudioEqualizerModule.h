@@ -86,6 +86,10 @@ public:
      * – Noise Reduction (NR):
      *   nrSetEnabled(enabled)
      *   nrGetEnabled() -> boolean
+     *   nrSetMode(mode)           // 'expander' | 'rnnoise' | 'off' (ou 0/1/2)
+     *   nrGetMode() -> number     // 0=expander, 1=rnnoise, 2=off
+     *   rnnsSetAggressiveness(a)  // 0.0 .. 3.0
+     *   rnnsGetAggressiveness() -> number
      *   nrSetConfig(highPassEnabled, highPassHz, thresholdDb, ratio, floorDb, attackMs, releaseMs)
      *   nrGetConfig() -> { highPassEnabled, highPassHz, thresholdDb, ratio, floorDb, attackMs, releaseMs }
      *

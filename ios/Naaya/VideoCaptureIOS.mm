@@ -14,6 +14,7 @@
 #import <Accelerate/Accelerate.h>
 #include "../../shared/Audio/safety/AudioSafety.h"
 #include "../../shared/Audio/noise/NoiseReducer.h"
+#include "../../shared/Audio/noise/RNNoiseSuppressor.h"
 #include "../../shared/Audio/effects/EffectChain.h"
 #include "../../shared/Audio/effects/Compressor.h"
 #include "../../shared/Audio/effects/Delay.h"
@@ -25,6 +26,14 @@ extern "C" {
 bool NaayaFilters_HasFilter(void);
 const char* NaayaFilters_GetCurrentName(void);
 double NaayaFilters_GetCurrentIntensity(void);
+// API de traitement FFmpeg (si disponible)
+bool NaayaFilters_ProcessBGRA(const uint8_t* inData,
+                              int inStride,
+                              int width,
+                              int height,
+                              double fps,
+                              uint8_t* outData,
+                              int outStride);
 // Paramètres avancés (exposés par le module C)
 typedef struct {
   double brightness;
@@ -59,6 +68,8 @@ void NaayaNR_GetConfig(bool* hpEnabled,
                        double* floorDb,
                        double* attackMs,
                        double* releaseMs);
+int NaayaNR_GetMode(void);
+double NaayaRNNS_GetAggressiveness(void);
 #if TARGET_OS_IOS
 // API spectre (exigée par le module JSI)
 void NaayaAudioSpectrumStart(void);
@@ -218,6 +229,7 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 @interface NaayaFilteredVideoRecorder : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate> {
   std::unique_ptr<AudioEqualizer::AudioEqualizer> _eq;
   std::unique_ptr<AudioNR::NoiseReducer> _nr;
+  std::unique_ptr<AudioNR::RNNoiseSuppressor> _rnns;
   std::unique_ptr<AudioSafety::AudioSafetyEngine> _safety;
   std::unique_ptr<AudioFX::EffectChain> _fx;
   // Tampons audio réutilisés (éviter allocations par frame)
@@ -492,6 +504,58 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
 
   size_t width = CVPixelBufferGetWidth(pb);
   size_t height = CVPixelBufferGetHeight(pb);
+  
+  // === Traitement FFmpeg pour l'enregistrement ===
+  BOOL ffmpegProcessed = NO;
+  CVImageBufferRef processedBuffer = pb; // par défaut, utiliser l'original
+  
+  // Vérifier s'il y a un filtre actif
+  extern bool NaayaFilters_HasFilter();
+  if (NaayaFilters_HasFilter()) {
+    CVPixelBufferLockBaseAddress(pb, kCVPixelBufferLock_ReadOnly);
+    
+    uint8_t* baseAddress = (uint8_t*)CVPixelBufferGetBaseAddress(pb);
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(pb);
+    
+    if (baseAddress) {
+      // Créer buffer de sortie pour FFmpeg
+      CVPixelBufferRef outputBuffer = NULL;
+      NSDictionary* attrs = @{
+        (NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
+        (NSString*)kCVPixelBufferWidthKey: @(width),
+        (NSString*)kCVPixelBufferHeightKey: @(height),
+        (NSString*)kCVPixelBufferIOSurfacePropertiesKey: @{}
+      };
+      
+      CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault,
+                                            width, height,
+                                            kCVPixelFormatType_32BGRA,
+                                            (__bridge CFDictionaryRef)attrs,
+                                            &outputBuffer);
+      
+      if (status == kCVReturnSuccess && outputBuffer) {
+        CVPixelBufferLockBaseAddress(outputBuffer, 0);
+        uint8_t* outBase = (uint8_t*)CVPixelBufferGetBaseAddress(outputBuffer);
+        size_t outStride = CVPixelBufferGetBytesPerRow(outputBuffer);
+        
+        // Traitement FFmpeg (fps basé sur la config d'enregistrement)
+        double fps = 30.0; // TODO: récupérer fps depuis la config
+        ffmpegProcessed = NaayaFilters_ProcessBGRA(baseAddress, (int)bytesPerRow,
+                                                   (int)width, (int)height, fps,
+                                                   outBase, (int)outStride);
+        
+        CVPixelBufferUnlockBaseAddress(outputBuffer, 0);
+        
+        if (ffmpegProcessed) {
+          processedBuffer = outputBuffer; // utiliser le buffer traité
+        } else {
+          CVPixelBufferRelease(outputBuffer); // libérer si échec
+        }
+      }
+    }
+    
+    CVPixelBufferUnlockBaseAddress(pb, kCVPixelBufferLock_ReadOnly);
+  }
 
   if (!self.configured) {
     if ([self.writer status] == AVAssetWriterStatusUnknown) {
@@ -507,26 +571,39 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
     return;
   }
 
-  // Appliquer filtre CoreImage
-  CIImage* inImg = [CIImage imageWithCVPixelBuffer:pb];
+  // Utiliser le buffer traité (FFmpeg si dispo, sinon original)
+  CIImage* inImg = [CIImage imageWithCVPixelBuffer:processedBuffer];
   if (!inImg) return;
   CIImage* outImg = inImg;
-  if (NaayaFilters_HasFilter()) {
+  
+  // Si FFmpeg n'a pas traité, appliquer Core Image en fallback
+  if (!ffmpegProcessed && NaayaFilters_HasFilter()) {
     NSString* name = NaayaFilters_GetCurrentName() ? [NSString stringWithUTF8String:NaayaFilters_GetCurrentName()] : @"";
+    if ([name hasPrefix:@"lut3d:"]) {
+      NSRange qpos = [name rangeOfString:@"?"];
+      if (qpos.location != NSNotFound) {
+        name = [name substringToIndex:qpos.location];
+      }
+    }
     double intensity = NaayaFilters_GetCurrentIntensity();
     if ([name isEqualToString:@"sepia"]) {
-      CIFilter* f = [CIFilter filterWithName:@"CISepiaTone"]; [f setValue:inImg forKey:kCIInputImageKey]; [f setValue:@(MAX(0, MIN(1, intensity))) forKey:kCIInputIntensityKey]; outImg = f.outputImage ?: inImg;
+      CIFilter* f = [CIFilter filterWithName:@"CISepiaTone"];
+      [f setValue:inImg forKey:kCIInputImageKey];
+      [f setValue:@(MAX(0, MIN(1, intensity))) forKey:kCIInputIntensityKey];
+      outImg = f.outputImage ?: inImg;
     } else if ([name isEqualToString:@"noir"]) {
-      CIFilter* f = [CIFilter filterWithName:@"CIPhotoEffectNoir"]; [f setValue:inImg forKey:kCIInputImageKey]; outImg = f.outputImage ?: inImg;
+      CIFilter* f = [CIFilter filterWithName:@"CIPhotoEffectNoir"];
+      [f setValue:inImg forKey:kCIInputImageKey];
+      outImg = f.outputImage ?: inImg;
     } else if ([name isEqualToString:@"monochrome"]) {
-      CIFilter* f = [CIFilter filterWithName:@"CIColorMonochrome"]; [f setValue:inImg forKey:kCIInputImageKey]; [f setValue:@(1.0) forKey:@"inputIntensity"]; outImg = f.outputImage ?: inImg;
+      CIFilter* f = [CIFilter filterWithName:@"CIColorMonochrome"];
+      [f setValue:inImg forKey:kCIInputImageKey];
+      [f setValue:@(1.0) forKey:@"inputIntensity"];
+      outImg = f.outputImage ?: inImg;
     } else if ([name isEqualToString:@"color_controls"]) {
-      // Si des paramètres avancés sont fournis, utiliser le pipeline avancé
-      NaayaAdvancedFilterParams adv;
-      bool hasAdv = NaayaFilters_GetAdvancedParams(&adv);
+      NaayaAdvancedFilterParams adv; bool hasAdv = NaayaFilters_GetAdvancedParams(&adv);
       if (hasAdv) {
         CIImage* tmp = inImg;
-        // 1) Contrôles de couleur de base
         {
           CIFilter* c = [CIFilter filterWithName:@"CIColorControls"];
           [c setValue:tmp forKey:kCIInputImageKey];
@@ -535,112 +612,80 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
           [c setValue:@(MAX(0.0, MIN(2.0, adv.saturation))) forKey:@"inputSaturation"];
           tmp = c.outputImage ?: tmp;
         }
-        // 2) Teinte (hue)
-        if (fabs(adv.hue) > 0.01) {
-          CIFilter* h = [CIFilter filterWithName:@"CIHueAdjust"];
-          [h setValue:tmp forKey:kCIInputImageKey];
-          double radians = adv.hue * M_PI / 180.0;
-          [h setValue:@(radians) forKey:@"inputAngle"];
-          tmp = h.outputImage ?: tmp;
-        }
-        // 3) Gamma
-        if (fabs(adv.gamma - 1.0) > 0.01) {
-          CIFilter* g = [CIFilter filterWithName:@"CIGammaAdjust"];
-          [g setValue:tmp forKey:kCIInputImageKey];
-          [g setValue:@(MAX(0.1, MIN(3.0, adv.gamma))) forKey:@"inputPower"];
-          tmp = g.outputImage ?: tmp;
-        }
-        // 4) Exposition
-        if (fabs(adv.exposure) > 0.01) {
-          CIFilter* e = [CIFilter filterWithName:@"CIExposureAdjust"];
-          [e setValue:tmp forKey:kCIInputImageKey];
-          [e setValue:@(MAX(-2.0, MIN(2.0, adv.exposure))) forKey:@"inputEV"];
-          tmp = e.outputImage ?: tmp;
-        }
-        // 5) Ombres/hautes lumières
-        if (fabs(adv.shadows) > 0.01 || fabs(adv.highlights) > 0.01) {
-          CIFilter* sh = [CIFilter filterWithName:@"CIHighlightShadowAdjust"];
-          [sh setValue:tmp forKey:kCIInputImageKey];
-          double s = (adv.shadows + 1.0) / 2.0;
-          double hl = (adv.highlights + 1.0) / 2.0;
-          [sh setValue:@(MAX(0.0, MIN(1.0, s))) forKey:@"inputShadowAmount"];
-          [sh setValue:@(MAX(0.0, MIN(1.0, hl))) forKey:@"inputHighlightAmount"];
-          tmp = sh.outputImage ?: tmp;
-        }
-        // 6) Température/Teinte
-        if (fabs(adv.warmth) > 0.01 || fabs(adv.tint) > 0.01) {
-          CIFilter* tt = [CIFilter filterWithName:@"CITemperatureAndTint"];
-          [tt setValue:tmp forKey:kCIInputImageKey];
-          CGFloat temp = (CGFloat)(6500.0 + adv.warmth * 2000.0);
-          CGFloat tint = (CGFloat)(adv.tint * 50.0);
-          CIVector* neutral = [CIVector vectorWithX:temp Y:tint];
-          CIVector* target = [CIVector vectorWithX:6500 Y:0];
-          [tt setValue:neutral forKey:@"inputNeutral"];
-          [tt setValue:target forKey:@"inputTargetNeutral"];
-          tmp = tt.outputImage ?: tmp;
-        }
-        // 7) Vignettage
-        if (adv.vignette > 0.01) {
-          CIFilter* v = [CIFilter filterWithName:@"CIVignette"];
-          [v setValue:tmp forKey:kCIInputImageKey];
-          [v setValue:@(MIN(1.0, MAX(0.0, adv.vignette)) * 2.0) forKey:@"inputIntensity"];
-          [v setValue:@(1.0) forKey:@"inputRadius"];
-          tmp = v.outputImage ?: tmp;
-        }
-        // 8) Grain (superposition bruit)
-        if (adv.grain > 0.01) {
-          CGRect extent = inImg.extent;
-          CIFilter* rnd = [CIFilter filterWithName:@"CIRandomGenerator"];
-          CIImage* noise = rnd.outputImage;
-          if (noise) {
-            noise = [noise imageByCroppingToRect:extent];
-            CIFilter* ctrl = [CIFilter filterWithName:@"CIColorControls"];
-            [ctrl setValue:noise forKey:kCIInputImageKey];
-            [ctrl setValue:@(0.0) forKey:@"inputSaturation"];
-            [ctrl setValue:@(0.0) forKey:@"inputBrightness"];
-            [ctrl setValue:@(1.0 + MIN(1.0, MAX(0.0, adv.grain)) * 0.5) forKey:@"inputContrast"];
-            noise = ctrl.outputImage ?: noise;
-            CIFilter* blur = [CIFilter filterWithName:@"CIGaussianBlur"];
-            [blur setValue:noise forKey:kCIInputImageKey];
-            [blur setValue:@(0.5) forKey:@"inputRadius"];
-            noise = [blur.outputImage imageByCroppingToRect:extent] ?: noise;
-            CIFilter* mat = [CIFilter filterWithName:@"CIColorMatrix"];
-            [mat setValue:noise forKey:kCIInputImageKey];
-            [mat setValue:[CIVector vectorWithX:1 Y:0 Z:0 W:0] forKey:@"inputRVector"];
-            [mat setValue:[CIVector vectorWithX:0 Y:1 Z:0 W:0] forKey:@"inputGVector"];
-            [mat setValue:[CIVector vectorWithX:0 Y:0 Z:1 W:0] forKey:@"inputBVector"];
-            [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:0] forKey:@"inputAVector"];
-            CGFloat alpha = (CGFloat)(MIN(1.0, MAX(0.0, adv.grain)) * 0.18);
-            [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:alpha] forKey:@"inputBiasVector"];
-            CIImage* noiseA = mat.outputImage ?: noise;
-            CIFilter* comp = [CIFilter filterWithName:@"CISourceOverCompositing"];
-            [comp setValue:noiseA forKey:kCIInputImageKey];
-            [comp setValue:tmp forKey:kCIInputBackgroundImageKey];
-            tmp = [comp.outputImage imageByCroppingToRect:extent] ?: tmp;
-          }
-        }
+        if (fabs(adv.hue) > 0.01) { CIFilter* h = [CIFilter filterWithName:@"CIHueAdjust"]; [h setValue:tmp forKey:kCIInputImageKey]; double radians = adv.hue * M_PI / 180.0; [h setValue:@(radians) forKey:@"inputAngle"]; tmp = h.outputImage ?: tmp; }
+        if (fabs(adv.gamma - 1.0) > 0.01) { CIFilter* g = [CIFilter filterWithName:@"CIGammaAdjust"]; [g setValue:tmp forKey:kCIInputImageKey]; [g setValue:@(MAX(0.1, MIN(3.0, adv.gamma))) forKey:@"inputPower"]; tmp = g.outputImage ?: tmp; }
+        if (fabs(adv.exposure) > 0.01) { CIFilter* e = [CIFilter filterWithName:@"CIExposureAdjust"]; [e setValue:tmp forKey:kCIInputImageKey]; [e setValue:@(MAX(-2.0, MIN(2.0, adv.exposure))) forKey:@"inputEV"]; tmp = e.outputImage ?: tmp; }
+        if (fabs(adv.shadows) > 0.01 || fabs(adv.highlights) > 0.01) { CIFilter* sh = [CIFilter filterWithName:@"CIHighlightShadowAdjust"]; [sh setValue:tmp forKey:kCIInputImageKey]; double s = (adv.shadows + 1.0) / 2.0; double hl = (adv.highlights + 1.0) / 2.0; [sh setValue:@(MAX(0.0, MIN(1.0, s))) forKey:@"inputShadowAmount"]; [sh setValue:@(MAX(0.0, MIN(1.0, hl))) forKey:@"inputHighlightAmount"]; tmp = sh.outputImage ?: tmp; }
+        if (fabs(adv.warmth) > 0.01 || fabs(adv.tint) > 0.01) { CIFilter* tt = [CIFilter filterWithName:@"CITemperatureAndTint"]; [tt setValue:tmp forKey:kCIInputImageKey]; CGFloat temp = (CGFloat)(6500.0 + adv.warmth * 2000.0); CGFloat tint = (CGFloat)(adv.tint * 50.0); CIVector* neutral = [CIVector vectorWithX:temp Y:tint]; CIVector* target = [CIVector vectorWithX:6500 Y:0]; [tt setValue:neutral forKey:@"inputNeutral"]; [tt setValue:target forKey:@"inputTargetNeutral"]; tmp = tt.outputImage ?: tmp; }
+        if (adv.vignette > 0.01) { CIFilter* v = [CIFilter filterWithName:@"CIVignette"]; [v setValue:tmp forKey:kCIInputImageKey]; [v setValue:@(MIN(1.0, MAX(0.0, adv.vignette)) * 2.0) forKey:@"inputIntensity"]; [v setValue:@(1.0) forKey:@"inputRadius"]; tmp = v.outputImage ?: tmp; }
+        if (adv.grain > 0.01) { CGRect extent = inImg.extent; CIFilter* rnd = [CIFilter filterWithName:@"CIRandomGenerator"]; CIImage* noise = rnd.outputImage; if (noise) { noise = [noise imageByCroppingToRect:extent]; CIFilter* ctrl = [CIFilter filterWithName:@"CIColorControls"]; [ctrl setValue:noise forKey:kCIInputImageKey]; [ctrl setValue:@(0.0) forKey:@"inputSaturation"]; [ctrl setValue:@(0.0) forKey:@"inputBrightness"]; [ctrl setValue:@(1.0 + MIN(1.0, MAX(0.0, adv.grain)) * 0.5) forKey:@"inputContrast"]; noise = ctrl.outputImage ?: noise; CIFilter* blur = [CIFilter filterWithName:@"CIGaussianBlur"]; [blur setValue:noise forKey:kCIInputImageKey]; [blur setValue:@(0.5) forKey:@"inputRadius"]; noise = [blur.outputImage imageByCroppingToRect:extent] ?: noise; CIFilter* mat = [CIFilter filterWithName:@"CIColorMatrix"]; [mat setValue:noise forKey:kCIInputImageKey]; [mat setValue:[CIVector vectorWithX:1 Y:0 Z:0 W:0] forKey:@"inputRVector"]; [mat setValue:[CIVector vectorWithX:0 Y:1 Z:0 W:0] forKey:@"inputGVector"]; [mat setValue:[CIVector vectorWithX:0 Y:0 Z:1 W:0] forKey:@"inputBVector"]; [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:0] forKey:@"inputAVector"]; CGFloat alpha = (CGFloat)(MIN(1.0, MAX(0.0, adv.grain)) * 0.18); [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:alpha] forKey:@"inputBiasVector"]; CIImage* noiseA = mat.outputImage ?: noise; CIFilter* comp = [CIFilter filterWithName:@"CISourceOverCompositing"]; [comp setValue:noiseA forKey:kCIInputImageKey]; [comp setValue:tmp forKey:kCIInputBackgroundImageKey]; tmp = [comp.outputImage imageByCroppingToRect:extent] ?: tmp; } }
         outImg = tmp;
       } else {
-        // Fallback: simple intensité quand pas de paramètres avancés
-        CIFilter* f = [CIFilter filterWithName:@"CIColorControls"];
-        [f setValue:inImg forKey:kCIInputImageKey];
-        [f setValue:@(1.0) forKey:@"inputSaturation"];
-        [f setValue:@(intensity * 0.2) forKey:@"inputBrightness"];
-        [f setValue:@(1.0 + intensity * 0.5) forKey:@"inputContrast"];
-        outImg = f.outputImage ?: inImg;
+        CIFilter* f = [CIFilter filterWithName:@"CIColorControls"]; [f setValue:inImg forKey:kCIInputImageKey]; [f setValue:@(1.0) forKey:@"inputSaturation"]; [f setValue:@(intensity * 0.2) forKey:@"inputBrightness"]; [f setValue:@(1.0 + intensity * 0.5) forKey:@"inputContrast"]; outImg = f.outputImage ?: inImg;
       }
+    } else if ([name hasPrefix:@"lut3d:"]) {
+      static NSMutableDictionary<NSString*, NSData*>* sCubeCache = nil;
+      static NSMutableDictionary<NSString*, NSNumber*>* sCubeSizeCache = nil;
+      if (!sCubeCache) sCubeCache = [NSMutableDictionary new];
+      if (!sCubeSizeCache) sCubeSizeCache = [NSMutableDictionary new];
+      NSString* lutPath = [name substringFromIndex:6];
+      NSData* cubeData = sCubeCache[lutPath];
+      NSNumber* cubeSizeNum = sCubeSizeCache[lutPath];
+      if (!cubeData || !cubeSizeNum) {
+        int cubeSize = 0; NSError* err = nil; NSString* fileText = [NSString stringWithContentsOfFile:lutPath encoding:NSUTF8StringEncoding error:&err];
+        if (fileText && fileText.length > 0) {
+          NSArray<NSString*>* lines = [fileText componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+          NSInteger lutSize = 0; NSMutableArray<NSNumber*>* values = [NSMutableArray arrayWithCapacity:1024];
+          for (NSString* raw in lines) {
+            NSString* line = [raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            if (line.length == 0) continue;
+            if ([line hasPrefix:@"#"] || [line hasPrefix:@"TITLE"] || [line hasPrefix:@"DOMAIN_MIN"] || [line hasPrefix:@"DOMAIN_MAX"]) continue;
+            if ([line hasPrefix:@"LUT_3D_SIZE"]) {
+              NSArray* parts = [line componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+              for (NSString* p in parts) { if (p.length == 0) continue; NSScanner* sc = [NSScanner scannerWithString:p]; NSInteger n = 0; if ([sc scanInteger:&n]) { lutSize = n; break; } }
+              continue;
+            }
+            NSArray* comps = [line componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            NSMutableArray<NSString*>* tokens = [NSMutableArray new];
+            for (NSString* c in comps) { if (c.length > 0) [tokens addObject:c]; }
+            if (tokens.count >= 3) {
+              double r = [tokens[0] doubleValue]; double g = [tokens[1] doubleValue]; double b = [tokens[2] doubleValue];
+              r = r < 0.0 ? 0.0 : (r > 1.0 ? 1.0 : r); g = g < 0.0 ? 0.0 : (g > 1.0 ? 1.0 : g); b = b < 0.0 ? 0.0 : (b > 1.0 ? 1.0 : b);
+              [values addObject:@(r)]; [values addObject:@(g)]; [values addObject:@(b)]; [values addObject:@(1.0)];
+            }
+          }
+          if (lutSize > 1) {
+            NSUInteger expected = (NSUInteger)lutSize * (NSUInteger)lutSize * (NSUInteger)lutSize * 4;
+            if (values.count >= expected) {
+              cubeSize = (int)lutSize; NSMutableData* data = [NSMutableData dataWithLength:expected * sizeof(float)]; float* ptr = (float*)data.mutableBytes; for (NSUInteger i = 0; i < expected; ++i) { ptr[i] = (float)values[i].doubleValue; } cubeData = data;
+            }
+          }
+        }
+        if (cubeData && cubeSize > 1) { sCubeCache[lutPath] = cubeData; sCubeSizeCache[lutPath] = @(cubeSize); cubeSizeNum = @(cubeSize); }
+      }
+      if (cubeData && cubeSizeNum) {
+        CIFilter* cube = [CIFilter filterWithName:@"CIColorCube"];
+        [cube setValue:inImg forKey:kCIInputImageKey];
+        [cube setValue:cubeData forKey:@"inputCubeData"];
+        [cube setValue:cubeSizeNum forKey:@"inputCubeDimension"];
+        CIImage* lutApplied = cube.outputImage ?: inImg; CGFloat mix = (CGFloat)MAX(0.0, MIN(1.0, intensity));
+        if (mix < 1.0 - 1e-3) {
+          CIFilter* mat = [CIFilter filterWithName:@"CIColorMatrix"]; [mat setValue:lutApplied forKey:kCIInputImageKey]; [mat setValue:[CIVector vectorWithX:1 Y:0 Z:0 W:0] forKey:@"inputRVector"]; [mat setValue:[CIVector vectorWithX:0 Y:1 Z:0 W:0] forKey:@"inputGVector"]; [mat setValue:[CIVector vectorWithX:0 Y:0 Z:1 W:0] forKey:@"inputBVector"]; [mat setValue:[CIVector vectorWithX:0 Y:0 Z:0 W:mix] forKey:@"inputAVector"]; CIImage* withAlpha = mat.outputImage ?: lutApplied; CIFilter* comp = [CIFilter filterWithName:@"CISourceOverCompositing"]; [comp setValue:withAlpha forKey:kCIInputImageKey]; [comp setValue:inImg forKey:kCIInputBackgroundImageKey]; outImg = [comp.outputImage imageByCroppingToRect:inImg.extent] ?: lutApplied;
+        } else { outImg = lutApplied; }
+      } else { outImg = inImg; }
     }
   }
 
-    CVPixelBufferRef outPb = NULL;
-    if (!self.adaptor || !self.adaptor.pixelBufferPool) return;
-    CVReturn cr = CVPixelBufferPoolCreatePixelBuffer(NULL, self.adaptor.pixelBufferPool, &outPb);
-    if (cr != kCVReturnSuccess || !outPb) return;
-    [self.ciContext render:outImg toCVPixelBuffer:outPb bounds:CGRectMake(0, 0, width, height) colorSpace:nil];
-    CMTime ts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-    [self.adaptor appendPixelBuffer:outPb withPresentationTime:ts];
-    CVPixelBufferRelease(outPb);
-    return;
+  // Rendu vers pixel buffer de sortie
+  CVPixelBufferRef outPb = NULL;
+  if (!self.adaptor || !self.adaptor.pixelBufferPool) return;
+  CVReturn cr = CVPixelBufferPoolCreatePixelBuffer(NULL, self.adaptor.pixelBufferPool, &outPb);
+  if (cr != kCVReturnSuccess || !outPb) return;
+  [self.ciContext render:outImg toCVPixelBuffer:outPb bounds:CGRectMake(0, 0, width, height) colorSpace:nil];
+  CMTime ts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+  [self.adaptor appendPixelBuffer:outPb withPresentationTime:ts];
+  CVPixelBufferRelease(outPb);
+  return;
   }
 
   // Audio
@@ -664,6 +709,9 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
       self.eqConfigured = YES;
       // Init NR moteur simple (expander + passe-haut)
       _nr = std::make_unique<AudioNR::NoiseReducer>((uint32_t)sr, channels);
+      // Init RNNoise wrapper (squelette; actif lorsque vendorisé)
+      _rnns = std::make_unique<AudioNR::RNNoiseSuppressor>();
+      _rnns->initialize((uint32_t)sr, channels);
       _safety = std::make_unique<AudioSafety::AudioSafetyEngine>((uint32_t)sr, channels);
       // FX chain setup
       _fx = std::make_unique<AudioFX::EffectChain>();
@@ -726,24 +774,37 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
     }
 
     size_t numFrames = (size_t)CMSampleBufferGetNumSamples(sampleBuffer);
-    // Gérer 16-bit PCM interleaved
+    // Formats supportés: PCM S16 interleaved OU PCM float32 interleaved
     bool isPCM = (asbd->mFormatID == kAudioFormatLinearPCM);
     bool isInt16 = isPCM && asbd->mBitsPerChannel == 16;
     bool isPacked = (asbd->mFormatFlags & kAudioFormatFlagIsPacked) != 0;
     bool isSignedInt = (asbd->mFormatFlags & kAudioFormatFlagIsSignedInteger) != 0;
-    if (!isInt16 || !isPacked || !isSignedInt || channels < 1 || channels > 2) {
-      // Fallback: pas supporté → append brut
+    bool isFloat32 = isPCM && ((asbd->mFormatFlags & kAudioFormatFlagIsFloat) != 0) && asbd->mBitsPerChannel == 32;
+    if (!(channels >= 1 && channels <= 2 && isPCM && ((isInt16 && isPacked && isSignedInt) || isFloat32))) {
+      // Fallback: format PCM non géré → append brut
       [self.audioInput appendSampleBuffer:sampleBuffer];
       return;
     }
 
-    // Convertir → float, traiter, reconvertir
+    // Convertir → float, traiter, reconvertir selon format
     if (channels == 1) {
       _bufMono.resize(numFrames);
-      int16_t* in = reinterpret_cast<int16_t*>(dataPtr);
-      for (size_t i = 0; i < numFrames; ++i) _bufMono[i] = (float)in[i] / 32768.0f;
-      // NR temps-réel (faible latence)
-      if (_nr) {
+      if (isInt16) {
+        int16_t* in16 = reinterpret_cast<int16_t*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) _bufMono[i] = (float)in16[i] / 32768.0f;
+      } else {
+        float* inF = reinterpret_cast<float*>(dataPtr);
+        // Copier tel quel dans tampon float
+        memcpy(_bufMono.data(), inF, numFrames * sizeof(float));
+      }
+      // NR temps-réel (sélection): RNNoise si dispo+activé, sinon expander
+      bool useRNNS = (NaayaNR_GetMode() == 1);
+      if (useRNNS && _rnns && _rnns->isAvailable()) {
+        _tmpMono.resize(numFrames);
+        _rnns->setAggressiveness(NaayaRNNS_GetAggressiveness());
+        _rnns->processMono(_bufMono.data(), _tmpMono.data(), numFrames);
+        _bufMono.swap(_tmpMono);
+      } else if (_nr) {
         if (NaayaNR_HasPendingUpdate()) {
           AudioNR::NoiseReducerConfig cfg; bool hpE; double hpHz, thDb, ratio, flDb, aMs, rMs;
           NaayaNR_GetConfig(&hpE, &hpHz, &thDb, &ratio, &flDb, &aMs, &rMs);
@@ -808,20 +869,42 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
        }
        _outMono.resize(numFrames);
       _eq->process(_bufMono.data(), _outMono.data(), numFrames);
-      for (size_t i = 0; i < numFrames; ++i) {
-        float v = std::max(-1.0f, std::min(1.0f, _outMono[i]));
-        in[i] = (int16_t)lrintf(v * 32767.0f);
+      if (isInt16) {
+        int16_t* in16 = reinterpret_cast<int16_t*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) {
+          float v = std::max(-1.0f, std::min(1.0f, _outMono[i]));
+          in16[i] = (int16_t)lrintf(v * 32767.0f);
+        }
+      } else {
+        float* inF = reinterpret_cast<float*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) {
+          float v = std::max(-1.0f, std::min(1.0f, _outMono[i]));
+          inF[i] = v;
+        }
       }
       [self.audioInput appendSampleBuffer:sampleBuffer];
     } else {
       // stéréo interleaved LR LR ...
       _left.resize(numFrames); _right.resize(numFrames);
-      int16_t* in = reinterpret_cast<int16_t*>(dataPtr);
-      for (size_t i = 0; i < numFrames; ++i) {
-        _left[i] = (float)in[2*i] / 32768.0f;
-        _right[i] = (float)in[2*i+1] / 32768.0f;
+      if (isInt16) {
+        int16_t* in16 = reinterpret_cast<int16_t*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) {
+          _left[i] = (float)in16[2*i] / 32768.0f;
+          _right[i] = (float)in16[2*i+1] / 32768.0f;
+        }
+      } else {
+        float* inF = reinterpret_cast<float*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) {
+          _left[i] = inF[2*i];
+          _right[i] = inF[2*i+1];
+        }
       }
-      if (_nr) {
+      if (NaayaNR_GetMode() == 1 && _rnns && _rnns->isAvailable()) {
+        _tmpLeft.resize(numFrames); _tmpRight.resize(numFrames);
+        _rnns->setAggressiveness(NaayaRNNS_GetAggressiveness());
+        _rnns->processStereo(_left.data(), _right.data(), _tmpLeft.data(), _tmpRight.data(), numFrames);
+        _left.swap(_tmpLeft); _right.swap(_tmpRight);
+      } else if (_nr) {
         if (NaayaNR_HasPendingUpdate()) {
           AudioNR::NoiseReducerConfig cfg; bool hpE; double hpHz, thDb, ratio, flDb, aMs, rMs;
           NaayaNR_GetConfig(&hpE, &hpHz, &thDb, &ratio, &flDb, &aMs, &rMs);
@@ -884,11 +967,22 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
        }
        _outLeft.resize(numFrames); _outRight.resize(numFrames);
       _eq->processStereo(_left.data(), _right.data(), _outLeft.data(), _outRight.data(), numFrames);
-      for (size_t i = 0; i < numFrames; ++i) {
-        float vl = std::max(-1.0f, std::min(1.0f, _outLeft[i]));
-        float vr = std::max(-1.0f, std::min(1.0f, _outRight[i]));
-        in[2*i]   = (int16_t)lrintf(vl * 32767.0f);
-        in[2*i+1] = (int16_t)lrintf(vr * 32767.0f);
+      if (isInt16) {
+        int16_t* in16 = reinterpret_cast<int16_t*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) {
+          float vl = std::max(-1.0f, std::min(1.0f, _outLeft[i]));
+          float vr = std::max(-1.0f, std::min(1.0f, _outRight[i]));
+          in16[2*i]   = (int16_t)lrintf(vl * 32767.0f);
+          in16[2*i+1] = (int16_t)lrintf(vr * 32767.0f);
+        }
+      } else {
+        float* inF = reinterpret_cast<float*>(dataPtr);
+        for (size_t i = 0; i < numFrames; ++i) {
+          float vl = std::max(-1.0f, std::min(1.0f, _outLeft[i]));
+          float vr = std::max(-1.0f, std::min(1.0f, _outRight[i]));
+          inF[2*i]   = vl;
+          inF[2*i+1] = vr;
+        }
       }
       [self.audioInput appendSampleBuffer:sampleBuffer];
     }

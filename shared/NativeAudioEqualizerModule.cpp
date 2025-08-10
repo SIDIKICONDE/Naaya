@@ -14,6 +14,10 @@ static std::atomic<bool> g_naaya_eq_dirty{false};
 // === NR global state (accessible cross-platform) ===
 static std::mutex g_naaya_nr_mutex;
 static bool   g_naaya_nr_enabled = false;
+// Mode NR: 0=expander, 1=rnnoise, 2=off
+static int    g_naaya_nr_mode = 0;
+// RNNoise aggressiveness (0.0..3.0)
+static double g_naaya_rnns_aggr = 1.0;
 static bool   g_naaya_nr_hp_enabled = true;
 static double g_naaya_nr_hp_hz = 80.0;
 static double g_naaya_nr_threshold_db = -45.0;
@@ -102,6 +106,16 @@ extern "C" void NaayaNR_ClearPendingUpdate() {
   g_naaya_nr_dirty.store(false);
 }
 
+extern "C" int NaayaNR_GetMode() {
+  std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+  return g_naaya_nr_mode;
+}
+
+extern "C" double NaayaRNNS_GetAggressiveness() {
+  std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+  return g_naaya_rnns_aggr;
+}
+
 extern "C" void NaayaNR_GetConfig(bool* hpEnabled,
                                   double* hpHz,
                                   double* thresholdDb,
@@ -161,61 +175,11 @@ extern "C" void NaayaFX_GetDelay(double* delayMs,
 #ifndef NAAYA_HAS_SPECTRUM
 #define NAAYA_HAS_SPECTRUM 1
 #endif
-#if NAAYA_HAS_SPECTRUM && __APPLE__
+#if NAAYA_HAS_SPECTRUM
 extern "C" {
 void NaayaAudioSpectrumStart(void);
 void NaayaAudioSpectrumStop(void);
 size_t NaayaAudioSpectrumCopyMagnitudes(float* outBuffer, size_t maxCount);
-}
-#elif NAAYA_HAS_SPECTRUM && defined(__ANDROID__)
-#include <fbjni/fbjni.h>
-#include <algorithm>
-
-namespace {
-JNIEnv* getEnv() {
-    return facebook::jni::Environment::current();
-}
-
-void androidStartSpectrum() {
-    JNIEnv* env = getEnv();
-    if (!env) return;
-    jclass cls = env->FindClass("com/naaya/audio/AudioSpectrumManager");
-    if (!cls) return;
-    jmethodID mid = env->GetStaticMethodID(cls, "start", "()V");
-    if (mid) {
-        env->CallStaticVoidMethod(cls, mid);
-    }
-    env->DeleteLocalRef(cls);
-}
-
-void androidStopSpectrum() {
-    JNIEnv* env = getEnv();
-    if (!env) return;
-    jclass cls = env->FindClass("com/naaya/audio/AudioSpectrumManager");
-    if (!cls) return;
-    jmethodID mid = env->GetStaticMethodID(cls, "stop", "()V");
-    if (mid) {
-        env->CallStaticVoidMethod(cls, mid);
-    }
-    env->DeleteLocalRef(cls);
-}
-} // namespace
-
-static int androidCopyMagnitudes(float* out, size_t maxCount) {
-    JNIEnv* env = getEnv();
-    if (!env) return 0;
-    jclass cls = env->FindClass("com/naaya/audio/AudioSpectrumManager");
-    if (!cls) return 0;
-    jmethodID mid = env->GetStaticMethodID(cls, "copyMagnitudes", "([FI)I");
-    if (!mid) { env->DeleteLocalRef(cls); return 0; }
-    jfloatArray arr = env->NewFloatArray(static_cast<jsize>(maxCount));
-    if (!arr) { env->DeleteLocalRef(cls); return 0; }
-    jint n = env->CallStaticIntMethod(cls, mid, arr, static_cast<jint>(maxCount));
-    jsize toCopy = std::min(static_cast<jsize>(maxCount), env->GetArrayLength(arr));
-    env->GetFloatArrayRegion(arr, 0, toCopy, out);
-    env->DeleteLocalRef(arr);
-    env->DeleteLocalRef(cls);
-    return static_cast<int>(n);
 }
 #endif
 
@@ -474,10 +438,8 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
     methodMap_["startSpectrumAnalysis"] = MethodMetadata{0, [](jsi::Runtime& /*rt*/, TurboModule& turboModule, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
         auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
         self.analysisRunning_ = true;
-#if NAAYA_HAS_SPECTRUM && __APPLE__
+#if NAAYA_HAS_SPECTRUM
         NaayaAudioSpectrumStart();
-#elif NAAYA_HAS_SPECTRUM && defined(__ANDROID__)
-        androidStartSpectrum();
 #endif 
         return jsi::Value::undefined();
     }};
@@ -485,10 +447,8 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
     methodMap_["stopSpectrumAnalysis"] = MethodMetadata{0, [](jsi::Runtime& /*rt*/, TurboModule& turboModule, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
         auto& self = static_cast<NativeAudioEqualizerModule&>(turboModule);
         self.analysisRunning_ = false;
-#if NAAYA_HAS_SPECTRUM && __APPLE__
+#if NAAYA_HAS_SPECTRUM
         NaayaAudioSpectrumStop();
-#elif NAAYA_HAS_SPECTRUM && defined(__ANDROID__)
-        androidStopSpectrum();
 #endif 
         return jsi::Value::undefined();
     }};
@@ -496,19 +456,9 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
     methodMap_["getSpectrumData"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
         const size_t numBars = 32;
         jsi::Array result(rt, numBars);
-#if NAAYA_HAS_SPECTRUM && __APPLE__
+#if NAAYA_HAS_SPECTRUM
         float buffer[64];
         size_t n = NaayaAudioSpectrumCopyMagnitudes(buffer, 64);
-        size_t count = std::min(numBars, n);
-        for (size_t i = 0; i < count; ++i) {
-            result.setValueAtIndex(rt, i, jsi::Value(static_cast<double>(buffer[i])));
-        }
-        for (size_t i = count; i < numBars; ++i) {
-            result.setValueAtIndex(rt, i, jsi::Value(0));
-        }
-#elif NAAYA_HAS_SPECTRUM && defined(__ANDROID__)
-        float buffer[64];
-        size_t n = static_cast<size_t>(androidCopyMagnitudes(buffer, 64));
         size_t count = std::min(numBars, n);
         for (size_t i = 0; i < count; ++i) {
             result.setValueAtIndex(rt, i, jsi::Value(static_cast<double>(buffer[i])));
@@ -538,6 +488,47 @@ NativeAudioEqualizerModule::NativeAudioEqualizerModule(std::shared_ptr<CallInvok
     methodMap_["nrGetEnabled"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
         std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
         return jsi::Value(g_naaya_nr_enabled);
+    }};
+
+    // NR mode: 'expander' | 'rnnoise' | 'off' (ou 0/1/2)
+    methodMap_["nrSetMode"] = MethodMetadata{1, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        int mode = 0;
+        if (args[0].isString()) {
+          auto m = args[0].asString(rt).utf8(rt);
+          if (m == "expander") mode = 0; else if (m == "rnnoise") mode = 1; else if (m == "off") mode = 2;
+        } else if (args[0].isNumber()) {
+          mode = (int)args[0].asNumber();
+          if (mode < 0) mode = 0; if (mode > 2) mode = 2;
+        }
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+          g_naaya_nr_mode = mode;
+          // Activer/désactiver global selon mode 'off'
+          g_naaya_nr_enabled = (mode != 2);
+          g_naaya_nr_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["nrGetMode"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+        return jsi::Value((double)g_naaya_nr_mode);
+    }};
+
+    methodMap_["rnnsSetAggressiveness"] = MethodMetadata{1, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {
+        double a = args[0].asNumber();
+        if (a < 0.0) a = 0.0; if (a > 3.0) a = 3.0;
+        {
+          std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+          g_naaya_rnns_aggr = a;
+          g_naaya_nr_dirty.store(true);
+        }
+        return jsi::Value::undefined();
+    }};
+
+    methodMap_["rnnsGetAggressiveness"] = MethodMetadata{0, [](jsi::Runtime& rt, TurboModule& /*turboModule*/, const jsi::Value* /*args*/, size_t /*count*/) -> jsi::Value {
+        std::lock_guard<std::mutex> lk(g_naaya_nr_mutex);
+        return jsi::Value(g_naaya_rnns_aggr);
     }};
 
     methodMap_["nrSetConfig"] = MethodMetadata{7, [](jsi::Runtime& /*rt*/, TurboModule& /*turboModule*/, const jsi::Value* args, size_t /*count*/) -> jsi::Value {

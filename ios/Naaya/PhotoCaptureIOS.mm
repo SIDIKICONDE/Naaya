@@ -90,7 +90,7 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
           if (fabs(adv.exposure) > 0.01) { CIFilter* e = [CIFilter filterWithName:@"CIExposureAdjust"]; [e setValue:tmp forKey:kCIInputImageKey]; [e setValue:@(MAX(-2.0, MIN(2.0, adv.exposure))) forKey:@"inputEV"]; tmp = e.outputImage ?: tmp; }
           if (fabs(adv.shadows) > 0.01 || fabs(adv.highlights) > 0.01) { CIFilter* sh = [CIFilter filterWithName:@"CIHighlightShadowAdjust"]; [sh setValue:tmp forKey:kCIInputImageKey]; double s = (adv.shadows + 1.0) / 2.0; double hl = (adv.highlights + 1.0) / 2.0; [sh setValue:@(MAX(0.0, MIN(1.0, s))) forKey:@"inputShadowAmount"]; [sh setValue:@(MAX(0.0, MIN(1.0, hl))) forKey:@"inputHighlightAmount"]; tmp = sh.outputImage ?: tmp; }
           if (fabs(adv.warmth) > 0.01 || fabs(adv.tint) > 0.01) { CIFilter* tt = [CIFilter filterWithName:@"CITemperatureAndTint"]; [tt setValue:tmp forKey:kCIInputImageKey]; CGFloat temp = (CGFloat)(6500.0 + adv.warmth * 2000.0); CGFloat tint = (CGFloat)(adv.tint * 50.0); CIVector* neutral = [CIVector vectorWithX:temp Y:tint]; CIVector* target = [CIVector vectorWithX:6500 Y:0]; [tt setValue:neutral forKey:@"inputNeutral"]; [tt setValue:target forKey:@"inputTargetNeutral"]; tmp = tt.outputImage ?: tmp; }
-          if (adv.vignette > 0.01) { CIFilter* v = [CIFilter filterWithName:@"CIVignette"]; [v setValue:tmp forKey:kCIInputImageKey]; [v setValue:@(MIN(1.0, MAX(0.0, adv.vignette)) * 2.0) forKey:@"inputIntensity"]; [v setValue:@(1.0) forKey:@"inputRadius"]; tmp = v.outputImage ?: tmp; }
+          if (fabs(adv.vignette) > 0.01) { CIFilter* v = [CIFilter filterWithName:@"CIVignette"]; [v setValue:tmp forKey:kCIInputImageKey]; [v setValue:@(MIN(1.0, MAX(0.0, adv.vignette)) * 2.0) forKey:@"inputIntensity"]; [v setValue:@(1.0) forKey:@"inputRadius"]; tmp = v.outputImage ?: tmp; }
           // Grain (bruit superposé)
           if (adv.grain > 0.01) {
             CGRect extent = ci.extent;
@@ -136,7 +136,8 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
           NSDictionary* options = @{ (NSString*)kCGImageDestinationLossyCompressionQuality: @(quality) };
           CGImageDestinationAddImage(dest, cg, (__bridge CFDictionaryRef)options);
           CGImageDestinationFinalize(dest);
-          self.data = [NSData dataWithData:(__bridge_transfer NSData*)jpegData];
+          self.data = [NSData dataWithData:(__bridge NSData*)jpegData];
+          CFRelease(jpegData);
           CFRelease(dest);
         } else {
           self.data = d;
@@ -155,12 +156,13 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
   if (self.data) {
     CGImageSourceRef src = CGImageSourceCreateWithData((__bridge CFDataRef)d, NULL);
     if (src) {
-      NSDictionary* props = (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(src, 0, NULL);
+      NSDictionary* props = (__bridge NSDictionary*)CGImageSourceCopyPropertiesAtIndex(src, 0, NULL);
       if (props) {
         NSNumber* w = props[(NSString*)kCGImagePropertyPixelWidth];
         NSNumber* h = props[(NSString*)kCGImagePropertyPixelHeight];
         if (w && h) { self.size = CGSizeMake(w.doubleValue, h.doubleValue); }
       }
+      if (props) CFRelease((__bridge CFTypeRef)props);
       CFRelease(src);
     }
   }
@@ -229,14 +231,20 @@ protected:
     AVCaptureDeviceInput* input = NaayaGetCurrentInput();
     AVCaptureDevice* device = input ? input.device : nil;
     if (device && device.hasFlash) {
-      // Par défaut, utiliser 'auto' si supporté
-      if ([photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeAuto)]) {
-        settings.flashMode = AVCaptureFlashModeAuto;
-      } else if ([photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeOn)]) {
-        settings.flashMode = AVCaptureFlashModeOn;
-      } else {
-        settings.flashMode = AVCaptureFlashModeOff;
+      // Lire le mode flash global défini par le module natif
+      int mode = NaayaGetFlashMode(); // 0=off,1=on,2=auto
+      AVCaptureFlashMode iosMode = AVCaptureFlashModeOff;
+      if (mode == 1) iosMode = AVCaptureFlashModeOn;
+      else if (mode == 2) iosMode = AVCaptureFlashModeAuto;
+
+      // Clamp selon les modes supportés
+      if (iosMode == AVCaptureFlashModeAuto && ![photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeAuto)]) {
+        iosMode = [photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeOn)] ? AVCaptureFlashModeOn : AVCaptureFlashModeOff;
       }
+      if (iosMode == AVCaptureFlashModeOn && ![photoOutput.supportedFlashModes containsObject:@(AVCaptureFlashModeOn)]) {
+        iosMode = AVCaptureFlashModeOff;
+      }
+      settings.flashMode = iosMode;
     } else {
       settings.flashMode = AVCaptureFlashModeOff;
     }

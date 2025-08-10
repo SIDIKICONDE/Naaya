@@ -13,6 +13,7 @@ extern "C" {
     #include <libavutil/imgutils.h>
     #include <libavutil/pixfmt.h>
     #include <libavutil/opt.h>
+    #include <libavutil/pixdesc.h>
 }
 #endif
 
@@ -70,72 +71,26 @@ bool FFmpegFilterProcessor::applyFilter(const FilterState& filter, const void* i
     }
     
     #ifdef FFMPEG_AVAILABLE
-    // Implémentation FFmpeg
-    if (!createFilterGraph()) {
-        return false;
+    // Implémentation optimisée: supposer buffer packé et utiliser format courant
+    if (width_ <= 0 || height_ <= 0) { setLastError("Format vidéo non défini"); return false; }
+    const char* fmt = pixelFormat_.empty() ? "yuv420p" : pixelFormat_.c_str();
+    int stride = 0;
+    // Estimer stride packé minimal lorsque inputSize est fourni (fallback)
+    if (std::strcmp(fmt, "bgra") == 0 || std::strcmp(fmt, "rgba") == 0 || std::strcmp(fmt, "rgb0") == 0) {
+        stride = width_ * 4;
+    } else if (std::strcmp(fmt, "rgb24") == 0 || std::strcmp(fmt, "bgr24") == 0) {
+        stride = width_ * 3;
     }
-    
-    if (!addFilterToGraph(filter)) {
-        return false;
+    if (stride == 0) {
+        // Repli: tenter packé via imgutils
+        stride = width_ * 4;
     }
-    
-    // Préparer frame d'entrée à partir du buffer brut
-    if (!inputFrame_) inputFrame_ = av_frame_alloc();
-    if (!outputFrame_) outputFrame_ = av_frame_alloc();
-    if (!inputFrame_ || !outputFrame_) {
-        setLastError("Impossible d'allouer les frames FFmpeg");
-        return false;
-    }
-
-    AVPixelFormat pix = av_get_pix_fmt(pixelFormat_.empty() ? "yuv420p" : pixelFormat_.c_str());
-    if (pix == AV_PIX_FMT_NONE) pix = AV_PIX_FMT_YUV420P;
-
-    inputFrame_->width = width_;
-    inputFrame_->height = height_;
-    inputFrame_->format = pix;
-
-    // Renseigner les pointeurs de planes depuis le buffer d'entrée
-    int ret = av_image_fill_arrays(inputFrame_->data, inputFrame_->linesize,
-                                   reinterpret_cast<const uint8_t*>(inputData),
-                                   pix, width_, height_, 1);
-    if (ret < 0) {
-        setLastError("av_image_fill_arrays a échoué");
-        return false;
-    }
-
-    // Pousser la frame dans le buffersrc
-    ret = av_buffersrc_add_frame_flags(sourceContext_, inputFrame_, AV_BUFFERSRC_FLAG_KEEP_REF);
-    if (ret < 0) {
-        setLastError("buffersrc_add_frame a échoué");
-        return false;
-    }
-
-    // Récupérer la frame traitée
-    ret = av_buffersink_get_frame(sinkContext_, outputFrame_);
-    if (ret < 0) {
-        setLastError("buffersink_get_frame a échoué");
-        return false;
-    }
-
-    // Copier la frame de sortie vers le buffer fourni
-    int required = av_image_get_buffer_size((AVPixelFormat)outputFrame_->format,
-                                            outputFrame_->width, outputFrame_->height, 1);
-    if (required < 0 || static_cast<size_t>(required) > outputSize) {
-        setLastError("Taille de sortie insuffisante pour la frame filtrée");
-        av_frame_unref(outputFrame_);
-        return false;
-    }
-    int copied = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(outputData), (int)outputSize,
-                                         (const uint8_t* const*)outputFrame_->data,
-                                         outputFrame_->linesize,
-                                         (AVPixelFormat)outputFrame_->format,
-                                         outputFrame_->width, outputFrame_->height, 1);
-    av_frame_unref(outputFrame_);
-    if (copied < 0) {
-        setLastError("Échec de copie de la frame filtrée");
-        return false;
-    }
-    return true;
+    return applyFilterWithStride(filter,
+                                 reinterpret_cast<const uint8_t*>(inputData),
+                                 stride,
+                                 width_, height_, fmt,
+                                 reinterpret_cast<uint8_t*>(outputData),
+                                 stride);
     #else
     // Mode fallback: copie directe avec log
     std::cout << "[FFmpegFilterProcessor] Mode fallback - filtre: " 
@@ -223,6 +178,77 @@ bool FFmpegFilterProcessor::setFrameRate(int fps) {
 
 // Méthodes privées
 #ifdef FFMPEG_AVAILABLE
+bool FFmpegFilterProcessor::ensureGraph(const FilterState& filter) {
+    // Reconstruire seulement si format/fps/filtre ont changé
+    std::string filterString = getFFmpegFilterString(filter);
+    if (filterString.empty()) { setLastError("Filtre FFmpeg non supporté"); return false; }
+    bool formatChanged = (lastWidth_ != width_) || (lastHeight_ != height_) || (lastPixelFormat_ != pixelFormat_) || (lastFrameRate_ != frameRate_);
+    bool filterChanged = (lastFilterDesc_ != filterString);
+    if (filterGraph_ && !formatChanged && !filterChanged) {
+        return true;
+    }
+    // (Re)créer graphe et frames
+    destroyFilterGraph();
+    if (!createFilterGraph()) return false;
+    if (!addFilterToGraph(filter)) return false;
+    if (!inputFrame_) inputFrame_ = av_frame_alloc();
+    if (!outputFrame_) outputFrame_ = av_frame_alloc();
+    if (!inputFrame_ || !outputFrame_) { setLastError("Impossible d'allouer les frames FFmpeg"); return false; }
+    lastWidth_ = width_;
+    lastHeight_ = height_;
+    lastPixelFormat_ = pixelFormat_;
+    lastFrameRate_ = frameRate_;
+    lastFilterDesc_ = filterString;
+    return true;
+}
+
+bool FFmpegFilterProcessor::applyFilterWithStride(const FilterState& filter,
+                               const uint8_t* inputData,
+                               int inputStride,
+                               int width,
+                               int height,
+                               const char* pixFormat,
+                               uint8_t* outputData,
+                               int outputStride) {
+    if (!initialized_) { setLastError("Processeur non initialisé"); return false; }
+    pixelFormat_ = pixFormat ? std::string(pixFormat) : std::string("bgra");
+    width_ = width; height_ = height;
+    if (!ensureGraph(filter)) return false;
+
+    AVPixelFormat pix = av_get_pix_fmt(pixelFormat_.c_str());
+    if (pix == AV_PIX_FMT_NONE) pix = AV_PIX_FMT_BGRA;
+
+    // Préparer frame d'entrée en référençant directement les données + stride
+    inputFrame_->width = width_;
+    inputFrame_->height = height_;
+    inputFrame_->format = pix;
+    inputFrame_->data[0] = const_cast<uint8_t*>(inputData);
+    inputFrame_->linesize[0] = inputStride;
+
+    // Pousser la frame
+    int ret = av_buffersrc_add_frame_flags(sourceContext_, inputFrame_, AV_BUFFERSRC_FLAG_KEEP_REF);
+    if (ret < 0) { setLastError("buffersrc_add_frame a échoué"); return false; }
+
+    // Tirer la frame
+    ret = av_buffersink_get_frame(sinkContext_, outputFrame_);
+    if (ret < 0) { setLastError("buffersink_get_frame a échoué"); return false; }
+
+    // Copier vers sortie en respectant outputStride (zéro réallocation)
+    const int outLinesize = outputFrame_->linesize[0];
+    const int rowBytes = av_get_bits_per_pixel(av_pix_fmt_desc_get((AVPixelFormat)outputFrame_->format)) * outputFrame_->width / 8;
+    if (outputStride < rowBytes) {
+        av_frame_unref(outputFrame_);
+        setLastError("outputStride insuffisant");
+        return false;
+    }
+    for (int y = 0; y < outputFrame_->height; ++y) {
+        const uint8_t* srcRow = outputFrame_->data[0] + y * outLinesize;
+        uint8_t* dstRow = outputData + y * outputStride;
+        std::memcpy(dstRow, srcRow, (size_t)rowBytes);
+    }
+    av_frame_unref(outputFrame_);
+    return true;
+}
 bool FFmpegFilterProcessor::createFilterGraph() {
     if (filterGraph_) {
         destroyFilterGraph();
@@ -347,7 +373,6 @@ std::string FFmpegFilterProcessor::getFFmpegFilterString(const FilterState& filt
         escaped.reserve(path.size() + 8);
         for (char c : path) {
             if (c == '\'' || c == ':') {
-                // Échapper les quotes simples et les deux-points (séparateur d'options)
                 escaped.push_back('\\');
             }
             escaped.push_back(c);
@@ -355,50 +380,108 @@ std::string FFmpegFilterProcessor::getFFmpegFilterString(const FilterState& filt
         return escaped;
     };
 
+    // Construire une chaîne combinée: ajustements (eq/gamma/hue) + effet principal (sepia/noir/... ou lut3d)
+    std::vector<std::string> parts;
+
+    // 1) Ajustements globaux à partir de FilterParams
+    const bool needsEq = (std::abs(filter.params.brightness) > 1e-6) ||
+                         (std::abs(filter.params.contrast - 1.0) > 1e-6) ||
+                         (std::abs(filter.params.saturation - 1.0) > 1e-6) ||
+                         (std::abs(filter.params.gamma - 1.0) > 1e-6);
+    if (needsEq) {
+        std::string eq = "eq=brightness=" + std::to_string(filter.params.brightness) +
+                         ":contrast=" + std::to_string(filter.params.contrast) +
+                         ":saturation=" + std::to_string(filter.params.saturation);
+        if (std::abs(filter.params.gamma - 1.0) > 1e-6) {
+            eq += ":gamma=" + std::to_string(filter.params.gamma);
+        }
+        parts.push_back(eq);
+    }
+    if (std::abs(filter.params.hue) > 1e-6) {
+        // Convertir degrés -> radians pour FFmpeg hue=h
+        const double radians = filter.params.hue * M_PI / 180.0;
+        parts.push_back("hue=h=" + std::to_string(radians));
+    }
+
+    // 2) Effet principal selon le type
     switch (filter.type) {
-        case FilterType::SEPIA:
-            return "colorbalance=rs=" + std::to_string(filter.params.intensity * 0.3) + 
-                   ":gs=" + std::to_string(filter.params.intensity * 0.1) + 
-                   ":bs=" + std::to_string(-filter.params.intensity * 0.4);
-        
-        case FilterType::NOIR:
-            return "hue=s=0";
-        
-        case FilterType::MONOCHROME:
-            return "hue=s=0.5";
-        
-        case FilterType::COLOR_CONTROLS:
-            return "eq=brightness=" + std::to_string(filter.params.brightness) +
-                   ":contrast=" + std::to_string(filter.params.contrast) +
-                   ":saturation=" + std::to_string(filter.params.saturation);
-        
-        case FilterType::VINTAGE:
-            return "colorbalance=rs=0.2:gs=0.1:bs=-0.3,hue=s=0.8";
-        
-        case FilterType::COOL:
-            return "colorbalance=rs=-0.2:gs=0.1:bs=0.3";
-        
-        case FilterType::WARM:
-            return "colorbalance=rs=0.3:gs=0.1:bs=-0.2";
-        
+        case FilterType::SEPIA: {
+            parts.push_back("colorbalance=rs=" + std::to_string(filter.params.intensity * 0.3) +
+                           ":gs=" + std::to_string(filter.params.intensity * 0.1) +
+                           ":bs=" + std::to_string(-filter.params.intensity * 0.4));
+            break;
+        }
+        case FilterType::NOIR: {
+            parts.push_back("hue=s=0");
+            break;
+        }
+        case FilterType::MONOCHROME: {
+            parts.push_back("hue=s=0.5");
+            break;
+        }
+        case FilterType::COLOR_CONTROLS: {
+            // Rien d'autre: déjà couvert par eq/hue/gamma ci-dessus
+            break;
+        }
+        case FilterType::VINTAGE: {
+            parts.push_back("colorbalance=rs=0.2:gs=0.1:bs=-0.3,hue=s=0.8");
+            break;
+        }
+        case FilterType::COOL: {
+            parts.push_back("colorbalance=rs=-0.2:gs=0.1:bs=0.3");
+            break;
+        }
+        case FilterType::WARM: {
+            parts.push_back("colorbalance=rs=0.3:gs=0.1:bs=-0.2");
+            break;
+        }
         case FilterType::CUSTOM: {
-            // Convention: customFilterName peut contenir un schéma "lut3d:<absolute_path>"
             const std::string& name = filter.params.customFilterName;
             const std::string lutPrefix = "lut3d:";
             if (name.rfind(lutPrefix, 0) == 0 && name.size() > lutPrefix.size()) {
-                std::string path = name.substr(lutPrefix.size());
+                std::string rest = name.substr(lutPrefix.size());
+                std::string path = rest;
+                std::string interp = "tetrahedral";
+                auto qpos = rest.find('?');
+                if (qpos != std::string::npos) {
+                    path = rest.substr(0, qpos);
+                    std::string query = rest.substr(qpos + 1);
+                    size_t start = 0;
+                    while (start < query.size()) {
+                        size_t amp = query.find('&', start);
+                        std::string pair = amp == std::string::npos ? query.substr(start) : query.substr(start, amp - start);
+                        size_t eq = pair.find('=');
+                        if (eq != std::string::npos) {
+                            std::string key = pair.substr(0, eq);
+                            std::string value = pair.substr(eq + 1);
+                            if (key == "interp") {
+                                if (value == "nearest" || value == "trilinear" || value == "tetrahedral") {
+                                    interp = value;
+                                }
+                            }
+                        }
+                        if (amp == std::string::npos) break;
+                        start = amp + 1;
+                    }
+                }
                 std::string escapedPath = escapeForFFmpeg(path);
-                // Utiliser une interpolation de haute qualité par défaut
-                // Note: certaines versions FFmpeg n'ont pas le paramètre 'strength'.
-                // On applique la LUT à 100% ici; le mix peut être fait au niveau prévisualisation.
-                return "lut3d=file='" + escapedPath + "':interp=tetrahedral";
+                parts.push_back("lut3d=file='" + escapedPath + "':interp=" + interp);
             }
-            return "";
+            break;
         }
-        
         default:
-            return "";
+            break;
     }
+
+    if (parts.empty()) {
+        return "";
+    }
+    // Joindre par virgule
+    std::string combined = parts[0];
+    for (size_t i = 1; i < parts.size(); ++i) {
+        combined += "," + parts[i];
+    }
+    return combined;
 }
 #else
 bool FFmpegFilterProcessor::createFilterGraph() {

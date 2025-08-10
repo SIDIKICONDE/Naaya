@@ -1,10 +1,9 @@
-import React, { memo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { controlsStyles as styles } from './styles';
 import Slider from '@react-native-community/slider';
-import { BLUR_INTENSITY_STEP, MAX_BLUR_INTENSITY, MIN_BLUR_INTENSITY, TINT_PRESETS, CORNER_RADIUS_STEP, MAX_CORNER_RADIUS, MIN_CORNER_RADIUS, HAPTIC_DURATION_STEP, MAX_HAPTIC_DURATION_MS, MIN_HAPTIC_DURATION_MS, TEXT_OPACITY_STEP, MAX_TEXT_OPACITY, MIN_TEXT_OPACITY, HORIZONTAL_PADDING_STEP, MIN_HORIZONTAL_PADDING, MAX_HORIZONTAL_PADDING, VERTICAL_PADDING_STEP, MIN_VERTICAL_PADDING, MAX_VERTICAL_PADDING, MIN_COLUMN_GAP, MAX_COLUMN_GAP, COLUMN_GAP_STEP } from './constants';
+import React, { memo } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { BLUR_INTENSITY_STEP, COLUMN_GAP_STEP, CORNER_RADIUS_STEP, FONT_SIZE_STEP, HAPTIC_DURATION_STEP, HORIZONTAL_PADDING_STEP, MAX_BLUR_INTENSITY, MAX_COLUMN_GAP, MAX_CORNER_RADIUS, MAX_FONT_SIZE, MAX_HAPTIC_DURATION_MS, MAX_HORIZONTAL_PADDING, MAX_SPEED_PX_PER_SEC, MAX_TEXT_OPACITY, MAX_VERTICAL_PADDING, MIN_BLUR_INTENSITY, MIN_COLUMN_GAP, MIN_CORNER_RADIUS, MIN_FONT_SIZE, MIN_HAPTIC_DURATION_MS, MIN_HORIZONTAL_PADDING, MIN_SPEED_PX_PER_SEC, MIN_TEXT_OPACITY, MIN_VERTICAL_PADDING, SPEED_STEP_PX_PER_SEC, TEXT_OPACITY_STEP, TINT_PRESETS, VERTICAL_PADDING_STEP } from './constants';
+import { controlsStyles as styles } from './styles';
 import type { TeleprompterControlsProps } from './types';
-import { FONT_SIZE_STEP, MAX_FONT_SIZE, MAX_SPEED_PX_PER_SEC, MIN_FONT_SIZE, MIN_SPEED_PX_PER_SEC, SPEED_STEP_PX_PER_SEC } from './constants';
 
 export const TeleprompterControls: React.FC<TeleprompterControlsProps> = memo(({
   onPlayToggle,
@@ -238,7 +237,7 @@ export const TeleprompterControls: React.FC<TeleprompterControlsProps> = memo(({
       <View style={[styles.row, styles.rowSpaceAroundTop]}>
         {(['studio','clair','contraste','studio2cols'] as const).map((p) => (
           <TouchableOpacity key={p} style={styles.secondaryButton} onPress={() => onApplyPreset(p)}>
-            <Text style={styles.secondaryText}>{`Preset: ${p}`}</Text>
+            <Text style={styles.secondaryText}>{p}</Text>
           </TouchableOpacity>
         ))}
       </View>

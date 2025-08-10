@@ -31,6 +31,11 @@ export interface UseNativeCameraReturn {
   availableFilters: string[];
   currentFilter: FilterState | null;
   setFilter: (name: string, intensity: number, params?: AdvancedFilterParams) => Promise<boolean>;
+  /**
+   * Définit une LUT 3D (.cube) comme filtre courant.
+   * Passez un chemin absolu vers un fichier .cube
+   */
+  setLUT: (cubeAbsolutePath: string, intensity: number) => Promise<boolean>;
   clearFilter: () => Promise<boolean>;
 }
 
@@ -253,6 +258,15 @@ export function useNativeCamera(): UseNativeCameraReturn {
   }, []);
 
   /**
+   * Applique une LUT .cube via le moteur caméra
+   * Convention: nom de filtre "lut3d:/abs/path.cube"
+   */
+  const setLUT = useCallback(async (cubeAbsolutePath: string, intensity: number) => {
+    const name = `lut3d:${cubeAbsolutePath}`;
+    return setFilter(name, intensity);
+  }, [setFilter]);
+
+  /**
    * Supprime le filtre actuel
    */
   const clearFilter = useCallback(async () => {
@@ -324,6 +338,7 @@ export function useNativeCamera(): UseNativeCameraReturn {
     availableFilters,
     currentFilter,
     setFilter,
+    setLUT,
     clearFilter,
   };
 }

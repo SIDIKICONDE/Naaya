@@ -14,6 +14,10 @@
 #include "Camera/utils/PermissionManager.hpp"
 #include "Camera/common/Types.hpp"
 
+#if defined(__APPLE__)
+extern "C" void NaayaSetFlashMode(int mode);
+#endif
+
 namespace facebook::react {
 
 NativeCameraModule::NativeCameraModule(std::shared_ptr<CallInvoker> jsInvoker)
@@ -199,6 +203,18 @@ bool NativeCameraModule::setFlashModeInternal(const std::string& mode) {
     else if (mode == "on") flashMode = Camera::FlashMode::ON;
     else if (mode == "torch") flashMode = Camera::FlashMode::TORCH;
     
+    // Mémoriser aussi côté iOS pour PhotoCaptureIOS
+#if defined(__APPLE__)
+    int iosMode = 0; // off
+    switch (flashMode) {
+      case Camera::FlashMode::ON: iosMode = 1; break;
+      case Camera::FlashMode::AUTO: iosMode = 2; break;
+      case Camera::FlashMode::TORCH: iosMode = 3; break;
+      case Camera::FlashMode::OFF: default: iosMode = 0; break;
+    }
+    NaayaSetFlashMode(iosMode);
+#endif
+
     return flashController_->setFlashMode(flashMode);
 }
 

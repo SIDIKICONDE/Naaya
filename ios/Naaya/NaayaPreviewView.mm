@@ -3,6 +3,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <CoreImage/CoreImage.h>
 #import <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
 #import "CameraSessionBridge.h"
 
 // API C exposée par le module filtres C++
@@ -28,6 +29,14 @@ typedef struct {
   double grain;
 } NaayaAdvancedFilterParams;
 bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
+// API de traitement FFmpeg (si disponible)
+bool NaayaFilters_ProcessBGRA(const uint8_t* inData,
+                              int inStride,
+                              int width,
+                              int height,
+                              double fps,
+                              uint8_t* outData,
+                              int outStride);
 #ifdef __cplusplus
 }
 #endif
@@ -38,6 +47,11 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
 @property(nonatomic) dispatch_queue_t videoQueue;
 @property(nonatomic, strong) CIContext* ciContext;
 @property(nonatomic, strong) CALayer* filteredLayer;
+@property(nonatomic, strong) AVSampleBufferDisplayLayer* displayLayer;
+@property(nonatomic, strong) CAMetalLayer* metalLayer;
+@property(nonatomic, strong) id<MTLDevice> metalDevice;
+@property(nonatomic, strong) id<MTLCommandQueue> metalQueue;
+@property(nonatomic, strong) CIContext* ciMetalContext;
 @property(nonatomic, assign) BOOL usingFilteredPreview;
 @end
 
@@ -91,9 +105,30 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
       self.videoOutput = output;
     }
   }
+
+  // Couche d'affichage vidéo pour éviter CGImage à chaque frame
+  self.displayLayer = [AVSampleBufferDisplayLayer layer];
+  self.displayLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+  self.displayLayer.frame = self.bounds;
+  self.displayLayer.hidden = YES;
+  [self.layer addSublayer:self.displayLayer];
+
+  // Chemin Metal (rendu GPU natif)
+  self.metalDevice = MTLCreateSystemDefaultDevice();
+  if (self.metalDevice) {
+    self.metalLayer = [CAMetalLayer layer];
+    self.metalLayer.device = self.metalDevice;
+    self.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    self.metalLayer.frame = self.bounds;
+    self.metalLayer.contentsScale = [UIScreen mainScreen].scale;
+    self.metalLayer.hidden = YES;
+    [self.layer addSublayer:self.metalLayer];
+    self.metalQueue = [self.metalDevice newCommandQueue];
+    self.ciMetalContext = [CIContext contextWithMTLDevice:self.metalDevice options:nil];
+  }
 }
 
-- (void)layoutSubviews { [super layoutSubviews]; self.previewLayer.frame = self.bounds; }
+- (void)layoutSubviews { [super layoutSubviews]; self.previewLayer.frame = self.bounds; self.filteredLayer.frame = self.bounds; self.displayLayer.frame = self.bounds; self.metalLayer.frame = self.bounds; }
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
 
@@ -105,6 +140,13 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
     if (self.usingFilteredPreview) {
       dispatch_async(dispatch_get_main_queue(), ^{
         self.filteredLayer.opacity = 0.0;
+        if (self.displayLayer) {
+          [self.displayLayer flushAndRemoveImage];
+          self.displayLayer.hidden = YES;
+        }
+        if (self.metalLayer) {
+          self.metalLayer.hidden = YES;
+        }
         self.usingFilteredPreview = NO;
       });
     }
@@ -114,10 +156,122 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
   const char* cname = NaayaFilters_GetCurrentName();
   double intensity = NaayaFilters_GetCurrentIntensity();
   NSString* name = cname ? [NSString stringWithUTF8String:cname] : @"";
+  // Support des paramètres de query sur le nom (ex: lut3d:/path.cube?interp=nearest)
+  NSString* query = nil;
+  if ([name hasPrefix:@"lut3d:"]) {
+    NSRange qpos = [name rangeOfString:@"?"];
+    if (qpos.location != NSNotFound) {
+      query = [name substringFromIndex:qpos.location + 1];
+      name = [name substringToIndex:qpos.location];
+    }
+  }
 
   CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
   if (!pixelBuffer) return;
-
+  
+  // === Tentative de traitement via FFmpeg en priorité ===
+  BOOL ffmpegProcessed = NO;
+  
+  // Verrouiller le pixel buffer pour accès direct
+  CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+  
+  size_t width = CVPixelBufferGetWidth(pixelBuffer);
+  size_t height = CVPixelBufferGetHeight(pixelBuffer);
+  size_t bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer);
+  uint8_t* baseAddress = (uint8_t*)CVPixelBufferGetBaseAddress(pixelBuffer);
+  
+  if (baseAddress) {
+    // Créer un pixel buffer de sortie
+    CVPixelBufferRef outputBuffer = NULL;
+    NSDictionary* attrs = @{
+      (NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
+      (NSString*)kCVPixelBufferWidthKey: @(width),
+      (NSString*)kCVPixelBufferHeightKey: @(height),
+      (NSString*)kCVPixelBufferIOSurfacePropertiesKey: @{}
+    };
+    
+    CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault,
+                                          width, height,
+                                          kCVPixelFormatType_32BGRA,
+                                          (__bridge CFDictionaryRef)attrs,
+                                          &outputBuffer);
+    
+    if (status == kCVReturnSuccess && outputBuffer) {
+      CVPixelBufferLockBaseAddress(outputBuffer, 0);
+      uint8_t* outBase = (uint8_t*)CVPixelBufferGetBaseAddress(outputBuffer);
+      size_t outStride = CVPixelBufferGetBytesPerRow(outputBuffer);
+      
+      // Essayer FFmpeg (30 fps par défaut pour preview)
+      ffmpegProcessed = NaayaFilters_ProcessBGRA(baseAddress, (int)bytesPerRow,
+                                                 (int)width, (int)height, 30.0,
+                                                 outBase, (int)outStride);
+      
+      CVPixelBufferUnlockBaseAddress(outputBuffer, 0);
+      
+      if (ffmpegProcessed) {
+        // Chemin Metal prioritaire si disponible (zéro création de sample buffer)
+        if (self.metalDevice && self.metalLayer && self.ciMetalContext && self.metalQueue) {
+          id<CAMetalDrawable> drawable = [self.metalLayer nextDrawable];
+          if (drawable) {
+            CIImage* filteredImage = [CIImage imageWithCVPixelBuffer:outputBuffer];
+            if (filteredImage) {
+              CGRect extent = filteredImage.extent;
+              id<MTLCommandBuffer> cb = [self.metalQueue commandBuffer];
+              static CGColorSpaceRef sRGB = NULL;
+              if (!sRGB) { sRGB = CGColorSpaceCreateDeviceRGB(); }
+              [self.ciMetalContext render:filteredImage
+                              toMTLTexture:drawable.texture
+                             commandBuffer:cb
+                                   bounds:extent
+                                colorSpace:sRGB];
+              [cb presentDrawable:drawable];
+              [cb commit];
+              dispatch_async(dispatch_get_main_queue(), ^{
+                self.filteredLayer.opacity = 0.0;
+                if (self.displayLayer) { [self.displayLayer flushAndRemoveImage]; self.displayLayer.hidden = YES; }
+                self.metalLayer.hidden = NO;
+                self.usingFilteredPreview = YES;
+              });
+            }
+          }
+        } else {
+          // Fallback: AVSampleBufferDisplayLayer
+          CMVideoFormatDescriptionRef fmtDesc = NULL;
+          OSStatus fr = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, outputBuffer, &fmtDesc);
+          if (fr == noErr && fmtDesc) {
+            CMSampleTimingInfo timing = kCMTimingInfoInvalid;
+            timing.presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+            CMSampleBufferRef dispSample = NULL;
+            OSStatus cr = CMSampleBufferCreateReadyWithImageBuffer(kCFAllocatorDefault, outputBuffer, fmtDesc, &timing, &dispSample);
+            if (cr == noErr && dispSample) {
+              CFArrayRef attachments = CMSampleBufferGetSampleAttachmentsArray(dispSample, YES);
+              if (attachments && CFArrayGetCount(attachments) > 0) {
+                CFMutableDictionaryRef dict = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachments, 0);
+                CFDictionarySetValue(dict, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
+              }
+              dispatch_async(dispatch_get_main_queue(), ^{
+                self.filteredLayer.opacity = 0.0;
+                self.displayLayer.hidden = NO;
+                [self.displayLayer enqueueSampleBuffer:dispSample];
+                self.usingFilteredPreview = YES;
+              });
+              CFRelease(dispSample);
+            }
+            CFRelease(fmtDesc);
+          }
+        }
+        CVPixelBufferRelease(outputBuffer);
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+        return;
+      }
+      
+      CVPixelBufferRelease(outputBuffer);
+    }
+  }
+  
+  CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+  
+  // === Fallback vers Core Image si FFmpeg non disponible ou échec ===
   CIImage* inputImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
   if (!inputImage) return;
 
@@ -267,9 +421,6 @@ bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outParams);
 }
 
 @end
-#else
-#import "NaayaPreviewView.h"
-@implementation NaayaPreviewView @end
 #endif
 
 

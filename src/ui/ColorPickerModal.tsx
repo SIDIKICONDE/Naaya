@@ -1,7 +1,7 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { TINT_PRESETS } from '@teleprompter/constants';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export interface ColorPickerModalProps {
   visible: boolean;
@@ -19,8 +19,11 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   if (!/^([0-9a-fA-F]{6})$/.test(normalized)) return null;
   const num = parseInt(normalized, 16);
   return {
+    // eslint-disable-next-line no-bitwise
     r: (num >> 16) & 0xff,
+    // eslint-disable-next-line no-bitwise
     g: (num >> 8) & 0xff,
+    // eslint-disable-next-line no-bitwise
     b: num & 0xff,
   };
 }

@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
+import { EqualizerControl } from '../../../../audio/components';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
 import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
 import { CompactFilterControls } from '../../filters/CompactFilterControls';
@@ -41,6 +42,7 @@ const ICONS = {
   SLIDERS: '🎛️',
   VIDEO: '🎥',
   ZOOM: '🔍',
+  AUDIO: '🎚️',
 };
 
 export interface ThreeDotsMenuProps {
@@ -104,6 +106,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState(false);
   const [showFilterControls, setShowFilterControls] = useState(false);
+  const [showAudioControls, setShowAudioControls] = useState(false);
   
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -227,6 +230,11 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
     setIsMenuOpen(false);
   };
 
+  const handleAudioOpen = () => {
+    setShowAudioControls(true);
+    setIsMenuOpen(false);
+  };
+
   const menuOptions: MenuOption[] = [
     {
       id: 'flash',
@@ -266,6 +274,12 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       icon: ICONS.FILTER,
       label: 'Filtres',
       action: handleFiltersOpen,
+    },
+    {
+      id: 'audio',
+      icon: ICONS.AUDIO,
+      label: 'Audio',
+      action: handleAudioOpen,
     },
     {
       id: 'zoomReset',
@@ -417,6 +431,21 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
                 />
               </View>
             </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      )}
+
+      {/* Audio - Égaliseur plein écran */}
+      {showAudioControls && (
+        <Modal
+          visible={showAudioControls}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          statusBarTranslucent={false}
+          onRequestClose={() => setShowAudioControls(false)}
+        >
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+            <EqualizerControl onClose={() => setShowAudioControls(false)} />
           </SafeAreaView>
         </Modal>
       )}

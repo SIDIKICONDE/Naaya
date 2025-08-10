@@ -314,7 +314,19 @@ export const RealCameraViewScreen: React.FC = () => {
           {/* Menu trois points flottant (en position footer) */}
           <ThreeDotsMenu
             flashMode={flashMode}
-            onFlashModeChange={setFlashMode}
+            onFlashModeChange={(mode) => {
+              setFlashMode(mode);
+              // Propager vers le moteur natif
+              if (mode === 'on' || mode === 'off' || mode === 'auto') {
+                cameraRef.current?.setFlashMode(mode).catch(() => {});
+              }
+              // Retour visuel immédiat en vidéo: piloter la torche quand on/off
+              if (mode === 'on') {
+                cameraRef.current?.setTorchMode(true).catch(() => {});
+              } else if (mode === 'off') {
+                cameraRef.current?.setTorchMode(false).catch(() => {});
+              }
+            }}
             onTimerChange={setTimerSeconds}
             timerSeconds={timerSeconds}
             onGridToggle={() => setGridEnabled(!gridEnabled)}

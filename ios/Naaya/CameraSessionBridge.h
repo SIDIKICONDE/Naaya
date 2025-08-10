@@ -3,6 +3,12 @@
 #ifdef __OBJC__
 #import <AVFoundation/AVFoundation.h>
 
+// Lorsque ce header est inclus depuis des TU Objective-C++ (.mm),
+// il faut imposer un linkage C pour être compatible avec les appels C++.
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 AVCaptureSession* NaayaGetSharedSession(void);
 AVCaptureDeviceInput* NaayaGetCurrentInput(void);
 void NaayaSetSharedSession(AVCaptureSession* session, AVCaptureDeviceInput* input);
@@ -14,6 +20,14 @@ AVCaptureMovieFileOutput* NaayaGetMovieOutput(void);
 void NaayaSetMovieOutput(AVCaptureMovieFileOutput* output);
 AVCaptureDeviceInput* NaayaGetAudioInput(void);
 void NaayaSetAudioInput(AVCaptureDeviceInput* input);
+
+// État global simple du mode flash (0=off,1=on,2=auto,3=torch)
+int NaayaGetFlashMode(void);
+void NaayaSetFlashMode(int mode);
+
+#ifdef __cplusplus
+}
+#endif
 
 #else
 // Forward declarations for non-ObjC translation units
@@ -34,6 +48,10 @@ struct AVCaptureMovieFileOutput* NaayaGetMovieOutput(void);
 void NaayaSetMovieOutput(struct AVCaptureMovieFileOutput* output);
 struct AVCaptureDeviceInput* NaayaGetAudioInput(void);
 void NaayaSetAudioInput(struct AVCaptureDeviceInput* input);
+
+// État global simple du mode flash (0=off,1=on,2=auto,3=torch)
+int NaayaGetFlashMode(void);
+void NaayaSetFlashMode(int mode);
 #ifdef __cplusplus
 }
 #endif

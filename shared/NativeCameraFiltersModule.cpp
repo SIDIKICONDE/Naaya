@@ -25,6 +25,7 @@ static NaayaAdvancedFilterParams g_naaya_filters_advanced_params = {
 #if __has_include(<NaayaJSI.h>)
 #include "Camera/filters/FilterManager.hpp"
 #include "Camera/filters/FilterFactory.hpp"
+#include "Camera/filters/FFmpegFilterProcessor.hpp"
 #include <iostream>
 
 namespace facebook::react {
@@ -62,6 +63,7 @@ bool NativeCameraFiltersModule::setFilter(jsi::Runtime& rt, jsi::String name, do
   (void)rt;
   std::lock_guard<std::mutex> lock(mutex_);
   state_.name = name.utf8(rt);
+  // Conserver la query dans state_.name pour FFmpeg, mais normaliser pour la logique iOS de type
   state_.intensity = intensity;
   hasFilter_ = state_.name != "none";
   std::cout << "[Filters] setFilter name=" << state_.name << " intensity=" << state_.intensity << std::endl;
@@ -73,6 +75,12 @@ bool NativeCameraFiltersModule::setFilter(jsi::Runtime& rt, jsi::String name, do
     g_naaya_filters_name = state_.name;
     g_naaya_filters_intensity = state_.intensity;
     // Conserver les paramètres avancés actuels inchangés ici
+  }
+  // Mémoriser un éventuel LUT path pour iOS
+  if (state_.name.rfind("lut3d:", 0) == 0) {
+    lastLUTPath_ = state_.name.substr(6);
+  } else {
+    lastLUTPath_.clear();
   }
   return true;
 }
@@ -117,6 +125,16 @@ bool NativeCameraFiltersModule::setFilterWithParams(jsi::Runtime& rt, jsi::Strin
   g_naaya_filters_advanced_params.vignette = getNumber("vignette", 0.0);
   g_naaya_filters_advanced_params.grain = getNumber("grain", 0.0);
 
+  // Mémoriser LUT si demandé
+  if (state_.name.rfind("lut3d:", 0) == 0) {
+    // Retirer la query éventuelle pour le chemin LUT côté iOS
+    std::string rest = state_.name.substr(6);
+    auto qpos2 = rest.find('?');
+    if (qpos2 != std::string::npos) rest = rest.substr(0, qpos2);
+    lastLUTPath_ = rest;
+  } else {
+    lastLUTPath_.clear();
+  }
   return true;
 }
 
@@ -175,4 +193,119 @@ extern "C" bool NaayaFilters_GetAdvancedParams(NaayaAdvancedFilterParams* outPar
   std::lock_guard<std::mutex> lock(g_naaya_filters_mutex);
   *outParams = g_naaya_filters_advanced_params;
   return true;
+}
+
+// === API de traitement FFmpeg pour iOS ===
+// Traite un buffer BGRA via FFmpeg si disponible
+extern "C" bool NaayaFilters_ProcessBGRA(const uint8_t* inData,
+                                         int inStride,
+                                         int width,
+                                         int height,
+                                         double fps,
+                                         uint8_t* outData,
+                                         int outStride);
+
+extern "C" bool NaayaFilters_ProcessBGRA(const uint8_t* inData,
+                                         int inStride,
+                                         int width,
+                                         int height,
+                                         double fps,
+                                         uint8_t* outData,
+                                         int outStride) {
+#ifndef FFMPEG_AVAILABLE
+  // FFmpeg non disponible sur cette plateforme
+  (void)inData; (void)inStride; (void)width; (void)height;
+  (void)fps; (void)outData; (void)outStride;
+  return false;
+#else
+  // Implémentation FFmpeg
+  if (!inData || !outData || width <= 0 || height <= 0) {
+    return false;
+  }
+  
+  if (!NaayaFilters_HasFilter()) {
+    return false;
+  }
+  
+  static std::mutex sMutex;
+  static std::unique_ptr<Camera::FFmpegFilterProcessor> sProcessor;
+  static int sLastW = 0, sLastH = 0;
+  
+  std::lock_guard<std::mutex> lock(sMutex);
+  
+  if (!sProcessor) {
+    sProcessor = std::make_unique<Camera::FFmpegFilterProcessor>();
+    if (!sProcessor->initialize()) {
+      sProcessor.reset();
+      return false;
+    }
+  }
+  
+  // Configurer le format si changé
+  if (width != sLastW || height != sLastH) {
+    sProcessor->setVideoFormat(width, height, "bgra");
+    sLastW = width;
+    sLastH = height;
+  }
+  // Propager fps au processeur
+  if (fps > 0) {
+    sProcessor->setFrameRate((int)fps);
+  }
+  
+  // Construire l'état du filtre
+  const char* name = NaayaFilters_GetCurrentName();
+  std::string filterName = name ? name : "";
+  // Normaliser: retirer une éventuelle query (ex: ?interp=)
+  auto qpos = filterName.find('?');
+  if (qpos != std::string::npos) {
+    filterName = filterName.substr(0, qpos);
+  }
+  
+  Camera::FilterState state;
+  state.isActive = true;
+  state.params.intensity = NaayaFilters_GetCurrentIntensity();
+  
+  // Récupérer les paramètres avancés
+  NaayaAdvancedFilterParams adv{};
+  if (NaayaFilters_GetAdvancedParams(&adv)) {
+    state.params.brightness = adv.brightness;
+    state.params.contrast = adv.contrast;
+    state.params.saturation = adv.saturation;
+    state.params.hue = adv.hue;
+    state.params.gamma = adv.gamma;
+  }
+  
+  // Mapper le nom vers le type
+  if (filterName == "sepia") {
+    state.type = Camera::FilterType::SEPIA;
+  } else if (filterName == "noir") {
+    state.type = Camera::FilterType::NOIR;
+  } else if (filterName == "monochrome") {
+    state.type = Camera::FilterType::MONOCHROME;
+  } else if (filterName == "color_controls") {
+    state.type = Camera::FilterType::COLOR_CONTROLS;
+  } else if (filterName == "vintage") {
+    state.type = Camera::FilterType::VINTAGE;
+  } else if (filterName == "cool") {
+    state.type = Camera::FilterType::COOL;
+  } else if (filterName == "warm") {
+    state.type = Camera::FilterType::WARM;
+  } else if (filterName.find("lut3d:") == 0) {
+    state.type = Camera::FilterType::CUSTOM;
+    state.params.customFilterName = filterName;
+  } else {
+    return false;
+  }
+  
+  // Application sans copies intermédiaires (strides)
+  bool ok = sProcessor->applyFilterWithStride(state,
+                                              inData,
+                                              inStride,
+                                              width,
+                                              height,
+                                              "bgra",
+                                              outData,
+                                              outStride);
+  return ok;
+#endif
 }

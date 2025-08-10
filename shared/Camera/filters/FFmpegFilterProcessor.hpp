@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../common/FilterTypes.hpp"
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -42,6 +41,17 @@ public:
     bool setVideoFormat(int width, int height, const std::string& pixelFormat);
     bool setFrameRate(int fps);
     
+    // Application optimisée avec gestion de stride (évite les copies pack/unpack)
+    // pixFormat: chaîne FFmpeg (ex: "bgra", "yuv420p")
+    bool applyFilterWithStride(const FilterState& filter,
+                               const uint8_t* inputData,
+                               int inputStride,
+                               int width,
+                               int height,
+                               const char* pixFormat,
+                               uint8_t* outputData,
+                               int outputStride);
+    
 private:
     // État FFmpeg
     bool initialized_{false};
@@ -71,6 +81,14 @@ private:
     // Utilitaires
     bool isFFmpegAvailable() const;
     std::string getSupportedPixelFormats() const;
+
+    // Cache/optimisation
+    bool ensureGraph(const FilterState& filter);
+    int lastWidth_{0};
+    int lastHeight_{0};
+    int lastFrameRate_{0};
+    std::string lastPixelFormat_;
+    std::string lastFilterDesc_;
 };
 
 } // namespace Camera

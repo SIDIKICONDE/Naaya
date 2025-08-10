@@ -2,23 +2,31 @@
  * Interface de contrôle des filtres caméra
  * Intégration native avec l'engine FFmpeg Naaya
  */
+import { errorCodes, isErrorWithCode, keepLocalCopy, pick, types } from '@react-native-documents/picker';
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
+  Alert,
   Animated,
   Easing,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import type { FilterState } from '../../../../specs/NativeCameraFiltersModule';
+import RNFS from 'react-native-fs';
+import type { AdvancedFilterParams, FilterState } from '../../../../specs/NativeCameraFiltersModule';
+import CustomSlider from '../../../ui/CustomSlider';
+import AdvancedAdjustmentsModal from './AdvancedAdjustmentsModal';
 import { AVAILABLE_FILTERS } from './constants';
 import type { FilterInfo } from './types';
+import { buildAndSaveLUTCubeFromXMP, parseLightroomXMPDetailed, processXMPToFilter } from './utils/xmp';
 
 export interface FilterControlsProps {
   currentFilter: FilterState | null;
-  onFilterChange: (name: string, intensity: number) => Promise<boolean>;
+  onFilterChange: (name: string, intensity: number, params?: AdvancedFilterParams) => Promise<boolean>;
   onClearFilter: () => Promise<boolean>;
   onClose?: () => void;
   disabled?: boolean;
@@ -49,17 +57,72 @@ const FilterButton: React.FC<{ filter: FilterInfo; isSelected: boolean; onPress:
 
 export const FilterControls: React.FC<FilterControlsProps> = memo(({ currentFilter, onFilterChange, onClearFilter, onClose, disabled = false, compact = false }) => {
   const [localIntensity, setLocalIntensity] = useState(currentFilter?.intensity ?? 1.0);
-  const selectedFilter = useMemo(() => { if (!currentFilter) return AVAILABLE_FILTERS[0]; return AVAILABLE_FILTERS.find(f => f.name === currentFilter.name) || AVAILABLE_FILTERS[0]; }, [currentFilter]);
+  const [lutModalVisible, setLutModalVisible] = useState(false);
+  const [lutPath, setLutPath] = useState('');
+  const [pendingLUTIntensity, setPendingLUTIntensity] = useState(1.0);
+  const [xmpModalVisible, setXmpModalVisible] = useState(false);
+  const [xmpText, setXmpText] = useState('');
+  const [advancedVisible, setAdvancedVisible] = useState(false);
+
+  const xmpPreview = useMemo(() => {
+    const src = xmpText.trim();
+    if (!src) return null;
+    try {
+      return parseLightroomXMPDetailed(src);
+    } catch {
+      return null;
+    }
+  }, [xmpText]);
+  
+  const selectedFilter = useMemo(() => { 
+    console.log('[FilterControls] currentFilter:', currentFilter);
+    if (!currentFilter) {
+      console.log('[FilterControls] Pas de filtre actuel, retour AVAILABLE_FILTERS[0]:', AVAILABLE_FILTERS[0]);
+      return AVAILABLE_FILTERS[0];
+    }
+    // Mapper les noms dynamiques (ex: 'lut3d:/abs/path.cube?interp=...') vers leur base ('lut3d')
+    const baseName = currentFilter.name.startsWith('lut3d:') ? 'lut3d' : currentFilter.name;
+    const found = AVAILABLE_FILTERS.find(f => f.name === baseName) || AVAILABLE_FILTERS[0];
+    console.log('[FilterControls] selectedFilter trouvé:', found);
+    return found;
+  }, [currentFilter]);
   const handleFilterSelect = useCallback(async (filter: FilterInfo) => {
     if (disabled) return;
+    console.log('[FilterControls] handleFilterSelect appelé avec:', filter.name);
     try {
-      if (filter.name === 'none') { await onClearFilter(); }
-      else { const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0; setLocalIntensity(intensity); await onFilterChange(filter.name, intensity); }
+      if (filter.name === 'none') { 
+        console.log('[FilterControls] Appel de onClearFilter()');
+        const result = await onClearFilter(); 
+        console.log('[FilterControls] Résultat onClearFilter:', result);
+      }
+      else if (filter.name === 'lut3d') {
+        const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0;
+        setLocalIntensity(intensity);
+        setPendingLUTIntensity(intensity);
+        setLutModalVisible(true);
+      } else if (filter.name === 'xmp') {
+        const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0;
+        setLocalIntensity(intensity);
+        setXmpModalVisible(true);
+      } else { 
+        const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0; 
+        setLocalIntensity(intensity); 
+        console.log('[FilterControls] Appel de onFilterChange avec:', filter.name, intensity);
+        const result = await onFilterChange(filter.name, intensity); 
+        console.log('[FilterControls] Résultat onFilterChange:', result);
+      }
     } catch (error) { console.error('[FilterControls] Erreur application filtre:', error); }
   }, [onFilterChange, onClearFilter, disabled]);
-  const handleIntensityChange = useCallback((newIntensity: number) => { const clamped = Math.max(0, Math.min(1, newIntensity)); setLocalIntensity(clamped); onFilterChange(selectedFilter.name, clamped); }, [onFilterChange, selectedFilter.name]);
-  const incrementIntensity = useCallback(() => { handleIntensityChange(localIntensity + 0.1); }, [localIntensity, handleIntensityChange]);
-  const decrementIntensity = useCallback(() => { handleIntensityChange(localIntensity - 0.1); }, [localIntensity, handleIntensityChange]);
+  const handleIntensityChange = useCallback((newIntensity: number) => { 
+    console.log('[FilterControls] handleIntensityChange appelé avec:', newIntensity);
+    const clamped = Math.max(0, Math.min(1, newIntensity)); 
+    console.log('[FilterControls] Valeur clampée:', clamped);
+    setLocalIntensity(clamped); 
+    // Pour les filtres dynamiques (ex: lut3d:/path), conserver le nom complet courant
+    const targetName = currentFilter?.name ?? selectedFilter.name;
+    console.log('[FilterControls] Appel onFilterChange avec filtre:', targetName, 'intensité:', clamped);
+    onFilterChange(targetName, clamped); 
+  }, [onFilterChange, selectedFilter.name, currentFilter?.name]);
   if (compact) {
     return (
       <View style={styles.compactContainer}>
@@ -75,6 +138,9 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(({ currentFilt
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Filtres</Text>
+        <TouchableOpacity style={styles.advancedButton} onPress={() => setAdvancedVisible(true)} activeOpacity={0.7}>
+          <Text style={styles.advancedButtonText}>⚙</Text>
+        </TouchableOpacity>
         {onClose && (
           <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
             <Text style={styles.closeButtonText}>✕</Text>
@@ -90,19 +156,219 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(({ currentFilt
       {selectedFilter.hasIntensity && (
         <View style={styles.intensityContainer}>
           <Text style={styles.intensityLabel}>Intensité</Text>
-          <View style={styles.intensityControls}>
-            <TouchableOpacity style={[styles.intensityButton, { backgroundColor: selectedFilter.color }]} onPress={decrementIntensity} disabled={localIntensity <= 0} activeOpacity={0.7}>
-              <Text style={styles.intensityButtonText}>-</Text>
-            </TouchableOpacity>
-            <View style={styles.intensityDisplay}>
-              <Text style={[styles.intensityValue, { color: selectedFilter.color }]}>{Math.round(localIntensity * 100)}%</Text>
-            </View>
-            <TouchableOpacity style={[styles.intensityButton, { backgroundColor: selectedFilter.color }]} onPress={incrementIntensity} disabled={localIntensity >= 1} activeOpacity={0.7}>
-              <Text style={styles.intensityButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
+          <CustomSlider
+            value={localIntensity}
+            onValueChange={handleIntensityChange}
+            onSlidingComplete={(value) => onFilterChange(selectedFilter.name, value)}
+            minimumValue={0}
+            maximumValue={1}
+            width={220}
+            trackHeight={3}
+            thumbSize={20}
+            activeTrackColor={selectedFilter.color}
+            inactiveTrackColor="rgba(255, 255, 255, 0.2)"
+            thumbColor="#FFFFFF"
+            accentColor={selectedFilter.color}
+            showValue={true}
+            valueFormatter={(val) => `${Math.round(val * 100)}%`}
+            disabled={disabled}
+            style={styles.sliderStyle}
+          />
         </View>
       )}
+
+      {/* Modal de saisie du chemin LUT */}
+      <Modal
+        visible={lutModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setLutModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Chemin du fichier LUT (.cube)</Text>
+            <Text style={styles.modalHelp}>Indiquez un chemin absolu vers un fichier .cube présent sur l'appareil.</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="/absolute/path/to/your.lut.cube"
+              placeholderTextColor="#999"
+              value={lutPath}
+              onChangeText={setLutPath}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={() => { setLutModalVisible(false); setLutPath(''); }}>
+                <Text style={styles.modalBtnText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalConfirm]}
+                onPress={async () => {
+                  const path = lutPath.trim();
+                  if (!path) { return; }
+                  setLutModalVisible(false);
+                  setLutPath('');
+                  await onFilterChange(`lut3d:${path}`, pendingLUTIntensity);
+                }}
+              >
+                <Text style={styles.modalBtnText}>Appliquer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal d'import XMP */}
+      <Modal
+        visible={xmpModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setXmpModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Importer un preset Lightroom (.xmp)</Text>
+            <Text style={styles.modalHelp}>Collez le contenu du fichier .xmp ci-dessous, ou chargez un fichier.</Text>
+            <TextInput
+              style={[styles.modalInput, { height: 120, textAlignVertical: 'top' }]}
+              placeholder="<x:xmpmeta>..."
+              placeholderTextColor="#999"
+              value={xmpText}
+              onChangeText={setXmpText}
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline
+            />
+            {xmpPreview && (
+              <View style={styles.previewSection}>
+                <Text style={styles.previewTitle}>Aperçu des réglages mappés</Text>
+                {xmpPreview.detailed?.hsl && (
+                  <View style={styles.previewTable}>
+                    <View style={styles.previewRow}>
+                      <Text style={[styles.previewCell, styles.previewHead]}>Canal</Text>
+                      <Text style={[styles.previewCell, styles.previewHead]}>H</Text>
+                      <Text style={[styles.previewCell, styles.previewHead]}>S</Text>
+                      <Text style={[styles.previewCell, styles.previewHead]}>L</Text>
+                    </View>
+                    {(['red','orange','yellow','green','aqua','blue','purple','magenta'] as const).map((c) => {
+                      const h = xmpPreview.detailed!.hsl!.hue[c];
+                      const s = xmpPreview.detailed!.hsl!.saturation[c];
+                      const l = xmpPreview.detailed!.hsl!.luminance[c];
+                      const has = typeof h === 'number' || typeof s === 'number' || typeof l === 'number';
+                      if (!has) return null;
+                      return (
+                        <View key={c} style={styles.previewRow}>
+                          <Text style={styles.previewCell}>{c}</Text>
+                          <Text style={styles.previewCell}>{h ?? '-'}</Text>
+                          <Text style={styles.previewCell}>{s ?? '-'}</Text>
+                          <Text style={styles.previewCell}>{l ?? '-'}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+                {xmpPreview.detailed?.toneCurve && (
+                  <View style={styles.previewBlock}>
+                    <Text style={styles.previewSubtitle}>ToneCurve PV2012</Text>
+                    <Text style={styles.previewNote}>
+                      {xmpPreview.detailed.toneCurve.points.length} points
+                    </Text>
+                    <Text style={styles.previewNote}>
+                      Aperçu: {xmpPreview.detailed.toneCurve.points.slice(0, 6).map(p => `(${p.x},${p.y})`).join(' ')}{xmpPreview.detailed.toneCurve.points.length > 6 ? ' …' : ''}
+                    </Text>
+                  </View>
+                )}
+                {xmpPreview.detailed?.splitToning && (
+                  <View style={styles.previewBlock}>
+                    <Text style={styles.previewSubtitle}>Split Toning</Text>
+                    <Text style={styles.previewNote}>
+                      Shadows: H {xmpPreview.detailed.splitToning.shadowHue ?? '-'} / S {xmpPreview.detailed.splitToning.shadowSaturation ?? '-'}
+                    </Text>
+                    <Text style={styles.previewNote}>
+                      Highlights: H {xmpPreview.detailed.splitToning.highlightHue ?? '-'} / S {xmpPreview.detailed.splitToning.highlightSaturation ?? '-'} (Balance {xmpPreview.detailed.splitToning.balance ?? 0})
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            <View style={styles.modalActions}>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalCancel]}
+                  onPress={() => { setXmpModalVisible(false); setXmpText(''); }}
+                >
+                  <Text style={styles.modalBtnText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: '#444' }]}
+                  onPress={async () => {
+                    try {
+                      const [res] = await pick({ type: [types.allFiles] });
+                      const copies = await keepLocalCopy({ files: [{ uri: res.uri, fileName: res.name || 'preset.xmp' }], destination: 'cachesDirectory' });
+                      const localUri = copies[0].status === 'success' ? copies[0].localUri : null;
+                      if (!localUri) return;
+                      const filePath = localUri.startsWith('file://') ? localUri.replace('file://','') : localUri;
+                      const content = await RNFS.readFile(filePath, 'utf8');
+                      setXmpText(content);
+                    } catch (e) {
+                      if (isErrorWithCode(e) && e.code !== errorCodes.OPERATION_CANCELED) {
+                        console.warn('[FilterControls] XMP picker error:', e);
+                      }
+                    }
+                  }}
+                >
+                  <Text style={styles.modalBtnText}>Parcourir…</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: '#666' }]}
+                  onPress={async () => {
+                    const src = xmpText.trim();
+                    if (!src) return;
+                    try {
+                      const lutPath = await buildAndSaveLUTCubeFromXMP(src, 33);
+                      Alert.alert('LUT exportée', `Fichier créé:\n${lutPath}`);
+                    } catch (e) {
+                      console.warn('[FilterControls] Export LUT depuis XMP - erreur:', e);
+                      Alert.alert('Erreur', 'Impossible de générer la LUT depuis ce XMP.');
+                    }
+                  }}
+                >
+                  <Text style={styles.modalBtnText}>Exporter LUT</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalConfirm]}
+                  onPress={async () => {
+                    const src = xmpText.trim();
+                    if (!src) return;
+                    const res = await processXMPToFilter(src);
+                    setXmpModalVisible(false);
+                    setXmpText('');
+                    if (res.type === 'lut') {
+                      await onFilterChange(`lut3d:${res.path}`, 1.0);
+                    } else {
+                      await onFilterChange('color_controls', localIntensity, res.params as AdvancedFilterParams);
+                    }
+                  }}
+                >
+                  <Text style={styles.modalBtnText}>Appliquer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Réglages avancés temps réel (génère une LUT) */}
+      <AdvancedAdjustmentsModal
+        visible={advancedVisible}
+        onClose={() => setAdvancedVisible(false)}
+        onApplyLUT={async (lutPath) => {
+          await onFilterChange(`lut3d:${lutPath}`, 1.0);
+          setAdvancedVisible(false);
+        }}
+      />
     </View>
   );
 });
@@ -112,6 +378,8 @@ const styles = StyleSheet.create({
   compactContainer: { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 10, padding: 12, margin: 3 },
   header: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 4, position: 'relative' },
   title: { fontSize: 10, fontWeight: '600', color: '#FFFFFF', textAlign: 'center' },
+  advancedButton: { position: 'absolute', left: 0, top: 0, width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.1)', alignItems: 'center', justifyContent: 'center' },
+  advancedButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   closeButton: { position: 'absolute', right: 0, top: 0, width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.1)', alignItems: 'center', justifyContent: 'center' },
   closeButtonText: { color: '#FFFFFF', fontSize: 10, fontWeight: '400' },
   filtersContainer: { paddingHorizontal: 1, gap: 4 },
@@ -125,13 +393,30 @@ const styles = StyleSheet.create({
   filterNameSelected: { color: '#FFFFFF', fontWeight: '600' },
   filterNameDisabled: { opacity: 0.5 },
   description: { fontSize: 10, color: '#AAAAAA', textAlign: 'center', marginTop: 4, marginBottom: 4, fontStyle: 'italic' },
-  intensityContainer: { marginTop: 4 },
-  intensityControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
-  intensityButton: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFFFF' },
-  intensityButtonText: { fontSize: 20, color: '#FFFFFF', fontWeight: 'bold' },
-  intensityDisplay: { width: 40, alignItems: 'center' },
-  intensityLabel: { fontSize: 10, fontWeight: '500', color: '#FFFFFF' },
-  intensityValue: { fontSize: 10, fontWeight: '600', color: '#FFFFFF' },
+  intensityContainer: { marginTop: 4, alignItems: 'center' },
+  intensityLabel: { fontSize: 10, fontWeight: '500', color: '#FFFFFF', marginBottom: 8 },
+  sliderStyle: { marginHorizontal: 8 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  modalCard: { width: '100%', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#333' },
+  modalTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 6 },
+  modalHelp: { color: '#ccc', fontSize: 12, marginBottom: 8 },
+  modalInput: { backgroundColor: '#111', borderColor: '#333', borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: '#fff' },
+  modalActions: { flexDirection: 'column', gap: 8, marginTop: 12 },
+  modalButtonRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  modalBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, minWidth: 80, alignItems: 'center', flex: 1 },
+  modalCancel: { backgroundColor: '#333' },
+  modalConfirm: { backgroundColor: '#007AFF' },
+  modalBtnText: { color: '#fff', fontWeight: '600' },
+  // XMP preview styles
+  previewSection: { marginTop: 12, padding: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)' },
+  previewTitle: { color: '#fff', fontSize: 12, fontWeight: '700', marginBottom: 6 },
+  previewTable: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#333', borderRadius: 6, overflow: 'hidden', marginTop: 6 },
+  previewRow: { flexDirection: 'row' },
+  previewCell: { flex: 1, color: '#ddd', fontSize: 10, paddingVertical: 4, paddingHorizontal: 6, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: '#333' },
+  previewHead: { color: '#fff', fontWeight: '700', backgroundColor: 'rgba(255,255,255,0.06)' },
+  previewBlock: { marginTop: 8 },
+  previewSubtitle: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  previewNote: { color: '#aaa', fontSize: 10, marginTop: 2 },
 });
 
 export default FilterControls;

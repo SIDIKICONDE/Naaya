@@ -19,6 +19,8 @@ export interface AdvancedFilterParams {
   highlights: number;    // -1.0 à 1.0
   vignette: number;      // 0.0 à 1.0
   grain: number;         // 0.0 à 1.0
+  // Option LUT (UI peut transmettre séparément via setFilter('lut3d:/abs/path', ...))
+  // lutPath?: string;
 }
 
 export interface Spec extends TurboModule {

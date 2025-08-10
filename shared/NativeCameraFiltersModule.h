@@ -24,6 +24,18 @@
   #include <optional>
   #include "Camera/filters/FilterManager.hpp"
 
+  // Définir FFMPEG_AVAILABLE pour iOS maintenant
+  #ifdef __APPLE__
+    #include <TargetConditionals.h>
+    #if TARGET_OS_IOS
+      #define FFMPEG_AVAILABLE 1
+    #endif
+  #endif
+  
+  #ifdef __ANDROID__
+    #define FFMPEG_AVAILABLE 1
+  #endif
+
   #ifndef JSI_EXPORT
     #define JSI_EXPORT
   #endif
@@ -54,6 +66,8 @@
     std::unique_ptr<Camera::FilterManager> filterManager_;
     // Paramètres avancés courants
     Camera::FilterParams advancedParams_{};
+    // Dernier chemin LUT demandé (pour iOS/CoreImage)
+    std::string lastLUTPath_{};
   };
 
   } } // namespace facebook::react
