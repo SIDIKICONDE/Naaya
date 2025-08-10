@@ -1,17 +1,38 @@
 /**
- * Export des composants de contrôle des filtres
+ * Export centralisé des composants de filtres optimisés
  */
 
-export { AdvancedFilterControls } from './AdvancedFilterControls';
-export { CompactFilterControls } from './CompactFilterControls';
+// Composants principaux
 export { FilterControls } from './FilterControls';
+export { AdvancedFilterModal } from './AdvancedFilterModal';
+export { default as CompactFilterControls } from './CompactFilterControls';
 
-export type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
-export type { AdvancedFilterControlsProps } from './AdvancedFilterControls/types';
-export type { CompactFilterControlsProps } from './CompactFilterControls';
-export type { FilterControlsProps } from './FilterControls';
+// Types
+export type {
+  FilterInfo,
+  FilterControlsProps,
+  FilterPreset,
+  FilterName,
+  FilterCategory,
+  OptimizedFilterState,
+  FilterCallback,
+  IntensityCallback,
+  AdvancedFilterParams,
+  FilterState,
+} from './types';
 
-// Réexport des constantes/types partagés pour import unique
-export { AVAILABLE_FILTERS, COMPACT_FILTERS, DEFAULT_FILTER_PARAMS } from './constants';
-export type { CompactFilterInfo, FilterInfo } from './types';
+// Constantes et configuration
+export {
+  AVAILABLE_FILTERS,
+  DEFAULT_FILTER_PARAMS,
+  FILTER_PRESETS,
+  FILTER_CATEGORIES,
+  ANIMATION_CONFIG,
+} from './constants';
+
+// Utilitaires (si nécessaire)
+export * from './utils/xmp';
+
+// Export par défaut du composant principal
+export { FilterControls as default } from './FilterControls';
 
