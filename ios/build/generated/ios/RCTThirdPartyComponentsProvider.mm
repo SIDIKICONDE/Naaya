@@ -21,6 +21,7 @@
   dispatch_once(&nativeComponentsToken, ^{
     thirdPartyComponents = @{
 		@"RNCSlider": NSClassFromString(@"RNCSliderComponentView"), // @react-native-community/slider
+		@"RNGestureHandlerButton": NSClassFromString(@"RNGestureHandlerButtonComponentView"), // react-native-gesture-handler
 		@"RNSVGCircle": NSClassFromString(@"RNSVGCircle"), // react-native-svg
 		@"RNSVGClipPath": NSClassFromString(@"RNSVGClipPath"), // react-native-svg
 		@"RNSVGDefs": NSClassFromString(@"RNSVGDefs"), // react-native-svg

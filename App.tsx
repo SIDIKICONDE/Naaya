@@ -1,12 +1,13 @@
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RealCameraViewScreen } from './src/screens/RealCameraViewScreen';
 
 function App() {
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <RealCameraViewScreen />
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

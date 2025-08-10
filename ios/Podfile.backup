@@ -15,8 +15,6 @@ linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
   use_frameworks! :linkage => linkage.to_sym
-  # FFmpeg (désactivé, nous utilisons des xcframeworks locaux dans ios/FFmpeg)
-  # pod 'ffmpeg-kit-ios-full', '~> 6.0'
 end
 
 target 'Naaya' do
@@ -78,6 +76,4 @@ target 'Naaya' do
       end
     end
   end
-  # FFmpeg (désactivé, nous utilisons des xcframeworks locaux dans ios/FFmpeg)
-  # pod 'ffmpeg-kit-ios-full', '~> 6.0'
 end

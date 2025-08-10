@@ -93,7 +93,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           controls={controls}
           onLoad={handleLoad}
           onError={handleError}
-          onBuffer={(data: any) => {
+          onBuffer={() => {
             // Gestion du buffering si nécessaire
           }}
         />

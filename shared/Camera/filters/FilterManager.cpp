@@ -4,7 +4,11 @@
 #include <cstring>
 #include <thread>
 #include <future>
+#if defined(__AVX2__)
 #include <immintrin.h>
+#elif defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 
 namespace Camera {
 
