@@ -7,31 +7,27 @@ import {
   Animated,
   Dimensions,
   FlatList,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
 import CustomSlider from '../../../ui/CustomSlider';
-import { 
-  ANIMATION_CONFIG, 
-  AVAILABLE_FILTERS, 
-  FILTER_CATEGORIES, 
-  FILTER_PRESETS 
+import {
+  ANIMATION_CONFIG,
+  AVAILABLE_FILTERS,
+  FILTER_CATEGORIES,
+  FILTER_PRESETS
 } from './constants';
-import type { 
-  FilterCallback, 
-  FilterControlsProps, 
-  FilterInfo, 
-  FilterName, 
-  FilterPreset, 
-  IntensityCallback 
+import type {
+  FilterCallback,
+  FilterControlsProps,
+  FilterInfo,
+  FilterPreset,
+  IntensityCallback
 } from './types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -106,7 +102,7 @@ const FilterButton = memo<{
         >
           {filter.previewGradient ? (
             <LinearGradient
-              colors={filter.previewGradient as string[]}
+              colors={[...filter.previewGradient] as string[]}
               style={styles.filterGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -290,7 +286,7 @@ IntensitySlider.displayName = 'IntensitySlider';
  * Composant principal de contrôle des filtres
  */
 export const FilterControls: React.FC<FilterControlsProps> = memo(
-  ({ currentFilter, onFilterChange, onClearFilter, onClose, disabled = false, compact = false }) => {
+  ({ currentFilter, onFilterChange, onClearFilter, onClose, disabled = false, compact = false, style }) => {
     // État local optimisé
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [localIntensity, setLocalIntensity] = useState(currentFilter?.intensity ?? 1.0);
@@ -376,7 +372,7 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
 
     // Rendu complet
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, style]}>
         {/* Header avec titre et actions */}
         <View style={styles.header}>
           <Text style={styles.title}>Filtres Professionnels</Text>
@@ -460,9 +456,9 @@ FilterControls.displayName = 'FilterControls';
 const styles = StyleSheet.create({
   // Container principal
   container: {
-    backgroundColor: 'rgba(20, 20, 30, 0.95)',
+    backgroundColor: 'rgba(20, 20, 30, 0.9)',
     borderRadius: 20,
-    padding: 16,
+    padding: 14,
     margin: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

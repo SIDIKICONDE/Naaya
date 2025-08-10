@@ -4,6 +4,7 @@
  */
 
 import type { AdvancedFilterParams, FilterState } from '../../../../specs/NativeCameraFiltersModule';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 // Type union strict pour les noms de filtres
 export type FilterName = 
@@ -61,6 +62,10 @@ export interface FilterControlsProps {
   onClose?: () => void;
   disabled?: boolean;
   compact?: boolean;
+  /**
+   * Style optionnel appliqué au conteneur racine (utilisé par ThreeDotsMenu)
+   */
+  style?: StyleProp<ViewStyle>;
 }
 
 // Type pour les callbacks mémorisés

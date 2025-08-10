@@ -54,9 +54,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   presetIcon: {
     fontSize: 16,

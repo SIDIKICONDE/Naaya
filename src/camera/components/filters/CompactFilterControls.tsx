@@ -11,7 +11,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { AVAILABLE_FILTERS } from './constants';
 import type { FilterControlsProps, FilterInfo } from './types';
 
@@ -77,24 +76,8 @@ const CompactFilterButton = memo<{
           onPressOut={handlePressOut}
           disabled={disabled}
         >
-          <Animated.View
-            style={[
-              styles.filterButton,
-              {
-                borderColor,
-                borderWidth: 2,
-                opacity: disabled ? 0.4 : 1,
-              },
-            ]}
-          >
-            {filter.previewGradient && isSelected ? (
-              <LinearGradient
-                colors={filter.previewGradient as unknown as string[]}
-                style={styles.gradientBackground}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-            ) : null}
+          <Animated.View style={[styles.filterButton, styles.filterButtonDynamic, { borderColor, opacity: disabled ? 0.4 : 1 }]}>
+            {isSelected ? <View style={styles.selectionOverlay} /> : null}
             <View style={styles.buttonContent}>
               <Text style={[styles.filterIcon, isSelected && styles.filterIconSelected]}>
                 {filter.icon}
@@ -129,7 +112,7 @@ CompactFilterButton.displayName = 'CompactFilterButton';
  * Composant principal de contrôles compacts
  */
 const CompactFilterControls: React.FC<FilterControlsProps> = memo(
-  ({ currentFilter, onFilterChange, onClearFilter, disabled = false }) => {
+  ({ currentFilter, onFilterChange, onClearFilter, disabled = false, style }) => {
     // Mémorisation du filtre sélectionné
     const selectedFilter = useMemo(() => {
       if (!currentFilter) return AVAILABLE_FILTERS[0];
@@ -192,13 +175,8 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
     }, [selectedFilter.name]);
 
     return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={['rgba(20, 20, 30, 0.95)', 'rgba(20, 20, 30, 0.85)']}
-          style={styles.gradientContainer}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
+      <View style={[styles.container, style]}>
+        <View style={styles.strip}>
           <FlatList
             ref={flatListRef}
             horizontal
@@ -214,7 +192,7 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
             windowSize={10}
             initialNumToRender={10}
           />
-        </LinearGradient>
+        </View>
         {selectedFilter.name !== 'none' && (
           <View style={styles.infoBar}>
             <Text style={styles.selectedFilterName}>{selectedFilter.displayName}</Text>
@@ -236,10 +214,13 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 4,
   },
-  gradientContainer: {
-    borderRadius: 12,
-    paddingVertical: 8,
+  strip: {
+    borderRadius: 10,
+    paddingVertical: 6,
     marginHorizontal: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   listContent: {
     paddingHorizontal: 8,
@@ -253,11 +234,12 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  gradientBackground: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.15,
+  filterButtonDynamic: {
+    borderWidth: 2,
   },
   buttonContent: {
     flex: 1,
@@ -266,11 +248,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   filterIcon: {
-    fontSize: 20,
+    fontSize: 18,
     marginBottom: 2,
   },
   filterIconSelected: {
-    fontSize: 22,
+    fontSize: 20,
   },
   filterLabel: {
     fontSize: 9,
@@ -281,6 +263,10 @@ const styles = StyleSheet.create({
   filterLabelSelected: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  selectionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.06)'
   },
   infoBar: {
     flexDirection: 'row',

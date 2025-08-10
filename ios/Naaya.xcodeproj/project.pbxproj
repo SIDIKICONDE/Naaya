@@ -441,11 +441,13 @@
 					"FFMPEG_AVAILABLE=1",
 					"FFMPEG_AVAILABLE=1",
 					"FFMPEG_AVAILABLE=1",
+					"FFMPEG_AVAILABLE=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../shared",
 					"$(SRCROOT)/../vendor/rnnoise",
+					/opt/homebrew/include,
 					/opt/homebrew/include,
 					/opt/homebrew/include,
 					/opt/homebrew/include,
@@ -523,6 +525,7 @@
 					/opt/homebrew/lib,
 					/opt/homebrew/lib,
 					/opt/homebrew/lib,
+					/opt/homebrew/lib,
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(SDKROOT)/usr/lib/swift",
@@ -568,6 +571,12 @@
 					CoreMedia,
 					"-framework",
 					CoreVideo,
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
 					"-lavcodec",
 					"-lavfilter",
 					"-lavformat",
@@ -736,11 +745,13 @@
 					"FFMPEG_AVAILABLE=1",
 					"FFMPEG_AVAILABLE=1",
 					"FFMPEG_AVAILABLE=1",
+					"FFMPEG_AVAILABLE=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../shared",
 					"$(SRCROOT)/../vendor/rnnoise",
+					/opt/homebrew/include,
 					/opt/homebrew/include,
 					/opt/homebrew/include,
 					/opt/homebrew/include,
@@ -818,6 +829,7 @@
 					/opt/homebrew/lib,
 					/opt/homebrew/lib,
 					/opt/homebrew/lib,
+					/opt/homebrew/lib,
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(SDKROOT)/usr/lib/swift",
@@ -865,6 +877,12 @@
 					CoreVideo,
 					"-framework",
 					CoreAudioTypes,
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
 					"-lavcodec",
 					"-lavfilter",
 					"-lavformat",

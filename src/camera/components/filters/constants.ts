@@ -4,6 +4,7 @@
  */
 
 import type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
+import type { FilterPreset } from './types';
 import type { FilterInfo } from './types';
 
 // Filtres disponibles avec catégorisation et informations techniques
@@ -153,6 +154,12 @@ export const ANIMATION_CONFIG = Object.freeze({
     friction: 8,
     useNativeDriver: true,
   },
+  // Animation par défaut pour petites transitions (appuis sur boutons)
+  filterTransition: {
+    tension: 120,
+    friction: 14,
+    useNativeDriver: true,
+  },
 } as const);
 
 // Catégories de filtres
@@ -162,20 +169,29 @@ export const FILTER_CATEGORIES = Object.freeze({
   creative: { label: 'Créatif', icon: '✨', color: '#9B59B6' },
 } as const);
 
-// Presets de filtres prédéfinis
-export const FILTER_PRESETS = Object.freeze({
-  portrait: {
+// Presets de filtres prédéfinis (format tableau, plus simple à consommer)
+export const FILTER_PRESETS: readonly FilterPreset[] = Object.freeze([
+  {
+    id: 'portrait',
     name: 'Portrait',
+    filter: 'color_controls',
+    intensity: 0.6,
     params: { brightness: 0.1, contrast: 1.1, saturation: 0.9, warmth: 0.2 },
   },
-  landscape: {
+  {
+    id: 'landscape',
     name: 'Paysage',
+    filter: 'color_controls',
+    intensity: 0.7,
     params: { saturation: 1.2, contrast: 1.15, shadows: 0.1, highlights: -0.1 },
   },
-  night: {
+  {
+    id: 'night',
     name: 'Nuit',
+    filter: 'color_controls',
+    intensity: 0.65,
     params: { exposure: 0.3, shadows: 0.2, contrast: 1.2, grain: 0.3 },
   },
-} as const);
+]);
 
 

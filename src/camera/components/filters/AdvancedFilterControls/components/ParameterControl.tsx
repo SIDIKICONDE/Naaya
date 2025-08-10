@@ -82,10 +82,12 @@ const styles = StyleSheet.create({
   valueContainer: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 6,
     minWidth: 44,
     alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)'
   },
   parameterValue: {
     fontSize: 12,

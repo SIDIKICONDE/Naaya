@@ -5,19 +5,19 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
 import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
-import { CompactFilterControls } from '../../filters/CompactFilterControls';
+import CompactFilterControls from '../../filters/CompactFilterControls';
 import { createFlashItems, createTimerItems, useFloatingSubmenu } from '../hooks/useFloatingSubmenu';
 import type { CameraMode, FlashMode } from '../types';
 import { FloatingSubmenu } from './FloatingSubmenu';
