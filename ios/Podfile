@@ -58,8 +58,14 @@ target 'Naaya' do
             config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FFMPEG_AVAILABLE=1'
           end
         end
+        
+        # Forcer la version de déploiement iOS minimale à 16.0 pour tous les pods
+        target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+        end
       end
     end
+    
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,

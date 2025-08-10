@@ -57,6 +57,9 @@ class AndroidVideoCapture : public VideoCapture {
     jfieldID fLockAE = env->GetFieldID(optsCls, "lockAE", "Z");
     jfieldID fLockAWB = env->GetFieldID(optsCls, "lockAWB", "Z");
     jfieldID fLockAF = env->GetFieldID(optsCls, "lockAF", "Z");
+    // Auto-save fields
+    jfieldID fSaveToGallery = env->GetFieldID(optsCls, "saveToGallery", "Z");
+    jfieldID fAlbumName = env->GetFieldID(optsCls, "albumName", "Ljava/lang/String;");
 
     jstring jCodec = env->NewStringUTF(options.codec.c_str());
     env->SetObjectField(startOpts, fCodec, jCodec);
@@ -82,6 +85,9 @@ class AndroidVideoCapture : public VideoCapture {
     env->SetBooleanField(startOpts, fLockAE, (jboolean)options.lockAE);
     env->SetBooleanField(startOpts, fLockAWB, (jboolean)options.lockAWB);
     env->SetBooleanField(startOpts, fLockAF, (jboolean)options.lockAF);
+    env->SetBooleanField(startOpts, fSaveToGallery, (jboolean)options.saveToPhotos);
+    jstring jAlbum = env->NewStringUTF(options.albumName.c_str());
+    env->SetObjectField(startOpts, fAlbumName, jAlbum);
     // TODO: étendre StartOptions Java pour dossier/filename/orientation si besoin
     env->DeleteLocalRef(jDev);
     env->DeleteLocalRef(jCodec);
@@ -89,6 +95,7 @@ class AndroidVideoCapture : public VideoCapture {
     env->DeleteLocalRef(jPrefix);
     env->DeleteLocalRef(jOrient);
     env->DeleteLocalRef(jStab);
+    env->DeleteLocalRef(jAlbum);
 
     jmethodID mStart = env->GetMethodID(cls, "start", "(Lcom/naaya/camera/LegacyVideoRecorder$StartOptions;)Z");
     jboolean ok = env->CallBooleanMethod(inst, mStart, startOpts);

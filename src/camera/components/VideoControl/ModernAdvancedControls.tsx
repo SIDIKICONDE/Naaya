@@ -3,7 +3,7 @@
  * Design épuré avec sections organisées et animations fluides
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -107,10 +107,23 @@ export const ModernAdvancedControls: React.FC<ModernAdvancedControlsProps> = mem
   // const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const set = useCallback(
-    (patch: Partial<AdvancedRecordingOptions>) => 
-      onChange({ ...value, ...patch }),
+    (patch: Partial<AdvancedRecordingOptions>) => {
+      // Forcer l'audio à être toujours activé
+      const updatedPatch = { ...patch };
+      if ('recordAudio' in updatedPatch) {
+        updatedPatch.recordAudio = true;
+      }
+      onChange({ ...value, ...updatedPatch });
+    },
     [value, onChange]
   );
+
+  // Forcer l'audio à être toujours activé lors de l'initialisation
+  useEffect(() => {
+    if (!value.recordAudio) {
+      onChange({ ...value, recordAudio: true });
+    }
+  }, [value.recordAudio, onChange, value]);
 
   const handleClose = useCallback(() => {
     onClose?.();
@@ -140,11 +153,9 @@ export const ModernAdvancedControls: React.FC<ModernAdvancedControlsProps> = mem
       >
         {/* Section Audio */}
         <ModernSection title="Audio" icon="🎵">
-          <ModernToggle
-            label="Enregistrer l'audio"
-            value={value.recordAudio}
-            onChange={(recordAudio) => set({ recordAudio })}
-          />
+          <View style={styles.audioInfo}>
+            <Text style={styles.audioInfoText}>🎙️ Enregistrement audio toujours activé</Text>
+          </View>
           
           <ModernSelector
             label="Qualité Audio"
@@ -447,6 +458,20 @@ const styles = StyleSheet.create({
   },
   compactHalf: {
     flex: 1,
+  },
+  audioInfo: {
+    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
+  },
+  audioInfoText: {
+    color: '#007AFF',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

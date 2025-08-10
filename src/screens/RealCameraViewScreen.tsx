@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { NativeCameraEngine } from '../camera';
+import { Platform, PermissionsAndroid, Dimensions } from 'react-native';
 import { RecordingBar } from '../camera/components/AdvancedCameraControls/components/RecordingBar';
 import { ThreeDotsMenu } from '../camera/components/AdvancedCameraControls/components/ThreeDotsMenu';
 import type { FlashMode, RecordingState, ThemeConfig } from '../camera/components/AdvancedCameraControls/types';
@@ -50,9 +51,17 @@ export const RealCameraViewScreen: React.FC = () => {
     lockAWB: false,
     lockAF: false,
     fileNamePrefix: 'Naaya',
-    videoBitrate: 4000,
-    audioBitrate: 128,
+    // Par défaut en bps: 12 Mbps vidéo, 128 kbps audio
+    videoBitrate: 12_000_000,
+    audioBitrate: 128_000,
+    saveToPhotos: true,
+    albumName: 'Naaya',
   });
+
+  // Countdown UI pour timer
+  const [isCountdownActive, setIsCountdownActive] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Hooks filtres (utilise le module natif CameraFilters)
   const { currentFilter, setFilter, clearFilter, switchDevice, currentDevice } = useNativeCamera();
@@ -126,7 +135,9 @@ export const RealCameraViewScreen: React.FC = () => {
 
   // Callbacks
   const handleCameraReady = useCallback(() => {
-    console.log('[RealCameraViewScreen] Caméra prête');
+    if (__DEV__) {
+      console.log('[RealCameraViewScreen] Caméra prête');
+    }
     setIsLoading(false);
   }, []);
 
@@ -169,82 +180,166 @@ export const RealCameraViewScreen: React.FC = () => {
   }, [gridAspect, advancedOptions.width, advancedOptions.height]);
 
   // Gestion de l'enregistrement
+  const startRecordingFlow = useCallback(async () => {
+    try {
+      // S'assurer que la caméra est bien active avant de démarrer l'enregistrement
+      try {
+        const active = await NativeCameraEngine.isActive();
+        if (!active) {
+          console.warn('[RealCameraViewScreen] Caméra inactive — démarrage automatique avant enregistrement');
+          await cameraRef.current?.startCamera();
+          const nowActive = await NativeCameraEngine.isActive();
+          if (!nowActive) {
+            throw new Error('Caméra non prête');
+          }
+        }
+      } catch (prepErr) {
+        console.error('[RealCameraViewScreen] Préparation caméra avant enregistrement échouée:', prepErr);
+        Alert.alert('Caméra', 'La caméra n\'est pas prête. Réessayez.');
+        return;
+      }
+      // Vérifier permissions avant d'encoder l'audio
+      let wantAudio = !!advancedOptions.recordAudio;
+      try {
+        const perms = await NativeCameraEngine.checkPermissions();
+        if (Platform.OS === 'android' && wantAudio) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+            {
+              title: 'Permission Micro',
+              message: 'Naaya a besoin d\'accéder au micro pour enregistrer l\'audio de vos vidéos.',
+              buttonPositive: 'Autoriser',
+              buttonNegative: 'Refuser',
+            }
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            console.warn('[RealCameraViewScreen] Micro refusé (Android) — enregistrement sans audio');
+            wantAudio = false;
+            Alert.alert('Micro non autorisé', 'L\'enregistrement démarre sans audio. Vous pourrez autoriser le micro dans Paramètres.');
+          }
+        } else if (wantAudio && perms.microphone !== 'granted') {
+          const req = await NativeCameraEngine.requestPermissions();
+          if (!req || req.microphone !== 'granted') {
+            console.warn('[RealCameraViewScreen] Micro non autorisé — enregistrement sans audio');
+            wantAudio = false;
+            Alert.alert('Micro non autorisé', 'L\'enregistrement démarre sans audio. Vous pourrez autoriser le micro dans Réglages.');
+          }
+        }
+      } catch {}
+
+      // Utiliser les dimensions selon le format choisi
+      const { width, height } = getRecordingDimensions();
+
+      type NativeOrientation = 'auto' | 'portrait' | 'portraitUpsideDown' | 'landscapeLeft' | 'landscapeRight';
+      const resolveOrientation = (): NativeOrientation => {
+        const ui = advancedOptions.orientation || 'auto';
+        if (ui === 'horizontal' || ui === 'paysage') {
+          const { height: wh, width: ww } = Dimensions.get('window');
+          const isLandscapeNow = ww > wh;
+          return isLandscapeNow ? 'landscapeRight' : 'landscapeLeft';
+        }
+        return ui as NativeOrientation;
+      };
+
+      const options = {
+        recordAudio: wantAudio,
+        container: advancedOptions.container,
+        codec: advancedOptions.codec,
+        audioCodec: advancedOptions.audioCodec,
+        width,
+        height,
+        fps: advancedOptions.fps,
+        orientation: resolveOrientation(),
+        stabilization: advancedOptions.stabilization,
+        lockAE: advancedOptions.lockAE,
+        lockAWB: advancedOptions.lockAWB,
+        lockAF: advancedOptions.lockAF,
+        fileNamePrefix: advancedOptions.fileNamePrefix,
+        videoBitrate: advancedOptions.videoBitrate,
+        audioBitrate: advancedOptions.audioBitrate,
+        saveToPhotos: advancedOptions.saveToPhotos,
+        albumName: advancedOptions.albumName,
+        quality: 'high',
+      } as const;
+      setRecordingDuration(0);
+      await cameraRef.current?.startRecording(options);
+      setRecordingState('recording');
+      console.log('[RealCameraViewScreen] Enregistrement démarré');
+    } catch (err) {
+      console.error('[RealCameraViewScreen] Erreur enregistrement:', err);
+      Alert.alert('Enregistrement', 'Une erreur est survenue lors de la capture');
+      setRecordingState('idle');
+    }
+  }, [advancedOptions, getRecordingDimensions]);
+
   const handleRecordPress = useCallback(async () => {
     try {
       if (recordingState === 'idle') {
-        // S'assurer que la caméra est bien active avant de démarrer l'enregistrement
-        try {
-          const active = await NativeCameraEngine.isActive();
-          if (!active) {
-            console.warn('[RealCameraViewScreen] Caméra inactive — démarrage automatique avant enregistrement');
-            await cameraRef.current?.startCamera();
-            const nowActive = await NativeCameraEngine.isActive();
-            if (!nowActive) {
-              throw new Error('Caméra non prête');
-            }
+        const t = timerSeconds;
+        if (t > 0) {
+          if (isCountdownActive) return; // éviter double déclenchement
+          setIsCountdownActive(true);
+          setCountdown(t);
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
           }
-        } catch (prepErr) {
-          console.error('[RealCameraViewScreen] Préparation caméra avant enregistrement échouée:', prepErr);
-          Alert.alert('Caméra', 'La caméra n\'est pas prête. Réessayez.');
+          countdownTimerRef.current = setInterval(async () => {
+            setCountdown((prev) => {
+              if (prev <= 1) {
+                if (countdownTimerRef.current) {
+                  clearInterval(countdownTimerRef.current);
+                  countdownTimerRef.current = null;
+                }
+                setIsCountdownActive(false);
+                // Démarrer l'enregistrement après le compte à rebours
+                startRecordingFlow();
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
           return;
         }
-        // Vérifier permissions avant d'encoder l'audio
-        let wantAudio = !!advancedOptions.recordAudio;
-        try {
-          const perms = await NativeCameraEngine.checkPermissions();
-          if (wantAudio && perms.microphone !== 'granted') {
-            // Essayer de demander les permissions micro
-            const req = await NativeCameraEngine.requestPermissions();
-            if (!req || req.microphone !== 'granted') {
-              console.warn('[RealCameraViewScreen] Micro non autorisé — enregistrement sans audio');
-              wantAudio = false;
-              Alert.alert('Micro non autorisé', 'L\'enregistrement démarre sans audio. Vous pourrez autoriser le micro dans Réglages.');
-            }
-          }
-        } catch {}
-
-        // Utiliser les dimensions selon le format choisi
-        const { width, height } = getRecordingDimensions();
-
-        const options = {
-          recordAudio: wantAudio,
-          container: advancedOptions.container,
-          codec: advancedOptions.codec,
-          audioCodec: advancedOptions.audioCodec,
-          width,
-          height,
-          fps: advancedOptions.fps,
-          orientation: advancedOptions.orientation,
-          stabilization: advancedOptions.stabilization,
-          lockAE: advancedOptions.lockAE,
-          lockAWB: advancedOptions.lockAWB,
-          lockAF: advancedOptions.lockAF,
-          fileNamePrefix: advancedOptions.fileNamePrefix,
-          videoBitrate: advancedOptions.videoBitrate,
-          audioBitrate: advancedOptions.audioBitrate,
-          // Optionnel: qualité par défaut
-          quality: 'high',
-        } as const;
-        setRecordingDuration(0);
-        await cameraRef.current?.startRecording(options);
-        setRecordingState('recording');
-        console.log('[RealCameraViewScreen] Enregistrement démarré');
+        await startRecordingFlow();
       } else if (recordingState === 'recording') {
         setRecordingState('processing');
         console.log('[RealCameraViewScreen] Arrêt enregistrement...');
         const result = await cameraRef.current?.stopRecording();
         if (result) {
           setRecordingDuration(Math.floor(result.duration || 0));
-          console.log('[RealCameraViewScreen] Enregistrement arrêté:', result.uri);
+          console.log('[RealCameraViewScreen] Enregistrement arrêté:', result?.uri);
         }
         setRecordingState('idle');
+      } else if (recordingState === 'paused') {
+        const ok = await NativeCameraEngine.resumeRecording();
+        if (ok) {
+          setRecordingState('recording');
+        } else {
+          console.warn('[RealCameraViewScreen] resumeRecording a échoué');
+        }
       }
     } catch (err) {
       console.error('[RealCameraViewScreen] Erreur enregistrement:', err);
       Alert.alert('Enregistrement', 'Une erreur est survenue lors de la capture');
       setRecordingState('idle');
     }
-  }, [recordingState, advancedOptions, getRecordingDimensions]);
+  }, [recordingState, timerSeconds, isCountdownActive, startRecordingFlow]);
+
+  const handlePausePress = useCallback(async () => {
+    try {
+      if (recordingState === 'recording') {
+        const ok = await NativeCameraEngine.pauseRecording();
+        if (ok) {
+          setRecordingState('paused');
+        } else {
+          console.warn('[RealCameraViewScreen] pauseRecording non supporté ou a échoué');
+        }
+      }
+    } catch (err) {
+      console.error('[RealCameraViewScreen] Erreur pause:', err);
+    }
+  }, [recordingState]);
 
   // Pause non supportée nativement pour l'instant
   // const handlePausePress = useCallback(() => {}, []);
@@ -275,6 +370,28 @@ export const RealCameraViewScreen: React.FC = () => {
       progressTimerRef.current = null;
     }
   }, [recordingState]);
+
+  // Synchroniser le timer local avec la valeur native au montage
+  useEffect(() => {
+    (async () => {
+      try {
+        const t = await NativeCameraEngine.getTimer();
+        if (typeof t === 'number' && !Number.isNaN(t)) {
+          setTimerSeconds(Math.max(0, Math.min(60, Math.floor(t))));
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Nettoyage du countdown à l'unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Configuration du thème
   const theme: ThemeConfig = {
@@ -316,20 +433,43 @@ export const RealCameraViewScreen: React.FC = () => {
           {/* Menu trois points flottant (en position footer) */}
           <ThreeDotsMenu
             flashMode={flashMode}
-            onFlashModeChange={(mode) => {
+            onFlashModeChange={async (mode) => {
+              console.log('[RealCameraViewScreen] Changement mode flash:', mode);
               setFlashMode(mode);
-              // Propager vers le moteur natif
-              if (mode === 'on' || mode === 'off' || mode === 'auto') {
-                cameraRef.current?.setFlashMode(mode).catch(() => {});
-              }
-              // Retour visuel immédiat en vidéo: piloter la torche quand on/off
-              if (mode === 'on') {
-                cameraRef.current?.setTorchMode(true).catch(() => {});
-              } else if (mode === 'off') {
-                cameraRef.current?.setTorchMode(false).catch(() => {});
+              
+              try {
+                // Propager vers le moteur natif
+                if (mode === 'on' || mode === 'off' || mode === 'auto') {
+                  const success = await cameraRef.current?.setFlashMode(mode);
+                  console.log('[RealCameraViewScreen] setFlashMode result:', success);
+                }
+                
+                // Retour visuel immédiat en vidéo: piloter la torche quand on/off
+                if (mode === 'on') {
+                  const torchSuccess = await cameraRef.current?.setTorchMode(true);
+                  console.log('[RealCameraViewScreen] setTorchMode(true) result:', torchSuccess);
+                } else if (mode === 'off') {
+                  const torchSuccess = await cameraRef.current?.setTorchMode(false);
+                  console.log('[RealCameraViewScreen] setTorchMode(false) result:', torchSuccess);
+                }
+              } catch (error) {
+                console.error('[RealCameraViewScreen] Erreur configuration flash:', error);
+                // Afficher une alerte à l'utilisateur
+                Alert.alert(
+                  'Erreur Flash',
+                  `Impossible de configurer le flash: ${error}`,
+                  [{ text: 'OK' }]
+                );
               }
             }}
-            onTimerChange={setTimerSeconds}
+            onTimerChange={async (seconds) => {
+              try {
+                setTimerSeconds(seconds);
+                await NativeCameraEngine.setTimer(seconds);
+              } catch (e) {
+                console.error('[RealCameraViewScreen] Erreur configuration timer:', e);
+              }
+            }}
             timerSeconds={timerSeconds}
             onGridToggle={() => setGridEnabled(!gridEnabled)}
             gridMode={gridMode}
@@ -358,8 +498,16 @@ export const RealCameraViewScreen: React.FC = () => {
                 durationSec={recordingDuration}
                 theme={theme}
                 onRecordPress={handleRecordPress}
+                onPausePress={handlePausePress}
                 fps={advancedOptions.fps}
               />
+            </View>
+          )}
+
+          {/* Overlay compte à rebours */}
+          {isCountdownActive && (
+            <View style={styles.countdownOverlay} pointerEvents="none">
+              <Text style={styles.countdownText}>{countdown}</Text>
             </View>
           )}
         </NativeCamera>
@@ -397,5 +545,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
+  },
+  countdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  countdownText: {
+    color: '#FFFFFF',
+    fontSize: 96,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
   },
 });

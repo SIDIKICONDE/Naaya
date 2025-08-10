@@ -21,6 +21,7 @@ import android.os.Environment;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
+import android.view.WindowManager;
 import com.naaya.audio.NativeEqProcessor;
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -337,7 +338,7 @@ class Camera2VideoRecorder {
     mediaRecorder.setVideoFrameRate(videoFps);
     mediaRecorder.setVideoSize(videoSize.getWidth(), videoSize.getHeight());
     mediaRecorder.setVideoEncodingBitRate(
-        opt != null && opt.videoBitrate > 0 ? opt.videoBitrate : 8_000_000);
+        opt != null && opt.videoBitrate > 0 ? opt.videoBitrate : 12_000_000);
 
     File dir;
     if (opt != null && opt.saveDirectory != null &&
@@ -369,7 +370,52 @@ class Camera2VideoRecorder {
       }
     }
 
+    // Orientation metadata
+    try {
+      int hint = resolveOrientationHint(opt);
+      mediaRecorder.setOrientationHint(hint);
+    } catch (Throwable t) {
+      Log.w(TAG, "setOrientationHint failed (camera2)", t);
+    }
+
     mediaRecorder.prepare();
+  }
+
+  // === Orientation ===
+  private int resolveOrientationHint(LegacyVideoRecorder.StartOptions opt) {
+    if (opt != null && opt.orientation != null && !opt.orientation.isEmpty() &&
+        !"auto".equalsIgnoreCase(opt.orientation)) {
+      String o = opt.orientation.toLowerCase(java.util.Locale.US);
+      switch (o) {
+        case "portrait":
+          return 90;
+        case "portraitupsidedown":
+          return 270;
+        case "landscapeleft":
+          return 180;
+        case "landscaperight":
+          return 0;
+        default:
+          break;
+      }
+    }
+    return getAutoOrientationHint();
+  }
+
+  private int getAutoOrientationHint() {
+    try {
+      WindowManager wm = (WindowManager)appContext.getSystemService(Context.WINDOW_SERVICE);
+      if (wm != null && wm.getDefaultDisplay() != null) {
+        int r = wm.getDefaultDisplay().getRotation();
+        switch (r) {
+          case Surface.ROTATION_0: return 90;
+          case Surface.ROTATION_90: return 0;
+          case Surface.ROTATION_180: return 270;
+          case Surface.ROTATION_270: return 180;
+        }
+      }
+    } catch (Throwable ignore) {}
+    return 0;
   }
 
   private void stopInternal() {

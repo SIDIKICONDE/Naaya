@@ -32,6 +32,9 @@ export interface VideoCaptureOptions {
   lockAF?: boolean;
   saveDirectory?: string;
   fileNamePrefix?: string;
+  // Sauvegarde automatique
+  saveToPhotos?: boolean; // iOS: Pellicule (Photos)
+  albumName?: string;     // iOS: nom d'album (optionnel, si existant)
 }
 
 // Types pour les résultats
@@ -94,11 +97,16 @@ export interface Spec extends TurboModule {
   readonly stopRecording: () => VideoResult;
   readonly isRecording: () => boolean;
   readonly getRecordingProgress: () => {duration: number, size: number};
+  // Pause/Reprise enregistrement (implémenté côté natif; non typé ici pour éviter codegen si absent)
   
   // Contrôles flash/torche
   readonly hasFlash: () => boolean;
   readonly setFlashMode: (mode: string) => boolean;
   readonly setTorchMode: (enabled: boolean) => boolean;
+  
+  // Contrôle du timer
+  readonly setTimer: (seconds: number) => boolean;
+  readonly getTimer: () => number;
   
   // Contrôles zoom
   readonly getMinZoom: () => number;

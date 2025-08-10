@@ -252,6 +252,19 @@ bool NativeCameraModule::setZoomInternal(double level) {
     return zoomController_->setZoomLevel(level);
 }
 
+// Timer (méthodes internes)
+int NativeCameraModule::getTimerInternal() {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    if (!cameraManager_) return 0;
+    return cameraManager_->getTimer();
+}
+
+bool NativeCameraModule::setTimerInternal(int seconds) {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    if (!cameraManager_) return false;
+    return cameraManager_->setTimer(seconds);
+}
+
 // === MÉTHODES JSI (EXPOSÉES À JAVASCRIPT) ===
 
 jsi::Object NativeCameraModule::checkPermissions(jsi::Runtime& rt) {
@@ -488,6 +501,14 @@ bool NativeCameraModule::startRecording(jsi::Runtime& rt, jsi::Object options) {
     auto v = options.getProperty(rt, "fps");
     if (v.isNumber()) opts.fps = static_cast<int>(v.asNumber());
   }
+  if (options.hasProperty(rt, "saveToPhotos")) {
+    auto v = options.getProperty(rt, "saveToPhotos");
+    if (v.isBool()) opts.saveToPhotos = v.getBool();
+  }
+  if (options.hasProperty(rt, "albumName")) {
+    auto v = options.getProperty(rt, "albumName");
+    if (v.isString()) opts.albumName = v.asString(rt).utf8(rt);
+  }
     if (options.hasProperty(rt, "deviceId")) {
         auto v = options.getProperty(rt, "deviceId");
         if (v.isString()) optDeviceId = v.asString(rt).utf8(rt);
@@ -598,6 +619,16 @@ double NativeCameraModule::getMaxZoom(jsi::Runtime& rt) {
 
 bool NativeCameraModule::setZoom(jsi::Runtime& rt, double level) {
     return setZoomInternal(level);
+}
+
+// === MÉTHODES TIMER JSI ===
+
+double NativeCameraModule::getTimer(jsi::Runtime& rt) {
+    return static_cast<double>(getTimerInternal());
+}
+
+bool NativeCameraModule::setTimer(jsi::Runtime& rt, double seconds) {
+    return setTimerInternal(static_cast<int>(seconds));
 }
 
 // === MÉTHODES BALANCE DES BLANCS JSI ===

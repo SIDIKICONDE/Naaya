@@ -1909,13 +1909,6 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react-native@^0.73.0":
-  version "0.73.0"
-  resolved "https://registry.yarnpkg.com/@types/react-native/-/react-native-0.73.0.tgz#b316be230745779814caa533360262140b0f5984"
-  integrity sha512-6ZRPQrYM72qYKGWidEttRe6M5DZBEV5F+MHMHqd4TTYx0tfkcdrUFGdef6CCxY0jXU7wldvd/zA/b0A/kTeJmA==
-  dependencies:
-    react-native "*"
-
 "@types/react-test-renderer@^19.1.0":
   version "19.1.0"
   resolved "https://registry.yarnpkg.com/@types/react-test-renderer/-/react-test-renderer-19.1.0.tgz#1d0af8f2e1b5931e245b8b5b234d1502b854dc10"
@@ -4397,7 +4390,7 @@ jest-config@^29.7.0:
     slash "^3.0.0"
     strip-json-comments "^3.1.1"
 
-jest-diff@^29.7.0:
+jest-diff@^29.0.0, jest-diff@^29.7.0:
   version "29.7.0"
   resolved "https://registry.yarnpkg.com/jest-diff/-/jest-diff-29.7.0.tgz#017934a66ebb7ecf6f205e84699be10afd70458a"
   integrity sha512-LMIgiIrhigmPrs03JHpxUh2yISK3vLFPkAodPeo0+BuF7wA2FoQbkEg1u8gBYBThncu7e1oEDUfIXVuTqLRUjw==
@@ -4436,6 +4429,13 @@ jest-environment-node@^29.7.0:
     "@types/node" "*"
     jest-mock "^29.7.0"
     jest-util "^29.7.0"
+
+jest-extended@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/jest-extended/-/jest-extended-6.0.0.tgz#bd29ba4154166875e53b25c674f1ad533243d1c1"
+  integrity sha512-SM249N/q33YQ9XE8E06qZSnFuuV4GQFx7WrrmIj4wQUAP43jAo6budLT482jdBhf8ASwUiEEfJNjej0UusYs5A==
+  dependencies:
+    jest-diff "^29.0.0"
 
 jest-get-type@^29.6.3:
   version "29.6.3"
@@ -5706,7 +5706,7 @@ react-is@^19.1.0:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-19.1.1.tgz#038ebe313cf18e1fd1235d51c87360eb87f7c36a"
   integrity sha512-tr41fA15Vn8p4X9ntI+yCyeGSf1TlYaY5vlTZfQmeLBrFo3psOPX6HhTDnFNL9uj3EhP0KAQ80cugCl4b4BERA==
 
-react-native-fs@^2:
+react-native-fs@^2.20.0:
   version "2.20.0"
   resolved "https://registry.yarnpkg.com/react-native-fs/-/react-native-fs-2.20.0.tgz#05a9362b473bfc0910772c0acbb73a78dbc810f6"
   integrity sha512-VkTBzs7fIDUiy/XajOSNk0XazFE9l+QlMAce7lGuebZcag5CnjszB+u4BdqzwaQOdcYb5wsJIsqq4kxInIRpJQ==
@@ -5778,7 +5778,7 @@ react-native-vision-camera@^3.9.0:
   resolved "https://registry.yarnpkg.com/react-native-vision-camera/-/react-native-vision-camera-3.9.2.tgz#d6656a4c0af929916d5e6b57af5adfe94ff8c65a"
   integrity sha512-watHRWbeH7CBYq/5sPj2fpZj87V8J5nGdmYO61aYsDLuJ2Pkij7anAzBf8B8oZiyoSUuYpAzX4lIIi+LjWVedA==
 
-react-native@*, react-native@0.80.2:
+react-native@0.80.2:
   version "0.80.2"
   resolved "https://registry.yarnpkg.com/react-native/-/react-native-0.80.2.tgz#d71b9584ba82c2d691332062fa756f87ec76e2b9"
   integrity sha512-6ySV4qTJo/To3lgpG/9Mcg/ZtvExqOVZuT7JVGcO5rS2Bjvl/yUAkQF0hTnbRb2Ch6T5MlKghrM4OeHX+KA9Pg==

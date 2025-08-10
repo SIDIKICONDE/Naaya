@@ -35,6 +35,9 @@ struct VideoCaptureOptions {
     bool lockAF = false;            // verrou autofocus
     std::string saveDirectory;      // dossier de sortie
     std::string fileNamePrefix;     // préfixe fichier
+    // Sauvegarde automatique (iOS/Android)
+    bool saveToPhotos = false;      // iOS: Pellicule / Android: Galerie
+    std::string albumName;          // Nom d'album (optionnel)
     
     VideoCaptureOptions() = default;
 };

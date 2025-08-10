@@ -18,7 +18,7 @@ import type { AdvancedFilterParams, FilterState } from '../../../../../specs/Nat
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
 import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
 import { CompactFilterControls } from '../../filters/CompactFilterControls';
-import { createFlashItems, createGridItems, createTimerItems, useFloatingSubmenu } from '../hooks/useFloatingSubmenu';
+import { createFlashItems, createTimerItems, useFloatingSubmenu } from '../hooks/useFloatingSubmenu';
 import type { CameraMode, FlashMode } from '../types';
 import { FloatingSubmenu } from './FloatingSubmenu';
 
@@ -41,7 +41,6 @@ const ICONS = {
   SLIDERS: '🎛️',
   VIDEO: '🎥',
   ZOOM: '🔍',
-  AUDIO: '🎚️',
 };
 
 export interface ThreeDotsMenuProps {
@@ -85,11 +84,11 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   onFlashModeChange,
   onTimerChange,
   timerSeconds,
-  onGridToggle,
-  gridMode = 'thirds',
-  onGridModeChange,
-  gridAspect = 'none',
-  onGridAspectChange,
+  onGridToggle: _onGridToggle,
+  gridMode: _gridMode = 'thirds',
+  onGridModeChange: _onGridModeChange,
+  gridAspect: _gridAspect = 'none',
+  onGridAspectChange: _onGridAspectChange,
   onSettingsOpen,
   position = 'top-right',
   theme = 'dark',
@@ -105,7 +104,8 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState(false);
   const [showFilterControls, setShowFilterControls] = useState(false);
-  const [showAudioControls, setShowAudioControls] = useState(false);
+
+
 
   
   // Animations
@@ -143,9 +143,17 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   const handleFlashSubmenu = () => {
     closeMenu(); // Fermer le menu principal d'abord
     setTimeout(() => {
-      showSubmenu(createFlashItems(flashMode, (mode) => {
-        onFlashModeChange(mode as FlashMode);
-        hideSubmenu();
+      showSubmenu(createFlashItems(flashMode, async (mode) => {
+        try {
+          console.log('[ThreeDotsMenu] Changement mode flash:', mode);
+          await onFlashModeChange(mode as FlashMode);
+          console.log('[ThreeDotsMenu] Mode flash changé avec succès:', mode);
+          hideSubmenu();
+        } catch (error) {
+          console.error('[ThreeDotsMenu] Erreur changement mode flash:', error);
+          // Garder le sous-menu ouvert pour permettre à l'utilisateur de réessayer
+          // L'erreur sera affichée par l'écran parent
+        }
       }));
     }, 200);
   };
@@ -181,38 +189,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
 
 
 
-  const handleGridToggle = () => {
-    // Si des callbacks avancés existent, ouvrir un sous-menu combiné
-    if (onGridModeChange || onGridAspectChange) {
-      closeMenu();
-      setTimeout(() => {
-        const { items, aspectItems } = createGridItems(
-          gridMode,
-          (mode) => {
-            onGridModeChange?.(mode);
-            // activer la grille si on choisit autre que none
-            if (mode !== 'none') onGridToggle();
-            hideSubmenu();
-          },
-          gridAspect,
-          (aspect) => {
-            onGridAspectChange?.(aspect);
-            onGridToggle();
-            hideSubmenu();
-          }
-        );
-        // Fusionner les deux listes dans un seul sous-menu (titre implicite)
-        showSubmenu([
-          ...items,
-          { id: 'sep', label: '———', icon: ' ', onPress: () => {} },
-          ...aspectItems,
-        ]);
-      }, 200);
-    } else {
-      onGridToggle();
-      closeMenu();
-    }
-  };
+  // Props de grille volontairement non utilisées (déconnectées du menu)
 
   const handleSettingsOpen = () => {
     onSettingsOpen();
@@ -230,10 +207,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
     setIsMenuOpen(false);
   };
 
-  const handleAudioOpen = () => {
-    setShowAudioControls(true);
-    setIsMenuOpen(false);
-  };
+
 
 
 
@@ -255,12 +229,6 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       hasSubmenu: false,
     },
     {
-      id: 'grid',
-      icon: ICONS.GRID,
-      label: 'Grille',
-      action: handleGridToggle,
-    },
-    {
       id: 'settings',
       icon: ICONS.SETTINGS,
       label: 'Paramètres',
@@ -279,12 +247,6 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       label: 'Filtres',
       action: handleFiltersOpen,
     },
-    {
-      id: 'audio',
-      icon: ICONS.AUDIO,
-      label: 'Audio',
-      action: handleAudioOpen,
-    },
 
     {
       id: 'zoomReset',
@@ -292,6 +254,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       label: 'Réinitialiser le zoom',
       action: () => onAction?.('zoomReset'),
     },
+
   ];
 
   const getButtonPositionStyles = () => {
@@ -433,6 +396,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
                   onFilterChange={(name, intensity, params) => onFilterChange(name, intensity, params)}
                   disabled={false}
                   visible={true}
+                  autoActivateOnEmpty={false}
                 />
               </View>
             </ScrollView>
@@ -440,21 +404,11 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
         </Modal>
       )}
 
-      {/* Audio - Égaliseur plein écran */}
-      {showAudioControls && (
-        <Modal
-          visible={showAudioControls}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          statusBarTranslucent={false}
-          onRequestClose={() => setShowAudioControls(false)}
-        >
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-            <Text>Audio</Text>
-          </SafeAreaView>
-        </Modal>
-      )}
+      {/* Audio → utilise les paramètres avancés (ModernAdvancedControls) */}
 
+
+    
+    
 
     </>
   );
@@ -505,6 +459,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
   menuContainer: {
     backgroundColor: 'rgba(20, 20, 20, 0.95)',

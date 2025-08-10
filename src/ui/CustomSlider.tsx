@@ -100,9 +100,13 @@ export const CustomSlider: React.FC<CustomSliderProps> = memo(({
   }, [width, thumbSize, minimumValue, maximumValue, step]);
 
   // Gestionnaire de gestes Pan avec PanResponder
+  const LEFT_PADDING = 12; // doit correspondre au style.track.left
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled,
     onMoveShouldSetPanResponder: () => !disabled,
+    onStartShouldSetPanResponderCapture: () => true,
+    onMoveShouldSetPanResponderCapture: () => true,
+    onPanResponderTerminationRequest: () => false,
     
     onPanResponderGrant: () => {
       setIsDragging(true);
@@ -123,9 +127,12 @@ export const CustomSlider: React.FC<CustomSliderProps> = memo(({
       ]).start();
     },
 
-    onPanResponderMove: (_, gestureState) => {
-      const absoluteX = gestureState.moveX - thumbSize / 2;
-      const newValue = getValueFromPosition(absoluteX);
+    onPanResponderMove: (evt) => {
+      // locationX: coordonnée relative au conteneur du slider
+      const localX = (evt.nativeEvent as any).locationX as number;
+      // Convertir en coordonnée relative au track (décalé de LEFT_PADDING)
+      const xOnTrack = localX - LEFT_PADDING;
+      const newValue = getValueFromPosition(xOnTrack);
       onValueChange(newValue);
     },
 
@@ -148,12 +155,10 @@ export const CustomSlider: React.FC<CustomSliderProps> = memo(({
         }),
       ]).start();
 
-      // Callback de fin de modification
-      if (onSlidingComplete) {
-        onSlidingComplete(value);
-      }
+      // Callback de fin de modification avec la valeur actuelle
+      if (onSlidingComplete) onSlidingComplete(value);
     },
-  }), [disabled, scaleAnimation, valueAnimation, onSlidingComplete, value, thumbSize, getValueFromPosition, onValueChange]);
+  }), [disabled, scaleAnimation, valueAnimation, onSlidingComplete, value, getValueFromPosition, onValueChange]);
 
   // Styles dynamiques
   const containerStyle = useMemo(() => [
@@ -205,7 +210,11 @@ export const CustomSlider: React.FC<CustomSliderProps> = memo(({
   ], [thumbPosition, thumbSize, activeTrackColor, accentColor, isDragging]);
 
   return (
-    <View style={containerStyle} pointerEvents={disabled ? 'none' : 'auto'}>
+    <View
+      style={containerStyle}
+      pointerEvents={disabled ? 'none' : 'auto'}
+      {...panResponder.panHandlers}
+    >
       {/* Track inactif */}
       <View style={trackStyle} />
       
@@ -214,7 +223,6 @@ export const CustomSlider: React.FC<CustomSliderProps> = memo(({
       
       {/* Thumb avec gestion des gestes */}
       <Animated.View
-        {...panResponder.panHandlers}
         style={[
           thumbStyle,
           {

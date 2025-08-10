@@ -64,14 +64,7 @@ class NativeCameraFiltersModule : public TurboModule {
 #import "../../shared/NativeAudioEqualizerModule.h"
 #endif
 
-#if defined(NAAYA_AUDIO_EQ_ENABLED) && (NAAYA_AUDIO_EQ_ENABLED == 0)
-namespace facebook { namespace react {
-class NativeAudioEqualizerModule : public TurboModule {
- public:
-  explicit NativeAudioEqualizerModule(std::shared_ptr<CallInvoker>) : TurboModule("NativeAudioEqualizerModule", nullptr) {}
-};
-}} // namespace facebook::react
-#endif
+// Pas de stub par macro: le provider retournera nullptr si le header n'est pas disponible
 
 
 @implementation NativeCameraModuleProvider
@@ -96,7 +89,11 @@ class NativeAudioEqualizerModule : public TurboModule {
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params {
-  return std::make_shared<facebook::react::NativeAudioEqualizerModule>(params.jsInvoker);
+  #if __has_include("../../shared/NativeAudioEqualizerModule.h")
+    return std::make_shared<facebook::react::NativeAudioEqualizerModule>(params.jsInvoker);
+  #else
+    return nullptr;
+  #endif
 }
 
 @end

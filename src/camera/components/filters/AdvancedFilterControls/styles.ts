@@ -6,19 +6,21 @@ import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    margin: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    padding: 12,
+    margin: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
     alignSelf: 'stretch',
     flexGrow: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 16,
-    textAlign: 'center',
+    color: '#EEEEEE',
+    marginBottom: 10,
+    textAlign: 'left',
   },
   scrollView: {
     flex: 1,

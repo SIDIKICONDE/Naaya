@@ -347,6 +347,14 @@ namespace facebook::react {
       return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, BooleanKind, "setTorchMode", @selector(setTorchMode:), args, count);
     }
 
+    static facebook::jsi::Value __hostFunction_NativeCameraModuleSpecJSI_setTimer(facebook::jsi::Runtime& rt, TurboModule &turboModule, const facebook::jsi::Value* args, size_t count) {
+      return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, BooleanKind, "setTimer", @selector(setTimer:), args, count);
+    }
+
+    static facebook::jsi::Value __hostFunction_NativeCameraModuleSpecJSI_getTimer(facebook::jsi::Runtime& rt, TurboModule &turboModule, const facebook::jsi::Value* args, size_t count) {
+      return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, NumberKind, "getTimer", @selector(getTimer), args, count);
+    }
+
     static facebook::jsi::Value __hostFunction_NativeCameraModuleSpecJSI_getMinZoom(facebook::jsi::Runtime& rt, TurboModule &turboModule, const facebook::jsi::Value* args, size_t count) {
       return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, NumberKind, "getMinZoom", @selector(getMinZoom), args, count);
     }
@@ -459,6 +467,12 @@ namespace facebook::react {
         
         
         methodMap_["setTorchMode"] = MethodMetadata {1, __hostFunction_NativeCameraModuleSpecJSI_setTorchMode};
+        
+        
+        methodMap_["setTimer"] = MethodMetadata {1, __hostFunction_NativeCameraModuleSpecJSI_setTimer};
+        
+        
+        methodMap_["getTimer"] = MethodMetadata {0, __hostFunction_NativeCameraModuleSpecJSI_getTimer};
         
         
         methodMap_["getMinZoom"] = MethodMetadata {0, __hostFunction_NativeCameraModuleSpecJSI_getMinZoom};

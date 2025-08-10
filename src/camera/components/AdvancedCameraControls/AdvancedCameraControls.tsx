@@ -280,14 +280,14 @@ export const AdvancedCameraControls = memo<AdvancedCameraControlsProps>(({
 
   if (disabled) {
     return (
-      <View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFillObject, style]} pointerEvents="none">
         {/* Interface désactivée - peut afficher un état de chargement */}
       </View>
     );
   }
 
   return (
-    <View style={[StyleSheet.absoluteFill, style]} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFillObject, style]} pointerEvents="box-none">
       {/* Zone de gestes */}
       <GestureArea
         onTap={(point) => handleGesture('tap', { point })}
@@ -302,7 +302,15 @@ export const AdvancedCameraControls = memo<AdvancedCameraControlsProps>(({
         {/* Menu trois points */}
         <ThreeDotsMenu
           flashMode={flashMode}
-          onFlashModeChange={(_mode) => onFlashPress()}
+          onFlashModeChange={(mode) => {
+            // Relayer à l'extérieur si fourni
+            if (typeof onFlashPress === 'function') {
+              onFlashPress();
+            }
+            if (typeof (props as any).onFlashModeChange === 'function') {
+              (props as any).onFlashModeChange(mode);
+            }
+          }}
           onTimerChange={onTimerChange || (() => {})}
           timerSeconds={0}
           onGridToggle={onGridToggle || (() => {})}

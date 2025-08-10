@@ -189,11 +189,16 @@ export function useNativeCamera(): UseNativeCameraReturn {
         throw new Error('Aucun dispositif caméra disponible');
       }
       
+      // Rafraîchir la liste depuis le natif pour éviter un état obsolète
+      const latest = await NativeCameraEngine.getAvailableDevices();
+      setDevices(latest);
       // Vérifier que le dispositif cible existe
-      const targetDevice = devices.find(device => device.position === position);
+      const targetDevice = latest.find(device => device.position === position);
       if (!targetDevice) {
-        const availablePositions = devices.map(d => d.position).join(', ');
-        throw new Error(`Dispositif ${position} non disponible. Disponibles: ${availablePositions}`);
+        const availablePositions = latest.map(d => d.position).join(', ');
+        console.warn(`[useNativeCamera] Dispositif ${position} non disponible. Disponibles: ${availablePositions}`);
+        // Pas de throw: ne pas casser l'UI si une seule caméra est dispo
+        return;
       }
 
       // Éviter un switch inutile vers le même dispositif
@@ -204,13 +209,22 @@ export function useNativeCamera(): UseNativeCameraReturn {
 
       console.log(`[useNativeCamera] Basculement ${currentDevice?.position || 'inconnu'} → ${position}`);
       
-      // Approche optimisée : switch direct sans arrêt/redémarrage
+      // Basculement natif
       const success = await NativeCameraEngine.switchDevice(position);
       if (!success) {
         throw new Error(`Échec du basculement vers ${position}`);
       }
-      
-      // Mettre à jour l'état local uniquement après succès
+      // IMPORTANT: la couche native stoppe la caméra pendant selectDevice; on doit la relancer
+      try {
+        const started = await NativeCameraEngine.startCamera(targetDevice.id);
+        if (!started) {
+          throw new Error('Redémarrage caméra après basculement échoué');
+        }
+        setIsActive(true);
+      } catch (re) {
+        console.warn('[useNativeCamera] Redémarrage caméra après switch a échoué:', re);
+      }
+      // Mettre à jour l'état local
       setCurrentDevice(targetDevice);
       console.log('[useNativeCamera] Basculement réussi vers:', targetDevice.name);
       
@@ -328,7 +342,7 @@ export function useNativeCamera(): UseNativeCameraReturn {
       // Utilisation directe de l'API pour éviter les dépendances
       NativeCameraEngine.stopCamera().catch(console.error);
     };
-  }, []); // Dépendances vides pour exécuter seulement au montage/démontage
+  }, [checkPermissions, requestPermissions, loadDevices, loadFilters]);
 
   return {
     // État

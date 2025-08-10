@@ -338,6 +338,17 @@ static jsi::Value __hostFunction_NativeCameraModuleCxxSpecJSI_setTorchMode(jsi::
     count <= 0 ? throw jsi::JSError(rt, "Expected argument in position 0 to be passed") : args[0].asBool()
   );
 }
+static jsi::Value __hostFunction_NativeCameraModuleCxxSpecJSI_setTimer(jsi::Runtime &rt, TurboModule &turboModule, const jsi::Value* args, size_t count) {
+  return static_cast<NativeCameraModuleCxxSpecJSI *>(&turboModule)->setTimer(
+    rt,
+    count <= 0 ? throw jsi::JSError(rt, "Expected argument in position 0 to be passed") : args[0].asNumber()
+  );
+}
+static jsi::Value __hostFunction_NativeCameraModuleCxxSpecJSI_getTimer(jsi::Runtime &rt, TurboModule &turboModule, const jsi::Value* args, size_t count) {
+  return static_cast<NativeCameraModuleCxxSpecJSI *>(&turboModule)->getTimer(
+    rt
+  );
+}
 static jsi::Value __hostFunction_NativeCameraModuleCxxSpecJSI_getMinZoom(jsi::Runtime &rt, TurboModule &turboModule, const jsi::Value* args, size_t count) {
   return static_cast<NativeCameraModuleCxxSpecJSI *>(&turboModule)->getMinZoom(
     rt
@@ -441,6 +452,8 @@ NativeCameraModuleCxxSpecJSI::NativeCameraModuleCxxSpecJSI(std::shared_ptr<CallI
   methodMap_["hasFlash"] = MethodMetadata {0, __hostFunction_NativeCameraModuleCxxSpecJSI_hasFlash};
   methodMap_["setFlashMode"] = MethodMetadata {1, __hostFunction_NativeCameraModuleCxxSpecJSI_setFlashMode};
   methodMap_["setTorchMode"] = MethodMetadata {1, __hostFunction_NativeCameraModuleCxxSpecJSI_setTorchMode};
+  methodMap_["setTimer"] = MethodMetadata {1, __hostFunction_NativeCameraModuleCxxSpecJSI_setTimer};
+  methodMap_["getTimer"] = MethodMetadata {0, __hostFunction_NativeCameraModuleCxxSpecJSI_getTimer};
   methodMap_["getMinZoom"] = MethodMetadata {0, __hostFunction_NativeCameraModuleCxxSpecJSI_getMinZoom};
   methodMap_["getMaxZoom"] = MethodMetadata {0, __hostFunction_NativeCameraModuleCxxSpecJSI_getMaxZoom};
   methodMap_["setZoom"] = MethodMetadata {1, __hostFunction_NativeCameraModuleCxxSpecJSI_setZoom};

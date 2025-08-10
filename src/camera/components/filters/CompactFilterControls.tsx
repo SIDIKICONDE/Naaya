@@ -94,18 +94,28 @@ export const CompactFilterControls: React.FC<CompactFilterControlsProps> = memo(
   }, [onFilterChange, onClearFilter, disabled]);
 
   const selectedFilterKey = useMemo(() => {
-    console.log('[CompactFilterControls] currentFilter:', currentFilter);
+    if (__DEV__) {
+      console.log('[CompactFilterControls] currentFilter:', currentFilter);
+    }
     if (!currentFilter) {
-      console.log('[CompactFilterControls] Pas de filtre actuel, retour "none"');
+      if (__DEV__) {
+        console.log('[CompactFilterControls] Pas de filtre actuel, retour "none"');
+      }
       return 'none';
     }
     const name = currentFilter.name;
-    console.log('[CompactFilterControls] currentFilter.name:', name);
+    if (__DEV__) {
+      console.log('[CompactFilterControls] currentFilter.name:', name);
+    }
     if (name.startsWith('lut3d:')) {
-      console.log('[CompactFilterControls] Filtre LUT détecté, retour "lut3d"');
+      if (__DEV__) {
+        console.log('[CompactFilterControls] Filtre LUT détecté, retour "lut3d"');
+      }
       return 'lut3d';
     }
-    console.log('[CompactFilterControls] selectedFilterKey final:', name);
+    if (__DEV__) {
+      console.log('[CompactFilterControls] selectedFilterKey final:', name);
+    }
     return name;
   }, [currentFilter]);
 
@@ -120,7 +130,7 @@ export const CompactFilterControls: React.FC<CompactFilterControlsProps> = memo(
         </TouchableOpacity>
         {COMPACT_FILTERS.map((filter) => {
           const isSelected = selectedFilterKey === filter.name;
-          if (filter.name === 'none') {
+          if (__DEV__ && filter.name === 'none') {
             console.log('[CompactFilterControls] Bouton OFF - isSelected:', isSelected, 'selectedFilterKey:', selectedFilterKey);
           }
           return (
@@ -148,7 +158,7 @@ export const CompactFilterControls: React.FC<CompactFilterControlsProps> = memo(
         </View>
       )}
 
-      {/* Modal de sélection/saisie LUT */}
+q       {/* Modal de sélection/saisie LUT */}
       <Modal
         visible={lutModalVisible}
         transparent

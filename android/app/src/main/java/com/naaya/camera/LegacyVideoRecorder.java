@@ -7,6 +7,8 @@ import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Surface;
+import android.view.WindowManager;
 import com.naaya.audio.NativeEqProcessor;
 import java.io.File;
 import java.io.IOException;
@@ -81,6 +83,9 @@ public class LegacyVideoRecorder {
     public boolean lockAE;
     public boolean lockAWB;
     public boolean lockAF;
+    // Auto-sauvegarde
+    public boolean saveToGallery; // Ajouter au MediaStore
+    public String albumName;      // Dossier virtuel (RELATIVE_PATH)
   }
 
   public synchronized boolean start(StartOptions opt) {
@@ -135,9 +140,16 @@ public class LegacyVideoRecorder {
         recorder.setAudioSamplingRate(44100);
       }
 
-      // Dimensions/FPS depuis le profil
-      recorder.setVideoFrameRate(profile.videoFrameRate);
-      recorder.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight);
+      // Dimensions/FPS: appliquer options si fournies sinon profil
+      int useFps = profile.videoFrameRate;
+      int useW = profile.videoFrameWidth;
+      int useH = profile.videoFrameHeight;
+      if (opt != null) {
+        if (opt.fps > 0) useFps = opt.fps;
+        if (opt.width > 0 && opt.height > 0) { useW = opt.width; useH = opt.height; }
+      }
+      recorder.setVideoFrameRate(useFps);
+      recorder.setVideoSize(useW, useH);
       if (opt != null && opt.videoBitrate > 0) {
         recorder.setVideoEncodingBitRate(opt.videoBitrate);
       } else {
@@ -173,9 +185,20 @@ public class LegacyVideoRecorder {
         }
       }
 
+      // Définir l'orientation d'encodage (métadonnée de rotation)
+      try {
+        int hint = resolveOrientationHint(opt);
+        recorder.setOrientationHint(hint);
+      } catch (Throwable t) {
+        Log.w(TAG, "setOrientationHint failed (legacy)", t);
+      }
+
       recorder.prepare();
       recorder.start();
       startMs = System.currentTimeMillis();
+      // mémoriser auto-sauvegarde
+      this.saveToGallery = opt != null && opt.saveToGallery;
+      this.albumName = (opt != null && opt.albumName != null) ? opt.albumName : null;
       Log.d(TAG, "Recording started → " + outputFile);
       return true;
     } catch (Throwable t) {
@@ -246,6 +269,14 @@ public class LegacyVideoRecorder {
     res.fps = 0;
     res.codec = "H264"; // valeur indicative
     Log.d(TAG, "Recording stopped → " + res.uri + " size=" + res.size);
+    // Auto-sauvegarde dans MediaStore si demandé
+    if (saveToGallery && appContext != null && res.uri != null && !res.uri.isEmpty()) {
+      try {
+        addVideoToMediaStore(new java.io.File(res.uri), albumName);
+      } catch (Throwable t) {
+        Log.e(TAG, "addVideoToMediaStore failed", t);
+      }
+    }
     outputFile = null;
     return res;
   }
@@ -273,5 +304,86 @@ public class LegacyVideoRecorder {
     } catch (Throwable ignore) {
     }
     camera = null;
+  }
+
+  // === Orientation ===
+  private int resolveOrientationHint(StartOptions opt) {
+    // Si orientation explicite
+    if (opt != null && opt.orientation != null && !opt.orientation.isEmpty() &&
+        !"auto".equalsIgnoreCase(opt.orientation)) {
+      String o = opt.orientation.toLowerCase(Locale.US);
+      switch (o) {
+        case "portrait":
+          return 90;   // portrait
+        case "portraitupsidedown":
+          return 270;  // portrait inversé
+        case "landscapeleft":
+          return 180;  // paysage inversé
+        case "landscaperight":
+          return 0;    // paysage
+        default:
+          break;
+      }
+    }
+    // Auto: map rotation écran → orientation vidéo
+    return getAutoOrientationHint();
+  }
+
+  private int getAutoOrientationHint() {
+    try {
+      WindowManager wm = (WindowManager)appContext.getSystemService(Context.WINDOW_SERVICE);
+      if (wm != null && wm.getDefaultDisplay() != null) {
+        int r = wm.getDefaultDisplay().getRotation();
+        switch (r) {
+          case Surface.ROTATION_0:
+            return 90;   // portrait
+          case Surface.ROTATION_90:
+            return 0;    // paysage
+          case Surface.ROTATION_180:
+            return 270;  // portrait inversé
+          case Surface.ROTATION_270:
+            return 180;  // paysage inversé
+        }
+      }
+    } catch (Throwable ignore) {
+    }
+    return 0;
+  }
+
+  // === Auto-sauvegarde ===
+  private boolean saveToGallery = false;
+  private String albumName = null;
+
+  private void addVideoToMediaStore(File source, String album) throws Exception {
+    if (android.os.Build.VERSION.SDK_INT >= 29) {
+      android.content.ContentValues values = new android.content.ContentValues();
+      values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, source.getName());
+      values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "video/mp4");
+      String rel = "Movies" + (album != null && !album.isEmpty() ? "/" + album : "");
+      values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, rel);
+      values.put(android.provider.MediaStore.Video.Media.IS_PENDING, 1);
+      android.net.Uri uri = appContext.getContentResolver().insert(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values);
+      if (uri != null) {
+        java.io.OutputStream os = appContext.getContentResolver().openOutputStream(uri);
+        java.io.InputStream is = new java.io.FileInputStream(source);
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = is.read(buf)) > 0) { os.write(buf, 0, n); }
+        os.flush(); os.close(); is.close();
+        values.clear();
+        values.put(android.provider.MediaStore.Video.Media.IS_PENDING, 0);
+        appContext.getContentResolver().update(uri, values, null, null);
+      }
+    } else {
+      java.io.File movies = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MOVIES);
+      java.io.File destDir = (album != null && !album.isEmpty()) ? new java.io.File(movies, album) : movies;
+      if (!destDir.exists()) destDir.mkdirs();
+      java.io.File dest = new java.io.File(destDir, source.getName());
+      java.io.FileInputStream fis = new java.io.FileInputStream(source);
+      java.io.FileOutputStream fos = new java.io.FileOutputStream(dest);
+      byte[] buf = new byte[8192]; int n; while ((n = fis.read(buf)) > 0) { fos.write(buf, 0, n); }
+      fos.flush(); fos.close(); fis.close();
+      android.media.MediaScannerConnection.scanFile(appContext, new String[]{dest.getAbsolutePath()}, new String[]{"video/mp4"}, null);
+    }
   }
 }

@@ -283,6 +283,94 @@ void CameraManager::setErrorCallback(ErrorCallback callback) {
     errorCallback_ = std::move(callback);
 }
 
+// === CONTRÔLES AVANCÉS ===
+
+bool CameraManager::setZoomLevel(double level) {
+    if (!initialized_.load()) {
+        reportError("NOT_INITIALIZED", "Gestionnaire de caméra non initialisé");
+        return false;
+    }
+    
+    if (level < 1.0 || level > 10.0) {
+        reportError("INVALID_ZOOM", "Niveau de zoom invalide (doit être entre 1.0 et 10.0)");
+        return false;
+    }
+    
+    if (setZoomLevelPlatform(level)) {
+        zoomLevel_.store(level);
+        return true;
+    }
+    
+    reportError("ZOOM_FAILED", "Échec de la définition du niveau de zoom");
+    return false;
+}
+
+double CameraManager::getZoomLevel() const {
+    return zoomLevel_.load();
+}
+
+bool CameraManager::setFlashMode(FlashMode mode) {
+    if (!initialized_.load()) {
+        reportError("NOT_INITIALIZED", "Gestionnaire de caméra non initialisé");
+        return false;
+    }
+    
+    if (setFlashModePlatform(mode)) {
+        flashMode_.store(mode);
+        return true;
+    }
+    
+    reportError("FLASH_FAILED", "Échec de la définition du mode flash");
+    return false;
+}
+
+FlashMode CameraManager::getFlashMode() const {
+    return flashMode_.load();
+}
+
+bool CameraManager::setTorchMode(bool enabled) {
+    if (!initialized_.load()) {
+        reportError("NOT_INITIALIZED", "Gestionnaire de caméra non initialisé");
+        return false;
+    }
+    
+    if (setTorchModePlatform(enabled)) {
+        torchEnabled_.store(enabled);
+        return true;
+    }
+    
+    reportError("TORCH_FAILED", "Échec de la définition du mode torche");
+    return false;
+}
+
+bool CameraManager::getTorchMode() const {
+    return torchEnabled_.load();
+}
+
+bool CameraManager::setTimer(int seconds) {
+    if (!initialized_.load()) {
+        reportError("NOT_INITIALIZED", "Gestionnaire de caméra non initialisé");
+        return false;
+    }
+    
+    if (seconds < 0 || seconds > 60) {
+        reportError("INVALID_TIMER", "Valeur de timer invalide (doit être entre 0 et 60 secondes)");
+        return false;
+    }
+    
+    if (setTimerPlatform(seconds)) {
+        timerSeconds_.store(seconds);
+        return true;
+    }
+    
+    reportError("TIMER_FAILED", "Échec de la définition du timer");
+    return false;
+}
+
+int CameraManager::getTimer() const {
+    return timerSeconds_.load();
+}
+
 // === MÉTHODES PROTÉGÉES ===
 
 void CameraManager::setState(CameraState newState) {
@@ -378,6 +466,9 @@ protected:
   
   bool setTorchModePlatform(bool /*enabled*/) override { return false; }
   bool getTorchModePlatform() const override { return false; }
+  
+  bool setTimerPlatform(int /*seconds*/) override { return true; }
+  int getTimerPlatform() const override { return 0; }
   
   bool capturePhotoPlatform(const PhotoCaptureOptions& /*options*/) override { return true; }
   bool startRecordingPlatform(const VideoCaptureOptions& /*options*/) override { return true; }

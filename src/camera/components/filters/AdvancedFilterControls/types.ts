@@ -9,6 +9,11 @@ export interface AdvancedFilterControlsProps {
   onFilterChange: (name: string, intensity: number, params?: AdvancedFilterParams) => Promise<boolean>;
   disabled?: boolean;
   visible?: boolean;
+  /**
+   * Si vrai, active automatiquement le filtre color_controls lorsqu'aucun filtre n'est actif.
+   * Mettre à false pour permettre un état réellement "sans filtre" (OFF).
+   */
+  autoActivateOnEmpty?: boolean;
 }
 
 export interface ParameterControlProps {
@@ -28,7 +33,7 @@ export interface ParameterSectionProps {
   title: string;
   children: React.ReactNode;
   expanded?: boolean;
-  onToggleExpanded?: () => void;
+  onToggle?: () => void;
 }
 
 export interface FilterPresetsProps {
@@ -43,7 +48,8 @@ export interface FilterPreset {
 }
 
 export interface ExpandedSections {
-  exposure: boolean;
-  color: boolean;
-  effects: boolean;
+  brightness: boolean;
+  colors: boolean;
+  details: boolean;
+  tones: boolean;
 }

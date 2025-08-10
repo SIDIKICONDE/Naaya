@@ -8,7 +8,7 @@ import {
   Text,
   View
 } from 'react-native';
-import CustomSlider from '../../../../../ui/CustomSlider';
+import NumberLineControl from './NumberLineControl';
 import { SLIDER_WIDTH } from '../constants';
 import type { ParameterControlProps } from '../types';
 
@@ -31,14 +31,7 @@ export const ParameterControl: React.FC<ParameterControlProps> = memo(({
     return Math.round(value * 100) / 100;
   }, [value, unit]);
 
-  const valueFormatter = useMemo(() => {
-    return (val: number) => {
-      if (unit === '%') {
-        return `${Math.round(val * 100)}%`;
-      }
-      return `${Math.round(val * 100) / 100}${unit}`;
-    };
-  }, [unit]);
+  // Supprimé: valueFormatter non utilisé (simplification UI performante)
 
   return (
     <View style={[styles.parameterContainer, disabled && styles.parameterDisabled]}>
@@ -51,24 +44,16 @@ export const ParameterControl: React.FC<ParameterControlProps> = memo(({
         </View>
       </View>
       
-      <CustomSlider
+      <NumberLineControl
         value={value}
-        onValueChange={onValueChange}
-        onSlidingComplete={onSlidingComplete}
-        minimumValue={min}
-        maximumValue={max}
+        min={min}
+        max={max}
         step={step}
         width={SLIDER_WIDTH}
-        trackHeight={4}
-        thumbSize={20}
-        activeTrackColor={color}
-        inactiveTrackColor="rgba(255, 255, 255, 0.2)"
-        thumbColor="#FFFFFF"
-        accentColor={color}
-        showValue={false}
-        valueFormatter={valueFormatter}
+        color={color}
         disabled={disabled}
-        style={styles.sliderStyle}
+        onValueChange={onValueChange}
+        onSlidingComplete={onSlidingComplete}
       />
     </View>
   );
@@ -76,8 +61,8 @@ export const ParameterControl: React.FC<ParameterControlProps> = memo(({
 
 const styles = StyleSheet.create({
   parameterContainer: {
-    marginBottom: 10,
-    paddingHorizontal: 4,
+    marginBottom: 8,
+    paddingHorizontal: 2,
   },
   parameterDisabled: {
     opacity: 0.5,
@@ -86,31 +71,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   parameterLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F5F5F5',
+    letterSpacing: 0.2,
   },
   valueContainer: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 6,
-    minWidth: 50,
+    minWidth: 44,
     alignItems: 'center',
   },
   parameterValue: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   textDisabled: {
     color: '#666666',
   },
   sliderStyle: {
-    marginTop: 8,
+    marginTop: 6,
   },
 });

@@ -248,7 +248,7 @@ bool FilterManager::processFrame(const void* inputData, size_t inputSize,
         // Pas de filtres actifs, copier directement avec SIMD si possible
         if (inputSize <= outputSize) {
             // Utiliser memcpy optimisé ou copie SIMD
-            #ifdef __AVX2__
+            #if defined(__AVX2__)
             const size_t simdSize = inputSize & ~31;  // Align to 32 bytes for AVX2
             const uint8_t* src = static_cast<const uint8_t*>(inputData);
             uint8_t* dst = static_cast<uint8_t*>(outputData);
@@ -259,6 +259,16 @@ bool FilterManager::processFrame(const void* inputData, size_t inputSize,
             }
             
             // Copy remaining bytes
+            std::memcpy(dst + simdSize, src + simdSize, inputSize - simdSize);
+            #elif defined(__SSE2__)
+            const size_t simdSize = inputSize & ~15;  // Align to 16 bytes for SSE2
+            const uint8_t* src = static_cast<const uint8_t*>(inputData);
+            uint8_t* dst = static_cast<uint8_t*>(outputData);
+
+            for (size_t i = 0; i < simdSize; i += 16) {
+                __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + i));
+                _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i), data);
+            }
             std::memcpy(dst + simdSize, src + simdSize, inputSize - simdSize);
             #else
             std::memcpy(outputData, inputData, inputSize);

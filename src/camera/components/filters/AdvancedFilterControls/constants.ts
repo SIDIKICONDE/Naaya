@@ -61,7 +61,8 @@ export const FILTER_PRESETS: FilterPreset[] = [
 ];
 
 export const DEFAULT_EXPANDED_SECTIONS = {
-  exposure: true,
-  color: true,
-  effects: false,
+  brightness: true,
+  colors: true,
+  details: false,
+  tones: true,
 };

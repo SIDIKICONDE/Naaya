@@ -34,10 +34,8 @@ export const AUDIO_BITRATE_PRESETS: ReadonlyArray<Option<number | undefined>> = 
 
 export const ORIENTATION_OPTIONS: ReadonlyArray<Option<NonNullable<AdvancedRecordingOptions['orientation']>>> = [
   { label: 'Auto', value: 'auto' },
-  { label: 'Portrait', value: 'portrait' },
-  { label: 'Paysage G', value: 'landscapeLeft' },
-  { label: 'Paysage D', value: 'landscapeRight' },
-  { label: 'Portrait inversé', value: 'portraitUpsideDown' },
+  { label: 'Horizontal', value: 'horizontal' as any },
+  { label: 'Paysage', value: 'paysage' as any },
 ];
 
 export const STABILIZATION_OPTIONS: ReadonlyArray<Option<NonNullable<AdvancedRecordingOptions['stabilization']>>> = [

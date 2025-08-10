@@ -174,6 +174,48 @@ public:
      */
     void setErrorCallback(ErrorCallback callback);
 
+    // === CONTRÔLES AVANCÉS ===
+    
+    /**
+     * Définit le niveau de zoom
+     */
+    bool setZoomLevel(double level);
+    
+    /**
+     * Récupère le niveau de zoom actuel
+     */
+    double getZoomLevel() const;
+    
+    /**
+     * Définit le mode flash
+     */
+    bool setFlashMode(FlashMode mode);
+    
+    /**
+     * Récupère le mode flash actuel
+     */
+    FlashMode getFlashMode() const;
+    
+    /**
+     * Active/désactive la torche
+     */
+    bool setTorchMode(bool enabled);
+    
+    /**
+     * Vérifie si la torche est active
+     */
+    bool getTorchMode() const;
+    
+    /**
+     * Définit le timer de capture (en secondes)
+     */
+    bool setTimer(int seconds);
+    
+    /**
+     * Récupère le timer actuel (en secondes)
+     */
+    int getTimer() const;
+
 protected:
     // Interface pour les implémentations spécifiques à la plateforme
     virtual bool initializePlatform() = 0;
@@ -193,6 +235,10 @@ protected:
     virtual FlashMode getFlashModePlatform() const = 0;
     virtual bool setTorchModePlatform(bool enabled) = 0;
     virtual bool getTorchModePlatform() const = 0;
+    
+    // Contrôle du timer
+    virtual bool setTimerPlatform(int seconds) = 0;
+    virtual int getTimerPlatform() const = 0;
     
     // Capture
     virtual bool capturePhotoPlatform(const PhotoCaptureOptions& options) = 0;
@@ -221,6 +267,12 @@ private:
     
     // État d'initialisation
     std::atomic<bool> initialized_{false};
+    
+    // Contrôles avancés
+    std::atomic<int> timerSeconds_{0};
+    std::atomic<double> zoomLevel_{1.0};
+    std::atomic<FlashMode> flashMode_{FlashMode::OFF};
+    std::atomic<bool> torchEnabled_{false};
 };
 
 /**

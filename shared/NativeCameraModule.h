@@ -96,6 +96,10 @@
       double getMaxZoom(jsi::Runtime& rt);
       bool setZoom(jsi::Runtime& rt, double level);
 
+      // Contrôles timer
+      double getTimer(jsi::Runtime& rt);
+      bool setTimer(jsi::Runtime& rt, double seconds);
+
       // Contrôles balance des blancs
       jsi::String getWhiteBalanceMode(jsi::Runtime& rt);
       bool setWhiteBalanceMode(jsi::Runtime& rt, jsi::String mode);
@@ -132,6 +136,10 @@
       double getMinZoomInternal();
       double getMaxZoomInternal();
       bool setZoomInternal(double level);
+
+      // Timer (méthodes internes)
+      int getTimerInternal();
+      bool setTimerInternal(int seconds);
 
       // Balance des blancs (méthodes internes)
       std::string getWhiteBalanceModeInternal();

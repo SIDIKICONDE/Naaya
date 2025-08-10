@@ -201,6 +201,8 @@ namespace JS {
       std::optional<bool> lockAF() const;
       NSString *saveDirectory() const;
       NSString *fileNamePrefix() const;
+      std::optional<bool> saveToPhotos() const;
+      NSString *albumName() const;
 
       VideoCaptureOptions(NSDictionary *const v) : _v(v) {}
     private:
@@ -231,6 +233,8 @@ namespace JS {
 - (NSNumber *)hasFlash;
 - (NSNumber *)setFlashMode:(NSString *)mode;
 - (NSNumber *)setTorchMode:(BOOL)enabled;
+- (NSNumber *)setTimer:(double)seconds;
+- (NSNumber *)getTimer;
 - (NSNumber *)getMinZoom;
 - (NSNumber *)getMaxZoom;
 - (NSNumber *)setZoom:(double)level;
@@ -458,6 +462,16 @@ inline NSString *JS::NativeCameraModule::VideoCaptureOptions::saveDirectory() co
 inline NSString *JS::NativeCameraModule::VideoCaptureOptions::fileNamePrefix() const
 {
   id const p = _v[@"fileNamePrefix"];
+  return RCTBridgingToOptionalString(p);
+}
+inline std::optional<bool> JS::NativeCameraModule::VideoCaptureOptions::saveToPhotos() const
+{
+  id const p = _v[@"saveToPhotos"];
+  return RCTBridgingToOptionalBool(p);
+}
+inline NSString *JS::NativeCameraModule::VideoCaptureOptions::albumName() const
+{
+  id const p = _v[@"albumName"];
   return RCTBridgingToOptionalString(p);
 }
 NS_ASSUME_NONNULL_END

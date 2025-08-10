@@ -117,10 +117,23 @@ export function useNativeCameraCapture(): UseNativeCameraCaptureReturn {
     try {
       console.log('[useNativeCameraCapture] Configuration flash:', mode);
       
+      // Vérifier d'abord si le flash est disponible
+      const hasFlashDevice = await NativeCameraEngine.hasFlash();
+      console.log('[useNativeCameraCapture] Dispositif a un flash:', hasFlashDevice);
+      
+      if (!hasFlashDevice) {
+        console.warn('[useNativeCameraCapture] Aucun flash disponible sur ce dispositif');
+        throw new Error('Aucun flash disponible sur ce dispositif');
+      }
+      
       const success = await NativeCameraEngine.setFlashMode(mode);
+      console.log('[useNativeCameraCapture] setFlashMode result:', success);
+      
       if (success) {
         setFlashModeState(mode);
-        console.log('[useNativeCameraCapture] Flash configuré:', mode);
+        console.log('[useNativeCameraCapture] Flash configuré avec succès:', mode);
+      } else {
+        throw new Error('Échec de la configuration du flash');
       }
     } catch (err) {
       console.error('[useNativeCameraCapture] Erreur configuration flash:', err);

@@ -28,7 +28,15 @@ export interface AdvancedRecordingOptions {
   height?: number;
   fps?: number;
   // nouveaux
-  orientation?: 'portrait' | 'portraitUpsideDown' | 'landscapeLeft' | 'landscapeRight' | 'auto';
+  // UI simplifiée: 'horizontal' et 'paysage' sont des alias UI mappés avant l'appel natif
+  orientation?:
+    | 'portrait'
+    | 'portraitUpsideDown'
+    | 'landscapeLeft'
+    | 'landscapeRight'
+    | 'auto'
+    | 'horizontal'
+    | 'paysage';
   stabilization?: 'off' | 'standard' | 'cinematic' | 'auto';
   lockAE?: boolean;
   lockAWB?: boolean;
@@ -37,6 +45,9 @@ export interface AdvancedRecordingOptions {
   videoBitrate?: number;
   audioBitrate?: number;
   saveDirectory?: string;
+  // auto-sauvegarde
+  saveToPhotos?: boolean;
+  albumName?: string;
 }
 
 

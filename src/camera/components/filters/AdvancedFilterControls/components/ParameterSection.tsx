@@ -43,26 +43,26 @@ export const ParameterSection: React.FC<ParameterSectionProps> = memo(({
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F5F5F5',
   },
   sectionToggle: {
     fontSize: 12,
-    color: '#888888',
+    color: '#AAAAAA',
   },
   sectionContent: {
-    paddingTop: 12,
+    paddingTop: 8,
   },
 });

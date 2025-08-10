@@ -86,6 +86,8 @@ export interface AdvancedCameraControlsProps {
   
   // Actions secondaires
   onFlashPress: () => void;
+  // Nouveau: branchement direct du mode flash depuis le menu trois points
+  onFlashModeChange?: (mode: FlashMode) => void;
   onSwitchCamera: () => void;
   onZoomChange: (zoom: number) => void;
   onExposureChange: (exposure: number) => void;

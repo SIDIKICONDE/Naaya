@@ -297,6 +297,56 @@ class CameraModule {
     }
   }
 
+  /**
+   * Met en pause l'enregistrement en cours (si supporté)
+   */
+  async pauseRecording(): Promise<boolean> {
+    try {
+      const native: any = NativeCameraModule as any;
+      if (typeof native.pauseRecording === 'function') {
+        return await native.pauseRecording();
+      }
+      console.warn('[CameraModule] pauseRecording indisponible');
+      return false;
+    } catch (error) {
+      console.error('[CameraModule] Erreur pause enregistrement:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Reprend l'enregistrement après une pause (si supporté)
+   */
+  async resumeRecording(): Promise<boolean> {
+    try {
+      const native: any = NativeCameraModule as any;
+      if (typeof native.resumeRecording === 'function') {
+        return await native.resumeRecording();
+      }
+      console.warn('[CameraModule] resumeRecording indisponible');
+      return false;
+    } catch (error) {
+      console.error('[CameraModule] Erreur reprise enregistrement:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Indique si l'enregistrement est actuellement en pause
+   */
+  async isPaused(): Promise<boolean> {
+    try {
+      const native: any = NativeCameraModule as any;
+      if (typeof native.isPaused === 'function') {
+        return await native.isPaused();
+      }
+      return false;
+    } catch (error) {
+      console.error('[CameraModule] Erreur statut pause:', error);
+      return false;
+    }
+  }
+
   // === CONTRÔLES FLASH/TORCHE ===
 
   /**
@@ -394,6 +444,35 @@ class CameraModule {
     } catch (error) {
       console.error('[CameraModule] Erreur configuration zoom:', error);
       throw error;
+    }
+  }
+
+  // === CONTRÔLES TIMER ===
+  /** Définit le timer (en secondes) */
+  async setTimer(seconds: number): Promise<boolean> {
+    try {
+      const native: any = NativeCameraModule as any;
+      if (typeof native.setTimer === 'function') {
+        return await native.setTimer(seconds);
+      }
+      return true;
+    } catch (error) {
+      console.error('[CameraModule] Erreur configuration timer:', error);
+      throw error;
+    }
+  }
+
+  /** Récupère le timer courant (en secondes) */
+  async getTimer(): Promise<number> {
+    try {
+      const native: any = NativeCameraModule as any;
+      if (typeof native.getTimer === 'function') {
+        return await native.getTimer();
+      }
+      return 0;
+    } catch (error) {
+      console.error('[CameraModule] Erreur récupération timer:', error);
+      return 0;
     }
   }
 

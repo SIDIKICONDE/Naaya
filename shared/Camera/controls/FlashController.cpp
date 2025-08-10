@@ -5,18 +5,69 @@ namespace Camera {
 FlashController::FlashController() = default;
 FlashController::~FlashController() = default;
 
-bool FlashController::initialize() { return true; }
-void FlashController::shutdown() {}
+bool FlashController::initialize() { 
+    // Initialisation réussie par défaut
+    return true; 
+}
 
-bool FlashController::hasFlash() const { return true; }
-bool FlashController::setFlashMode(FlashMode mode) { currentMode_ = mode; return true; }
-bool FlashController::setTorchEnabled(bool enabled) { torchEnabled_ = enabled; return true; }
-bool FlashController::toggleTorch() { return setTorchEnabled(!torchEnabled_.load()); }
-bool FlashController::triggerFlash() { return true; }
+void FlashController::shutdown() {
+    // Nettoyage des ressources
+}
 
-bool FlashController::setFlashIntensity(double intensity) { flashIntensity_ = intensity; return true; }
-double FlashController::getFlashIntensity() const { return flashIntensity_.load(); }
-bool FlashController::supportsVariableIntensity() const { return true; }
+bool FlashController::hasFlash() const { 
+    // Vérifier si le dispositif a un flash
+    // Cette méthode sera surchargée par les implémentations spécifiques
+    return true; 
+}
+
+bool FlashController::setFlashMode(FlashMode mode) { 
+    // Mettre à jour l'état local
+    currentMode_ = mode; 
+    
+    // Log pour debug
+    printf("[FlashController] setFlashMode: %s\n", flashModeToString(mode).c_str());
+    
+    return true; 
+}
+
+bool FlashController::setTorchEnabled(bool enabled) { 
+    // Mettre à jour l'état local
+    torchEnabled_ = enabled; 
+    
+    // Log pour debug
+    printf("[FlashController] setTorchEnabled: %s\n", enabled ? "true" : "false");
+    
+    return true; 
+}
+
+bool FlashController::toggleTorch() { 
+    return setTorchEnabled(!torchEnabled_.load()); 
+}
+
+bool FlashController::triggerFlash() { 
+    // Déclencher le flash pour une photo
+    printf("[FlashController] triggerFlash appelé\n");
+    return true; 
+}
+
+bool FlashController::setFlashIntensity(double intensity) { 
+    // Limiter l'intensité entre 0.0 et 1.0
+    if (intensity < 0.0) intensity = 0.0;
+    if (intensity > 1.0) intensity = 1.0;
+    
+    flashIntensity_ = intensity; 
+    printf("[FlashController] setFlashIntensity: %.2f\n", intensity);
+    return true; 
+}
+
+double FlashController::getFlashIntensity() const { 
+    return flashIntensity_.load(); 
+}
+
+bool FlashController::supportsVariableIntensity() const { 
+    // Vérifier si l'intensité variable est supportée
+    return true; 
+}
 
 std::string FlashController::flashModeToString(FlashMode mode) {
     switch (mode) {
@@ -35,46 +86,28 @@ FlashMode FlashController::stringToFlashMode(const std::string& modeStr) {
     return FlashMode::OFF;
 }
 
-void FlashController::setModeChangeCallback(ModeChangeCallback callback) {}
-void FlashController::setErrorCallback(ErrorCallback callback) {}
-void FlashController::reportModeChange(FlashMode oldMode, FlashMode newMode) {}
-void FlashController::reportError(const std::string& errorCode, const std::string& message) {}
+void FlashController::setModeChangeCallback(ModeChangeCallback callback) {
+    std::lock_guard<std::mutex> lock(callbacksMutex_);
+    modeChangeCallback_ = callback;
+}
 
-class DefaultFlashController : public FlashController {
-public:
-    DefaultFlashController() = default;
-    
-    // Interdire copie et déplacement
-    DefaultFlashController(const DefaultFlashController&) = delete;
-    DefaultFlashController& operator=(const DefaultFlashController&) = delete;
-    DefaultFlashController(DefaultFlashController&&) = delete;
-    DefaultFlashController& operator=(DefaultFlashController&&) = delete;
+void FlashController::setErrorCallback(ErrorCallback callback) {
+    std::lock_guard<std::mutex> lock(callbacksMutex_);
+    errorCallback_ = callback;
+}
 
-protected:
-    bool initializePlatform() override { return true; }
-    void shutdownPlatform() override {}
-    bool hasFlashPlatform() const override { return true; }
-    bool setFlashModePlatform(FlashMode mode) override { return true; }
-    bool setTorchEnabledPlatform(bool enabled) override { return true; }
-    bool triggerFlashPlatform() override { return true; }
-    bool setFlashIntensityPlatform(double intensity) override { return true; }
-    double getFlashIntensityPlatform() const override { return 1.0; }
-    bool supportsVariableIntensityPlatform() const override { return true; }
-};
+void FlashController::reportModeChange(FlashMode oldMode, FlashMode newMode) {
+    std::lock_guard<std::mutex> lock(callbacksMutex_);
+    if (modeChangeCallback_) {
+        modeChangeCallback_(oldMode, newMode);
+    }
+}
 
-// Déclaration de la fabrique iOS (définie dans ios/Naaya/CameraManagerIOS.mm)
-#if defined(__APPLE__)
-extern std::unique_ptr<FlashController> CreateIOSFlashController();
-#endif
-
-std::unique_ptr<FlashController> FlashControllerFactory::create() {
-#if defined(__APPLE__)
-    // Utiliser l'implémentation iOS réelle si disponible
-    return CreateIOSFlashController();
-#else
-    // Par défaut (autres plateformes), retourner une implémentation neutre
-    return std::make_unique<DefaultFlashController>();
-#endif
+void FlashController::reportError(const std::string& errorCode, const std::string& message) {
+    std::lock_guard<std::mutex> lock(callbacksMutex_);
+    if (errorCallback_) {
+        errorCallback_(errorCode, message);
+    }
 }
 
 } // namespace Camera

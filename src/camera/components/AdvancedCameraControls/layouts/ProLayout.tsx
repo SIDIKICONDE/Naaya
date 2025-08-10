@@ -94,7 +94,7 @@ export const ProLayout = memo<LayoutProps>(({
             theme={theme}
             disabled={controlStates.recordDisabled}
             onRecordPress={() => onAction('record')}
-            // Pas de onPausePress (pause non supportée côté moteur)
+            onPausePress={() => onAction('pause')}
             fps={recordingMetadata?.frameRate || 30}
           />
         </View>

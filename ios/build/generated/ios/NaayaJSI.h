@@ -812,7 +812,7 @@ struct NativeCameraModulePhotoResultBridging {
 
 #pragma mark - NativeCameraModuleVideoCaptureOptions
 
-template <typename P0, typename P1, typename P2, typename P3, typename P4, typename P5, typename P6, typename P7, typename P8, typename P9, typename P10, typename P11, typename P12, typename P13, typename P14, typename P15, typename P16, typename P17, typename P18, typename P19>
+template <typename P0, typename P1, typename P2, typename P3, typename P4, typename P5, typename P6, typename P7, typename P8, typename P9, typename P10, typename P11, typename P12, typename P13, typename P14, typename P15, typename P16, typename P17, typename P18, typename P19, typename P20, typename P21>
 struct NativeCameraModuleVideoCaptureOptions {
   P0 quality;
   P1 maxDuration;
@@ -834,8 +834,10 @@ struct NativeCameraModuleVideoCaptureOptions {
   P17 lockAF;
   P18 saveDirectory;
   P19 fileNamePrefix;
+  P20 saveToPhotos;
+  P21 albumName;
   bool operator==(const NativeCameraModuleVideoCaptureOptions &other) const {
-    return quality == other.quality && maxDuration == other.maxDuration && maxFileSize == other.maxFileSize && videoBitrate == other.videoBitrate && audioBitrate == other.audioBitrate && recordAudio == other.recordAudio && codec == other.codec && container == other.container && audioCodec == other.audioCodec && width == other.width && height == other.height && fps == other.fps && deviceId == other.deviceId && orientation == other.orientation && stabilization == other.stabilization && lockAE == other.lockAE && lockAWB == other.lockAWB && lockAF == other.lockAF && saveDirectory == other.saveDirectory && fileNamePrefix == other.fileNamePrefix;
+    return quality == other.quality && maxDuration == other.maxDuration && maxFileSize == other.maxFileSize && videoBitrate == other.videoBitrate && audioBitrate == other.audioBitrate && recordAudio == other.recordAudio && codec == other.codec && container == other.container && audioCodec == other.audioCodec && width == other.width && height == other.height && fps == other.fps && deviceId == other.deviceId && orientation == other.orientation && stabilization == other.stabilization && lockAE == other.lockAE && lockAWB == other.lockAWB && lockAF == other.lockAF && saveDirectory == other.saveDirectory && fileNamePrefix == other.fileNamePrefix && saveToPhotos == other.saveToPhotos && albumName == other.albumName;
   }
 };
 
@@ -867,7 +869,9 @@ struct NativeCameraModuleVideoCaptureOptionsBridging {
       bridging::fromJs<decltype(types.lockAWB)>(rt, value.getProperty(rt, "lockAWB"), jsInvoker),
       bridging::fromJs<decltype(types.lockAF)>(rt, value.getProperty(rt, "lockAF"), jsInvoker),
       bridging::fromJs<decltype(types.saveDirectory)>(rt, value.getProperty(rt, "saveDirectory"), jsInvoker),
-      bridging::fromJs<decltype(types.fileNamePrefix)>(rt, value.getProperty(rt, "fileNamePrefix"), jsInvoker)};
+      bridging::fromJs<decltype(types.fileNamePrefix)>(rt, value.getProperty(rt, "fileNamePrefix"), jsInvoker),
+      bridging::fromJs<decltype(types.saveToPhotos)>(rt, value.getProperty(rt, "saveToPhotos"), jsInvoker),
+      bridging::fromJs<decltype(types.albumName)>(rt, value.getProperty(rt, "albumName"), jsInvoker)};
     return result;
   }
 
@@ -951,6 +955,14 @@ struct NativeCameraModuleVideoCaptureOptionsBridging {
   static jsi::String fileNamePrefixToJs(jsi::Runtime &rt, decltype(types.fileNamePrefix) value) {
     return bridging::toJs(rt, value);
   }
+
+  static bool saveToPhotosToJs(jsi::Runtime &rt, decltype(types.saveToPhotos) value) {
+    return bridging::toJs(rt, value);
+  }
+
+  static jsi::String albumNameToJs(jsi::Runtime &rt, decltype(types.albumName) value) {
+    return bridging::toJs(rt, value);
+  }
 #endif
 
   static jsi::Object toJs(
@@ -1017,6 +1029,12 @@ struct NativeCameraModuleVideoCaptureOptionsBridging {
     }
     if (value.fileNamePrefix) {
       result.setProperty(rt, "fileNamePrefix", bridging::toJs(rt, value.fileNamePrefix.value(), jsInvoker));
+    }
+    if (value.saveToPhotos) {
+      result.setProperty(rt, "saveToPhotos", bridging::toJs(rt, value.saveToPhotos.value(), jsInvoker));
+    }
+    if (value.albumName) {
+      result.setProperty(rt, "albumName", bridging::toJs(rt, value.albumName.value(), jsInvoker));
     }
     return result;
   }
@@ -1113,6 +1131,8 @@ public:
   virtual bool hasFlash(jsi::Runtime &rt) = 0;
   virtual bool setFlashMode(jsi::Runtime &rt, jsi::String mode) = 0;
   virtual bool setTorchMode(jsi::Runtime &rt, bool enabled) = 0;
+  virtual bool setTimer(jsi::Runtime &rt, double seconds) = 0;
+  virtual double getTimer(jsi::Runtime &rt) = 0;
   virtual double getMinZoom(jsi::Runtime &rt) = 0;
   virtual double getMaxZoom(jsi::Runtime &rt) = 0;
   virtual bool setZoom(jsi::Runtime &rt, double level) = 0;
@@ -1293,6 +1313,22 @@ private:
 
       return bridging::callFromJs<bool>(
           rt, &T::setTorchMode, jsInvoker_, instance_, std::move(enabled));
+    }
+    bool setTimer(jsi::Runtime &rt, double seconds) override {
+      static_assert(
+          bridging::getParameterCount(&T::setTimer) == 2,
+          "Expected setTimer(...) to have 2 parameters");
+
+      return bridging::callFromJs<bool>(
+          rt, &T::setTimer, jsInvoker_, instance_, std::move(seconds));
+    }
+    double getTimer(jsi::Runtime &rt) override {
+      static_assert(
+          bridging::getParameterCount(&T::getTimer) == 1,
+          "Expected getTimer(...) to have 1 parameters");
+
+      return bridging::callFromJs<double>(
+          rt, &T::getTimer, jsInvoker_, instance_);
     }
     double getMinZoom(jsi::Runtime &rt) override {
       static_assert(

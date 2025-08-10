@@ -4,6 +4,7 @@
 #import <CoreVideo/CoreVideo.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <TargetConditionals.h>
+#import <Photos/Photos.h>
 
 #include "VideoCaptureIOS.h"
 #import "CameraSessionBridge.h"
@@ -15,6 +16,9 @@
 #include "../../shared/Audio/safety/AudioSafety.h"
 #include "../../shared/Audio/noise/NoiseReducer.h"
 #include "../../shared/Audio/noise/RNNoiseSuppressor.h"
+#ifndef FFMPEG_AVAILABLE
+#define FFMPEG_AVAILABLE 1
+#endif
 #include "../../shared/Audio/effects/EffectChain.h"
 #include "../../shared/Audio/effects/Compressor.h"
 #include "../../shared/Audio/effects/Delay.h"
@@ -320,6 +324,23 @@ static CGAffineTransform NaayaTransformForOrientation(AVCaptureVideoOrientation 
   self.preferredBitrate = bitrate;
   if (fps > 0) { self.targetFPS = fps; }
   self.enableAudio = recordAudio;
+
+  // Activer la session audio pour l'enregistrement si requis
+  #if TARGET_OS_IOS
+  if (recordAudio) {
+    NSError* audioErr = nil;
+    AVAudioSession* avs = [AVAudioSession sharedInstance];
+    if (@available(iOS 10.0, *)) {
+      [avs setCategory:AVAudioSessionCategoryPlayAndRecord
+                  mode:AVAudioSessionModeVideoRecording
+               options:0
+                 error:&audioErr];
+    } else {
+      [avs setCategory:AVAudioSessionCategoryPlayAndRecord error:&audioErr];
+    }
+    [avs setActive:YES error:&audioErr];
+  }
+  #endif
 
   // Configurer DataOutput BGRA
   AVCaptureVideoDataOutput* output = [[AVCaptureVideoDataOutput alloc] init];
@@ -1020,6 +1041,10 @@ protected:
       outputURL_ = [NSURL fileURLWithPath:nsPath];
 
       filteredRecorder_ = [NaayaFilteredVideoRecorder new];
+      // Appliquer dimensions demandées si fournies (sinon, fallback format actif)
+      if (options.width > 0 && options.height > 0) {
+        filteredRecorder_.targetSize = CGSizeMake(options.width, options.height);
+      }
       // Valeurs par défaut: HEVC auto + 60fps + 12Mbps si non spécifié
       NSString* codec = options.codec.empty() ? @"auto" : [NSString stringWithUTF8String:options.codec.c_str()];
       int fps = fps_ > 0 ? fps_ : 60;
@@ -1063,6 +1088,9 @@ protected:
           [input.device unlockForConfiguration];
         }
       }
+      // mémoriser options d'auto-sauvegarde
+      saveToPhotos_ = options.saveToPhotos;
+      albumName_ = options.albumName;
       if (![filteredRecorder_ startWithSession:session outputURL:outputURL_ codec:codec fps:fps bitrate:bitrate recordAudio:options.recordAudio]) {
         filteredRecorder_ = nil; // fallback
       } else {
@@ -1176,6 +1204,9 @@ protected:
       }
       #endif
     }
+    // Mémoriser auto-sauvegarde
+    saveToPhotos_ = options.saveToPhotos;
+    albumName_ = options.albumName;
     // Démarrer l'enregistrement avec délégué
     [movie startRecordingToOutputFileURL:outputURL_ recordingDelegate:(NaayaMovieDelegate*)movieDelegate_];
     return true;
@@ -1211,6 +1242,32 @@ protected:
         std::string suri = std::string("file://") + outputURL_.path.UTF8String;
         result.uri = suri;
         result.codec = "H264";
+        // Auto-sauvegarde dans Pellicule si demandé
+        if (saveToPhotos_) {
+          __block BOOL savedOK = NO;
+          dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+          [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+            PHAssetChangeRequest* req = [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:outputURL_];
+            if (!albumName_.empty()) {
+              NSString* albumTitle = [NSString stringWithUTF8String:albumName_.c_str()];
+              PHFetchOptions* fetchOptions = [PHFetchOptions new];
+              fetchOptions.predicate = [NSPredicate predicateWithFormat:@"title = %@", albumTitle];
+              PHFetchResult<PHAssetCollection*>* collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAny options:fetchOptions];
+              PHAssetCollection* existing = collections.firstObject;
+              if (existing) {
+                PHAssetCollectionChangeRequest* albReq = [PHAssetCollectionChangeRequest changeRequestForAssetCollection:existing];
+                [albReq addAssets:@[[req placeholderForCreatedAsset]]];
+              } else {
+                PHAssetCollectionChangeRequest* createAlbum = [PHAssetCollectionChangeRequest creationRequestForAssetCollectionWithTitle:albumTitle];
+                [createAlbum addAssets:@[[req placeholderForCreatedAsset]]];
+              }
+            }
+          } completionHandler:^(BOOL success, NSError * _Nullable error) {
+            (void)error; savedOK = success; dispatch_semaphore_signal(sem);
+          }];
+          dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+          (void)savedOK;
+        }
         return result;
       }
       return VideoResult{};
@@ -1251,6 +1308,32 @@ protected:
       std::string suri = std::string("file://") + url.path.UTF8String;
       result.uri = suri;
       result.codec = "H264";
+      // Auto-sauvegarde dans Pellicule si demandé
+      if (saveToPhotos_) {
+        __block BOOL savedOK = NO;
+        dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+        [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+          PHAssetChangeRequest* req = [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:url];
+          if (!albumName_.empty()) {
+            NSString* albumTitle = [NSString stringWithUTF8String:albumName_.c_str()];
+            PHFetchOptions* fetchOptions = [PHFetchOptions new];
+            fetchOptions.predicate = [NSPredicate predicateWithFormat:@"title = %@", albumTitle];
+            PHFetchResult<PHAssetCollection*>* collections = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAny options:fetchOptions];
+            PHAssetCollection* existing = collections.firstObject;
+            if (existing) {
+              PHAssetCollectionChangeRequest* albReq = [PHAssetCollectionChangeRequest changeRequestForAssetCollection:existing];
+              [albReq addAssets:@[[req placeholderForCreatedAsset]]];
+            } else {
+              PHAssetCollectionChangeRequest* createAlbum = [PHAssetCollectionChangeRequest creationRequestForAssetCollectionWithTitle:albumTitle];
+              [createAlbum addAssets:@[[req placeholderForCreatedAsset]]];
+            }
+          }
+        } completionHandler:^(BOOL success, NSError * _Nullable error) {
+          (void)error; savedOK = success; dispatch_semaphore_signal(sem);
+        }];
+        dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+        (void)savedOK;
+      }
     }
     return result;
   }
@@ -1296,6 +1379,9 @@ private:
   int fps_ = 30;
   // Enregistreur vidéo filtré (ObjC) lorsqu'un filtre est actif
   NaayaFilteredVideoRecorder* filteredRecorder_ = nil;
+  // Auto-sauvegarde (Pellicule)
+  bool saveToPhotos_ = false;
+  std::string albumName_;
 };
 
 std::unique_ptr<VideoCapture> createIOSVideoCapture() {
