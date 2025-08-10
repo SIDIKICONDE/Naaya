@@ -5,14 +5,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
