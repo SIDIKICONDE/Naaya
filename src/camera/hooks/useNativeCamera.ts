@@ -309,14 +309,26 @@ export function useNativeCamera(): UseNativeCameraReturn {
   // Initialisation au montage
   useEffect(() => {
     console.log('[useNativeCamera] Initialisation...');
-    refresh();
+    // Appel initial sans dépendances pour éviter la boucle infinie
+    checkPermissions().then(perms => {
+      if (perms?.camera === 'not-determined') {
+        requestPermissions();
+      } else if (perms?.camera === 'granted') {
+        loadDevices();
+      }
+      loadFilters();
+    }).catch(err => {
+      console.error('[useNativeCamera] Erreur initialisation:', err);
+      setError(err as Error);
+    });
     
     // Nettoyage au démontage
     return () => {
       console.log('[useNativeCamera] Nettoyage...');
-      stopCamera().catch(console.error);
+      // Utilisation directe de l'API pour éviter les dépendances
+      NativeCameraEngine.stopCamera().catch(console.error);
     };
-  }, [refresh, stopCamera]);
+  }, []); // Dépendances vides pour exécuter seulement au montage/démontage
 
   return {
     // État

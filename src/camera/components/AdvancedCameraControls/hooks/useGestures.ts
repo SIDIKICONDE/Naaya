@@ -3,7 +3,7 @@
  * Support des gestes multi-touch avec debouncing et seuils
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GestureResponderEvent } from 'react-native';
 import type { GestureConfig, GestureType } from '../types';
 
@@ -222,6 +222,15 @@ export const useGestures = (
     setIsGestureActive(false);
     gestureState.current.isTracking = false;
   }, [clearTimers]);
+
+  // Nettoyage automatique au démontage du composant
+  useEffect(() => {
+    // Retourner la fonction de nettoyage pour éviter les fuites mémoire
+    return () => {
+      clearTimers();
+      gestureState.current.isTracking = false;
+    };
+  }, []); // Exécuter seulement au démontage
 
   return {
     gestureHandlers,

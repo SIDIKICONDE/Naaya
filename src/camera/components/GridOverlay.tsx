@@ -75,8 +75,8 @@ export const GridOverlay: React.FC<GridOverlayProps> = ({
 
     const target = parseRatio(aspectMask);
     
-    // Debug log pour diagnostiquer le problème avec 2.39:1
-    if (aspectMask === '2.39:1') {
+    // Debug log uniquement en développement
+    if (__DEV__ && aspectMask === '2.39:1') {
       console.log('[GridOverlay] 2.39:1 debug:', {
         target,
         containerWidth: container.width,
@@ -100,7 +100,7 @@ export const GridOverlay: React.FC<GridOverlayProps> = ({
     const safeWidth = Math.max(1, innerWidth);
     const safeHeight = Math.max(1, innerHeight);
 
-    if (aspectMask === '2.39:1') {
+    if (__DEV__ && aspectMask === '2.39:1') {
       console.log('[GridOverlay] 2.39:1 result:', {
         left, top, width: safeWidth, height: safeHeight,
         maskTop: top, maskBottom: container.height - (top + safeHeight)
