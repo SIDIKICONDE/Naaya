@@ -1,77 +1,68 @@
 /**
- * Composant de contrôle de l'égaliseur
- * Interface principale pour ajuster les bandes de fréquence
+ * Composant de contrôle de l'égaliseur (version modale professionnelle)
+ * Enveloppe le composant avancé `AudioEqualizer` et ajoute des actions Export/Import
  */
 
-import Slider from '@react-native-community/slider';
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ConfigModal } from '../../ui/ConfigModal';
+import { THEME_COLORS } from '../constants';
 import { useEqualizer } from '../hooks';
-import type { EqualizerBand } from '../types';
+import EqualizerService from '../services/EqualizerService';
+import { AudioEqualizer } from './AudioEqualizer';
 
 interface EqualizerControlProps {
   onClose?: () => void;
   showSpectrum?: boolean;
 }
 
-export const EqualizerControl: React.FC<EqualizerControlProps> = memo(({
-  onClose,
-}) => {
-  const {
-    isEnabled,
-    bands,
-    currentPreset,
-    presets,
-    isLoading,
-    error,
-    setEnabled,
-    setBandGain,
-    setPreset,
-    reset,
-  } = useEqualizer();
+export const EqualizerControl: React.FC<EqualizerControlProps> = memo(({ onClose, showSpectrum = true }) => {
+  const { isLoading, error } = useEqualizer();
 
-  const handleBandChange = useCallback((bandIndex: number, value: number) => {
-    setBandGain(bandIndex, value);
-  }, [setBandGain]);
+  const [configVisible, setConfigVisible] = useState(false);
+  const [configMode, setConfigMode] = useState<'export' | 'import'>('export');
+  const exportedText = useMemo(() => {
+    try {
+      return JSON.stringify(EqualizerService.getConfiguration(), null, 2);
+    } catch {
+      return '{}';
+    }
+  }, []);
 
-  const handlePresetSelect = useCallback((presetName: string) => {
-    setPreset(presetName);
-  }, [setPreset]);
+  const openExport = useCallback(() => {
+    setConfigMode('export');
+    setConfigVisible(true);
+  }, []);
 
-  const handleReset = useCallback(() => {
-    reset();
-  }, [reset]);
+  const openImport = useCallback(() => {
+    setConfigMode('import');
+    setConfigVisible(true);
+  }, []);
+
+  const handleImportSubmit = useCallback(async (json: string) => {
+    const parsed = JSON.parse(json);
+    await EqualizerService.restoreConfiguration(parsed);
+  }, []);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Chargement de l'égaliseur...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Erreur: {error.message}</Text>
+        <ActivityIndicator size="large" color={THEME_COLORS.primary} />
+        <Text style={styles.loadingText}>Chargement de l'égaliseur…</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* En-tête */}
       <View style={styles.header}>
-        <Text style={styles.title}>Égaliseur Audio</Text>
+        <Text style={styles.title}>Égaliseur</Text>
         {onClose && (
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
@@ -79,97 +70,30 @@ export const EqualizerControl: React.FC<EqualizerControlProps> = memo(({
         )}
       </View>
 
-      {/* Activation/Désactivation */}
-      <View style={styles.toggleContainer}>
-        <Text style={styles.toggleLabel}>Activer l'égaliseur</Text>
-        <Switch
-          value={isEnabled}
-          onValueChange={setEnabled}
-          trackColor={{ false: '#767577', true: '#81b0ff' }}
-          thumbColor={isEnabled ? '#007AFF' : '#f4f3f4'}
-        />
-      </View>
+      <AudioEqualizer enableSpectrum={showSpectrum} onError={() => { /* error déjà gérée ci-dessous */ }} />
 
-      {/* Préréglages */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.presetsContainer}
-        contentContainerStyle={styles.presetsContent}
-      >
-        {presets.map((preset) => (
-          <TouchableOpacity
-            key={preset.name}
-            style={[
-              styles.presetButton,
-              currentPreset === preset.name && styles.presetButtonActive,
-            ]}
-            onPress={() => handlePresetSelect(preset.name)}
-            disabled={!isEnabled}
-          >
-            <Text
-              style={[
-                styles.presetText,
-                currentPreset === preset.name && styles.presetTextActive,
-                !isEnabled && styles.disabledText,
-              ]}
-            >
-              {preset.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Bandes de fréquence */}
-      <ScrollView 
-        style={styles.bandsContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.bandsGrid}>
-          {bands.map((band: EqualizerBand) => (
-            <View key={band.index} style={styles.bandContainer}>
-              <Text style={[styles.bandLabel, !isEnabled && styles.disabledText]}>
-                {band.label}
-              </Text>
-              <View style={styles.sliderContainer}>
-                <Text style={[styles.gainValue, !isEnabled && styles.disabledText]}>
-                  +24
-                </Text>
-                 <Slider
-                  style={styles.slider}
-                   minimumValue={-24}
-                   maximumValue={24}
-                  value={band.gain}
-                  onValueChange={(value) => handleBandChange(band.index, value)}
-                  minimumTrackTintColor={isEnabled ? '#007AFF' : '#cccccc'}
-                  maximumTrackTintColor="#cccccc"
-                  thumbTintColor={isEnabled ? '#007AFF' : '#999999'}
-                  disabled={!isEnabled}
-                />
-                 <Text style={[styles.gainValue, !isEnabled && styles.disabledText]}>
-                   -24
-                 </Text>
-              </View>
-              <Text style={[styles.currentGain, !isEnabled && styles.disabledText]}>
-                {band.gain.toFixed(1)} dB
-              </Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Boutons d'action */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, !isEnabled && styles.actionButtonDisabled]}
-          onPress={handleReset}
-          disabled={!isEnabled}
-        >
-          <Text style={[styles.actionButtonText, !isEnabled && styles.disabledText]}>
-            Réinitialiser
-          </Text>
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.secondaryButton} onPress={openImport}>
+          <Text style={styles.secondaryButtonText}>Importer</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryButton} onPress={openExport}>
+          <Text style={styles.secondaryButtonText}>Exporter</Text>
         </TouchableOpacity>
       </View>
+
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>Erreur: {error.message}</Text>
+        </View>
+      )}
+
+      <ConfigModal
+        visible={configVisible}
+        mode={configMode}
+        exportedText={configMode === 'export' ? exportedText : ''}
+        onClose={() => setConfigVisible(false)}
+        onSubmitImport={handleImportSubmit}
+      />
     </View>
   );
 });
@@ -179,157 +103,81 @@ EqualizerControl.displayName = 'EqualizerControl';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: THEME_COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: THEME_COLORS.background,
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#ff3b30',
-    textAlign: 'center',
+    color: THEME_COLORS.textSecondary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: THEME_COLORS.border,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME_COLORS.text,
   },
   closeButton: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME_COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: 24,
-    color: '#666',
+    fontSize: 18,
+    color: THEME_COLORS.text,
   },
-  toggleContainer: {
+  bottomBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    marginTop: 1,
+    justifyContent: 'flex-end',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: THEME_COLORS.border,
+    backgroundColor: THEME_COLORS.background,
   },
-  toggleLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  presetsContainer: {
-    backgroundColor: '#fff',
-    marginTop: 1,
-    maxHeight: 60,
-  },
-  presetsContent: {
+  secondaryButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-  },
-  presetButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  presetButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  presetText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  presetTextActive: {
-    color: '#fff',
-  },
-  bandsContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-    marginTop: 1,
-  },
-  bandsGrid: {
-    padding: 16,
-  },
-  bandContainer: {
-    marginBottom: 20,
-  },
-  bandLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  sliderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  slider: {
-    flex: 1,
-    height: 40,
-    marginHorizontal: 8,
-  },
-  gainValue: {
-    fontSize: 12,
-    color: '#666',
-    width: 25,
-    textAlign: 'center',
-  },
-  currentGain: {
-    fontSize: 12,
-    color: '#007AFF',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  actionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: THEME_COLORS.surface,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.border,
   },
-  actionButtonDisabled: {
-    backgroundColor: '#cccccc',
+  secondaryButtonText: {
+    color: THEME_COLORS.text,
+    fontWeight: '600',
+    fontSize: 14,
   },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#fff',
+  errorBanner: {
+    position: 'absolute',
+    bottom: 68,
+    left: 16,
+    right: 16,
+    backgroundColor: THEME_COLORS.danger + '20',
+    borderWidth: 1,
+    borderColor: THEME_COLORS.danger + '40',
+    borderRadius: 10,
+    padding: 10,
   },
-  disabledText: {
-    color: '#999999',
+  errorText: {
+    color: THEME_COLORS.danger,
+    textAlign: 'center',
   },
 });

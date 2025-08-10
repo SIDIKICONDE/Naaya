@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
-import { EqualizerControl } from '../../../../audio/components';
+import { EqualiserMain } from '../../../../EQUALISER';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
 import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
 import { CompactFilterControls } from '../../filters/CompactFilterControls';
@@ -445,7 +445,11 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
           onRequestClose={() => setShowAudioControls(false)}
         >
           <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-            <EqualizerControl onClose={() => setShowAudioControls(false)} />
+            <EqualiserMain 
+              theme="dark"
+              onClose={() => setShowAudioControls(false)}
+              showAdvancedControls={true}
+            />
           </SafeAreaView>
         </Modal>
       )}

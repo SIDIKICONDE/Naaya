@@ -40,15 +40,6 @@
 		ABNRB0010000000000000001 /* NoiseReducer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABNRF0010000000000000001 /* NoiseReducer.cpp */; };
 		ABNRB0020000000000000001 /* SpectralNR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABNRF0030000000000000001 /* SpectralNR.cpp */; };
 		ABRNNB0000000000000001 /* RNNoiseSuppressor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABRNNSC001000000000000001 /* RNNoiseSuppressor.cpp */; };
-		ABRNB001000000000000001 /* denoise.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC001000000000000001 /* denoise.c */; };
-		ABRNB002000000000000002 /* celt_lpc.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC002000000000000002 /* celt_lpc.c */; };
-		ABRNB003000000000000003 /* kiss_fft.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC003000000000000003 /* kiss_fft.c */; };
-		ABRNB004000000000000004 /* nnet.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC004000000000000004 /* nnet.c */; };
-		ABRNB005000000000000005 /* nnet_default.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC005000000000000005 /* nnet_default.c */; };
-		ABRNB006000000000000006 /* pitch.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC006000000000000006 /* pitch.c */; };
-		ABRNB007000000000000007 /* rnn.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC007000000000000007 /* rnn.c */; };
-		ABRNB008000000000000008 /* rnnoise_tables.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC008000000000000008 /* rnnoise_tables.c */; };
-		ABRNB009000000000000009 /* rnnoise_data.c in Sources */ = {isa = PBXBuildFile; fileRef = ABRNC009000000000000009 /* rnnoise_data.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -101,9 +92,6 @@
 		AASAF0020000000000000001 /* AudioSafety.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AudioSafety.h; path = ../shared/Audio/safety/AudioSafety.h; sourceTree = "<group>"; };
 		ABNRF0010000000000000001 /* NoiseReducer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NoiseReducer.cpp; path = ../shared/Audio/noise/NoiseReducer.cpp; sourceTree = "<group>"; };
 		ABNRF0030000000000000001 /* SpectralNR.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpectralNR.cpp; path = ../shared/Audio/noise/SpectralNR.cpp; sourceTree = "<group>"; };
-		ABRNNSC001000000000000001 /* RNNoiseSuppressor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = RNNoiseSuppressor.cpp; path = ../shared/Audio/noise/RNNoiseSuppressor.cpp; sourceTree = "<group>"; };
-		ABRNNSH001000000000000001 /* RNNoiseSuppressor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RNNoiseSuppressor.h; path = ../shared/Audio/noise/RNNoiseSuppressor.h; sourceTree = "<group>"; };
-		ABRNNH002000000000000001 /* rnnoise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rnnoise.h; path = ../vendor/rnnoise/rnnoise.h; sourceTree = "<group>"; };
 		ABRNC001000000000000001 /* denoise.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = denoise.c; path = ../vendor/rnnoise/denoise.c; sourceTree = "<group>"; };
 		ABRNC002000000000000002 /* celt_lpc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = celt_lpc.c; path = ../vendor/rnnoise/celt_lpc.c; sourceTree = "<group>"; };
 		ABRNC003000000000000003 /* kiss_fft.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = kiss_fft.c; path = ../vendor/rnnoise/kiss_fft.c; sourceTree = "<group>"; };
@@ -112,6 +100,9 @@
 		ABRNC006000000000000006 /* pitch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = pitch.c; path = ../vendor/rnnoise/pitch.c; sourceTree = "<group>"; };
 		ABRNC007000000000000007 /* rnn.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rnn.c; path = ../vendor/rnnoise/rnn.c; sourceTree = "<group>"; };
 		ABRNC008000000000000008 /* rnnoise_tables.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rnnoise_tables.c; path = ../vendor/rnnoise/rnnoise_tables.c; sourceTree = "<group>"; };
+		ABRNNH002000000000000001 /* rnnoise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rnnoise.h; path = ../vendor/rnnoise/rnnoise.h; sourceTree = "<group>"; };
+		ABRNNSC001000000000000001 /* RNNoiseSuppressor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = RNNoiseSuppressor.cpp; path = ../shared/Audio/noise/RNNoiseSuppressor.cpp; sourceTree = "<group>"; };
+		ABRNNSH001000000000000001 /* RNNoiseSuppressor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RNNoiseSuppressor.h; path = ../shared/Audio/noise/RNNoiseSuppressor.h; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F9922CFC9C4C3669330294E4 /* libPods-Naaya.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Naaya.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -186,7 +177,6 @@
 				ABRNC006000000000000006 /* pitch.c */,
 				ABRNC007000000000000007 /* rnn.c */,
 				ABRNC008000000000000008 /* rnnoise_tables.c */,
-				ABRNC009000000000000009 /* rnnoise_data.c */,
 			);
 			name = Naaya;
 			sourceTree = "<group>";
@@ -414,8 +404,7 @@
 				AA5556666A00000000000001 /* CameraSessionBridge.mm in Sources */,
 				AA7778888A00000000000001 /* NaayaPreviewView.mm in Sources */,
 				AA7778888A00000000000002 /* NaayaPreviewManager.mm in Sources */,
-                ABRNNB0000000000000001 /* RNNoiseSuppressor.cpp in Sources */,
-                /* RNNoise C sources excluded on iOS build */
+				ABRNNB0000000000000001 /* RNNoiseSuppressor.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -432,14 +421,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8GNN55S9HG;
 				ENABLE_BITCODE = NO;
-                GCC_PREPROCESSOR_DEFINITIONS = (
-                    "$(inherited)",
-                    "FFMPEG_AVAILABLE=1",
-                );
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"FFMPEG_AVAILABLE=1",
+					"FFMPEG_AVAILABLE=1",
+				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../shared",
 					"$(SRCROOT)/../vendor/rnnoise",
+					/opt/homebrew/include,
 					/opt/homebrew/include,
 				);
 				"HEADER_SEARCH_PATHS[sdk=iphoneos*]" = (
@@ -457,7 +448,7 @@
 					/opt/homebrew/include,
 				);
 				INFOPLIST_FILE = Naaya/Info.plist;
-                IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -465,6 +456,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SDKROOT)/usr/lib/swift",
 					"$(inherited)",
+					/opt/homebrew/lib,
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(SDKROOT)/usr/lib/swift",
@@ -479,32 +471,38 @@
 					/opt/homebrew/lib,
 				);
 				MARKETING_VERSION = 1.0;
-                OTHER_LDFLAGS = (
-                    "$(inherited)",
-                    "-ObjC",
-                    "-lc++",
-                    "-lavcodec",
-                    "-lavfilter",
-                    "-lavformat",
-                    "-lavutil",
-                    "-lswscale",
-                    "-lswresample",
-                    "-lz",
-                    "-lbz2",
-                    "-liconv",
-                    "-framework",
-                    VideoToolbox,
-                    "-framework",
-                    CoreMedia,
-                    "-framework",
-                    CoreVideo,
-                    "-lavcodec",
-                    "-lavfilter",
-                    "-lavformat",
-                    "-lavutil",
-                    "-lswscale",
-                    "-lswresample",
-                );
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
+					"-lz",
+					"-lbz2",
+					"-liconv",
+					"-framework",
+					VideoToolbox,
+					"-framework",
+					CoreMedia,
+					"-framework",
+					CoreVideo,
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
+				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sidikiconde.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = Naaya;
@@ -523,14 +521,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8GNN55S9HG;
-                GCC_PREPROCESSOR_DEFINITIONS = (
-                    "$(inherited)",
-                    "FFMPEG_AVAILABLE=1",
-                );
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"FFMPEG_AVAILABLE=1",
+					"FFMPEG_AVAILABLE=1",
+				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../shared",
 					"$(SRCROOT)/../vendor/rnnoise",
+					/opt/homebrew/include,
 					/opt/homebrew/include,
 				);
 				"HEADER_SEARCH_PATHS[sdk=iphoneos*]" = (
@@ -548,7 +548,7 @@
 					/opt/homebrew/include,
 				);
 				INFOPLIST_FILE = Naaya/Info.plist;
-                IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -556,6 +556,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SDKROOT)/usr/lib/swift",
 					"$(inherited)",
+					/opt/homebrew/lib,
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(SDKROOT)/usr/lib/swift",
@@ -570,34 +571,40 @@
 					/opt/homebrew/lib,
 				);
 				MARKETING_VERSION = 1.0;
-                OTHER_LDFLAGS = (
-                    "$(inherited)",
-                    "-ObjC",
-                    "-lc++",
-                    "-lavcodec",
-                    "-lavfilter",
-                    "-lavformat",
-                    "-lavutil",
-                    "-lswscale",
-                    "-lswresample",
-                    "-lz",
-                    "-lbz2",
-                    "-liconv",
-                    "-framework",
-                    VideoToolbox,
-                    "-framework",
-                    CoreMedia,
-                    "-framework",
-                    CoreVideo,
-                    "-framework",
-                    CoreAudioTypes,
-                    "-lavcodec",
-                    "-lavfilter",
-                    "-lavformat",
-                    "-lavutil",
-                    "-lswscale",
-                    "-lswresample",
-                );
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
+					"-lz",
+					"-lbz2",
+					"-liconv",
+					"-framework",
+					VideoToolbox,
+					"-framework",
+					CoreMedia,
+					"-framework",
+					CoreVideo,
+					"-framework",
+					CoreAudioTypes,
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
+					"-lavcodec",
+					"-lavfilter",
+					"-lavformat",
+					"-lavutil",
+					"-lswscale",
+					"-lswresample",
+				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sidikiconde.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = Naaya;

@@ -131,6 +131,8 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
       >
         {/* En-tête */}
         <View style={styles.header}>
@@ -163,55 +165,92 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({
           </View>
         )}
 
-        {/* Sélecteur de préréglages */}
-        <PresetSelector
-          currentPreset={currentPreset}
-          onPresetSelect={handlePresetSelect}
-          disabled={!enabled}
-        />
+        {/* Conteneur des préréglages */}
+        <View style={styles.presetsSection}>
+          <View style={styles.presetsSectionHeader}>
+            <Text style={styles.presetsSectionTitle}>Préréglages audio</Text>
+            <View style={styles.presetIndicator}>
+              <Text style={styles.presetIndicatorText}>
+                {currentPreset || 'Personnalisé'}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.presetsContainer}>
+            <PresetSelector
+              currentPreset={currentPreset}
+              onPresetSelect={handlePresetSelect}
+              disabled={!enabled}
+              showHeader={false}
+            />
+          </View>
+        </View>
 
-        {/* Bandes de fréquence */}
+        {/* Conteneur des bandes de fréquence */}
         <View style={styles.bandsSection}>
           <View style={styles.bandsSectionHeader}>
-            <Text style={styles.bandsSectionTitle}>Ajustements manuels</Text>
+            <Text style={styles.bandsSectionTitle}>Ajustements des fréquences</Text>
             <TouchableOpacity
               onPress={handleReset}
               disabled={!enabled}
               style={styles.resetButton}
             >
               <Text style={[styles.resetButtonText, !enabled && styles.disabledText]}>
-                Réinitialiser
+                Reset
               </Text>
             </TouchableOpacity>
           </View>
           
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bandsContainer}
-            decelerationRate="fast"
-          >
-            {bands.map((band) => {
-              const spectrumMagnitude = spectrumData
-                ? spectrumData[bands.indexOf(band)] || 0
-                : 0;
-              
-              return (
-                <FrequencyBand
-                  key={band.index}
-                  id={band.index.toString()}
-                  frequency={band.frequency}
-                  gain={band.gain}
-                  minGain={-24}
-                  maxGain={24}
-                  label={band.label}
-                  magnitude={spectrumMagnitude}
-                  onGainChange={handleBandGainChange}
-                  disabled={!enabled}
-                />
-              );
-            })}
-          </ScrollView>
+          {/* Conteneur principal des fréquences */}
+          <View style={styles.frequencyContainer}>
+            {/* Labels des groupes de fréquences */}
+            <View style={styles.frequencyLabels}>
+              <Text style={styles.frequencyGroupLabel}>Graves</Text>
+              <Text style={styles.frequencyGroupLabel}>Médiums</Text>
+              <Text style={styles.frequencyGroupLabel}>Aigus</Text>
+            </View>
+            
+            {/* Sliders dans un conteneur avec fond */}
+            <View style={styles.slidersContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.bandsContainer}
+                decelerationRate="fast"
+                scrollEnabled={true}
+                nestedScrollEnabled={false}
+                directionalLockEnabled={true}
+              >
+                {bands.map((band) => {
+                  const spectrumMagnitude = spectrumData
+                    ? spectrumData[bands.indexOf(band)] || 0
+                    : 0;
+                  
+                  return (
+                    <FrequencyBand
+                      key={band.index}
+                      id={band.index.toString()}
+                      frequency={band.frequency}
+                      gain={band.gain}
+                      minGain={-24}
+                      maxGain={24}
+                      label={band.label}
+                      magnitude={spectrumMagnitude}
+                      onGainChange={handleBandGainChange}
+                      disabled={!enabled}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+            
+            {/* Échelle de gain */}
+            <View style={styles.gainScale}>
+              <Text style={styles.gainScaleText}>+24 dB</Text>
+              <Text style={styles.gainScaleText}>0 dB</Text>
+              <Text style={styles.gainScaleText}>-24 dB</Text>
+            </View>
+          </View>
         </View>
 
         {/* Informations supplémentaires */}
@@ -253,29 +292,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   headerLeft: {
     flex: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 14,
     fontWeight: '700',
     color: THEME_COLORS.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: THEME_COLORS.textSecondary,
   },
   visualizerContainer: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    height: 120,
+    marginHorizontal: 10,
+    marginBottom: 16,
+    height: 100,
     backgroundColor: THEME_COLORS.surface,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
@@ -293,30 +332,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bandsSection: {
-    marginTop: 24,
+    marginTop: 16,
   },
   bandsSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   bandsSectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: THEME_COLORS.text,
   },
   resetButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: THEME_COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME_COLORS.border,
   },
   resetButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: THEME_COLORS.primary,
   },
@@ -324,9 +363,103 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.textSecondary,
     opacity: 0.5,
   },
+  presetsSection: {
+    marginTop: 16,
+  },
+  presetsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  presetsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME_COLORS.text,
+  },
+  presetIndicator: {
+    backgroundColor: THEME_COLORS.primary + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.primary + '40',
+  },
+  presetIndicatorText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: THEME_COLORS.primary,
+    textTransform: 'uppercase',
+  },
+  presetsContainer: {
+    backgroundColor: THEME_COLORS.surface,
+    marginHorizontal: 10,
+    borderRadius: 10,
+    padding: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  frequencyContainer: {
+    backgroundColor: THEME_COLORS.surface,
+    marginHorizontal: 10,
+    borderRadius: 10,
+    padding: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  frequencyLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+    paddingHorizontal: 12,
+  },
+  frequencyGroupLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: THEME_COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  slidersContainer: {
+    backgroundColor: THEME_COLORS.background,
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 8,
+  },
   bandsContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+  },
+  gainScale: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  gainScaleText: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: THEME_COLORS.textSecondary,
+    opacity: 0.7,
   },
   errorContainer: {
     marginHorizontal: 20,

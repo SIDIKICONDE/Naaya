@@ -5,13 +5,13 @@
 
 import React, { useRef } from 'react';
 import {
-    Animated,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { THEME_COLORS } from '../constants';
 import { useEqualizer } from '../hooks';
@@ -21,10 +21,31 @@ interface PresetSelectorProps {
   currentPreset: string | null;
   onPresetSelect: (presetId: string) => void;
   disabled?: boolean;
+  showHeader?: boolean;
 }
 
-const PRESET_CARD_WIDTH = 110;
-const PRESET_CARD_HEIGHT = 100;
+const PRESET_CARD_WIDTH = 90;
+const PRESET_CARD_HEIGHT = 60;
+
+// Raccourcis lisibles pour les noms de préréglages (FR)
+const getShortPresetName = (id: string, name: string): string => {
+  const map: Record<string, string> = {
+    'flat': 'Plat',
+    'rock': 'Rock',
+    'electronic': 'Electro',
+    'vocal': 'Voix',
+    'bass-boost': 'Basses+',
+    'treble-boost': 'Aigus+',
+    'jazz': 'Jazz',
+    'classical': 'Classique',
+    'acoustic': 'Acoust.',
+    'loudness': 'Loud.',
+    'custom': 'Perso',
+    '': 'Perso', // Fallback pour currentPreset vide
+  };
+  const short = map[id] || name;
+  return short.length > 10 ? `${short.slice(0, 9)}…` : short;
+};
 
 const PresetCard: React.FC<{
   preset: EqualizerPreset;
@@ -38,14 +59,14 @@ const PresetCard: React.FC<{
   React.useEffect(() => {
     Animated.parallel([
       Animated.spring(animatedScale, {
-        toValue: isSelected ? 1.05 : 1,
-        stiffness: 200,
-        damping: 15,
+        toValue: isSelected ? 1.02 : 1,
+        stiffness: 250,
+        damping: 20,
         useNativeDriver: true,
       }),
       Animated.timing(animatedOpacity, {
-        toValue: isSelected ? 1 : 0.8,
-        duration: 200,
+        toValue: isSelected ? 1 : 0.85,
+        duration: 250,
         useNativeDriver: true,
       }),
     ]).start();
@@ -53,18 +74,18 @@ const PresetCard: React.FC<{
 
   const handlePressIn = () => {
     Animated.spring(animatedScale, {
-      toValue: 0.95,
-      stiffness: 300,
-      damping: 20,
+      toValue: 0.96,
+      stiffness: 400,
+      damping: 15,
       useNativeDriver: true,
     }).start();
   };
 
   const handlePressOut = () => {
     Animated.spring(animatedScale, {
-      toValue: isSelected ? 1.05 : 1,
-      stiffness: 300,
-      damping: 20,
+      toValue: isSelected ? 1.02 : 1,
+      stiffness: 400,
+      damping: 15,
       useNativeDriver: true,
     }).start();
   };
@@ -82,26 +103,19 @@ const PresetCard: React.FC<{
           styles.presetCard,
           isSelected && styles.presetCardSelected,
           disabled && styles.presetCardDisabled,
+          preset.id === 'custom' && styles.presetCardCustom,
           {
             transform: [{ scale: animatedScale }],
             opacity: animatedOpacity,
           },
         ]}
       >
-        <Text style={styles.presetIcon}>{preset.icon}</Text>
-        <Text style={[styles.presetName, isSelected && styles.presetNameSelected]}>
-          {preset.name}
+        <Text style={[styles.presetIcon, isSelected && styles.presetIconSelected]}>
+          {preset.icon}
         </Text>
-        {preset.description && (
-          <Text style={styles.presetDescription} numberOfLines={2}>
-            {preset.description}
-          </Text>
-        )}
-        {isSelected && (
-          <View style={styles.selectedIndicator}>
-            <View style={styles.selectedDot} />
-          </View>
-        )}
+        <Text style={[styles.presetName, isSelected && styles.presetNameSelected]} numberOfLines={1} ellipsizeMode="tail">
+          {getShortPresetName(preset.id, preset.name)}
+        </Text>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -111,10 +125,29 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   currentPreset,
   onPresetSelect,
   disabled = false,
+  showHeader = true,
 }) => {
   const { presets } = useEqualizer();
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Créer un préréglage "Custom" si nécessaire
+  const isCustomPreset = !currentPreset || !presets.find(p => p.id === currentPreset);
+  const allPresets = React.useMemo(() => {
+    if (isCustomPreset) {
+      const customPreset: EqualizerPreset = {
+        id: 'custom',
+        name: 'Personnalisé',
+        icon: '🎛️',
+        description: 'Réglages personnalisés',
+        bands: {},
+      };
+      return [customPreset, ...presets];
+    }
+    return presets;
+  }, [presets, isCustomPreset]);
+
+  const effectiveCurrentPreset = isCustomPreset ? 'custom' : currentPreset;
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -126,25 +159,30 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
 
   // Auto-scroll vers le préréglage sélectionné
   React.useEffect(() => {
-    if (currentPreset && scrollViewRef.current) {
-      const index = presets.findIndex(p => p.id === currentPreset);
+    if (effectiveCurrentPreset && scrollViewRef.current) {
+      const index = allPresets.findIndex(p => p.id === effectiveCurrentPreset);
       if (index >= 0) {
-        const scrollPosition = index * (PRESET_CARD_WIDTH + 12) - 20;
+        const scrollPosition = index * (PRESET_CARD_WIDTH + 8) - 16;
         scrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
       }
     }
-  }, [currentPreset, presets]);
+  }, [effectiveCurrentPreset, allPresets]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Préréglages</Text>
-        <View style={styles.indicator}>
-          <Text style={styles.indicatorText}>
-            {presets.find(p => p.id === currentPreset)?.name || 'Personnalisé'}
-          </Text>
+      {showHeader && (
+        <View style={styles.header}>
+          <Text style={styles.title}>Préréglages</Text>
+          <View style={styles.indicator}>
+            <Text style={styles.indicatorText}>
+              {getShortPresetName(
+                effectiveCurrentPreset || '',
+                allPresets.find(p => p.id === effectiveCurrentPreset)?.name || 'Personnalisé'
+              )}
+            </Text>
+          </View>
         </View>
-      </View>
+      )}
       
       <ScrollView
         ref={scrollViewRef}
@@ -152,16 +190,22 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         decelerationRate="fast"
-        snapToInterval={PRESET_CARD_WIDTH + 12}
+        snapToInterval={PRESET_CARD_WIDTH + 8}
         snapToAlignment="start"
       >
-        {presets.map((preset) => (
+        {allPresets.map((preset) => (
           <PresetCard
             key={preset.id}
             preset={preset}
-            isSelected={preset.id === currentPreset}
-            onPress={() => onPresetSelect(preset.id)}
-            disabled={disabled}
+            isSelected={preset.id === effectiveCurrentPreset}
+            onPress={() => {
+              if (preset.id === 'custom') {
+                // Ne rien faire pour le preset custom, c'est juste indicatif
+                return;
+              }
+              onPresetSelect(preset.id);
+            }}
+            disabled={disabled || preset.id === 'custom'}
           />
         ))}
       </ScrollView>
@@ -171,7 +215,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 8,
   },
   header: {
     flexDirection: 'row',
@@ -199,71 +243,72 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.primary,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: 12,
+    gap: 6,
   },
   presetCard: {
     width: PRESET_CARD_WIDTH,
     height: PRESET_CARD_HEIGHT,
     backgroundColor: THEME_COLORS.surface,
-    borderRadius: 16,
-    padding: 12,
-    marginRight: 12,
+    borderRadius: PRESET_CARD_HEIGHT / 2, // Style pilule
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: THEME_COLORS.border + '40',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 3,
+        elevation: 4,
       },
     }),
   },
   presetCardSelected: {
+    backgroundColor: THEME_COLORS.primary,
     borderColor: THEME_COLORS.primary,
-    backgroundColor: THEME_COLORS.surfaceLight,
+    ...Platform.select({
+      ios: {
+        shadowColor: THEME_COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   presetCardDisabled: {
     opacity: 0.5,
   },
+  presetCardCustom: {
+    backgroundColor: THEME_COLORS.surfaceLight,
+    borderColor: THEME_COLORS.warning + '60',
+    borderStyle: 'dashed',
+  },
   presetIcon: {
-    fontSize: 28,
-    marginBottom: 4,
+    fontSize: 18,
+    marginRight: 6,
+    color: THEME_COLORS.text,
+  },
+  presetIconSelected: {
+    color: '#FFFFFF',
   },
   presetName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: THEME_COLORS.text,
-    marginBottom: 2,
+    flex: 1,
   },
   presetNameSelected: {
-    color: THEME_COLORS.primary,
-  },
-  presetDescription: {
-    fontSize: 10,
-    color: THEME_COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: THEME_COLORS.primary,
-  },
-  selectedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: THEME_COLORS.primary,
+    color: '#FFFFFF',
   },
 });
