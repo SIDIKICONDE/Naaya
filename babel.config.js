@@ -8,7 +8,6 @@ module.exports = {
       alias: {
         '@Audio': './src/audio',
         '@audio': './src/audio',
-        '@teleprompter': './src/teleprompter',
         '@ui': './src/ui',
         '@screens': './src/screens',
         '@components': './src/camera/components',

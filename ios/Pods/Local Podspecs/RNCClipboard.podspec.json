@@ -44,33 +44,89 @@
   },
   "compiler_flags": "-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32 -DRCT_NEW_ARCH_ENABLED  -DRCT_NEW_ARCH_ENABLED=1",
   "dependencies": {
-    "React-Core": [],
-    "React-RCTFabric": [],
-    "ReactCodegen": [],
-    "RCTRequired": [],
-    "RCTTypeSafety": [],
-    "ReactCommon/turbomodule/bridging": [],
-    "ReactCommon/turbomodule/core": [],
-    "React-NativeModulesApple": [],
-    "Yoga": [],
-    "React-Fabric": [],
-    "React-graphics": [],
-    "React-utils": [],
-    "React-featureflags": [],
-    "React-debug": [],
-    "React-ImageManager": [],
-    "React-rendererdebug": [],
-    "React-jsi": [],
-    "React-renderercss": [],
-    "hermes-engine": [],
-    "React-hermes": [],
-    "glog": [],
-    "boost": [],
-    "DoubleConversion": [],
-    "fast_float": [],
-    "fmt": [],
-    "RCT-Folly": [],
-    "SocketRocket": [],
-    "RCT-Folly/Fabric": []
+    "React-Core": [
+
+    ],
+    "React-RCTFabric": [
+
+    ],
+    "ReactCodegen": [
+
+    ],
+    "RCTRequired": [
+
+    ],
+    "RCTTypeSafety": [
+
+    ],
+    "ReactCommon/turbomodule/bridging": [
+
+    ],
+    "ReactCommon/turbomodule/core": [
+
+    ],
+    "React-NativeModulesApple": [
+
+    ],
+    "Yoga": [
+
+    ],
+    "React-Fabric": [
+
+    ],
+    "React-graphics": [
+
+    ],
+    "React-utils": [
+
+    ],
+    "React-featureflags": [
+
+    ],
+    "React-debug": [
+
+    ],
+    "React-ImageManager": [
+
+    ],
+    "React-rendererdebug": [
+
+    ],
+    "React-jsi": [
+
+    ],
+    "React-renderercss": [
+
+    ],
+    "hermes-engine": [
+
+    ],
+    "React-hermes": [
+
+    ],
+    "glog": [
+
+    ],
+    "boost": [
+
+    ],
+    "DoubleConversion": [
+
+    ],
+    "fast_float": [
+
+    ],
+    "fmt": [
+
+    ],
+    "RCT-Folly": [
+
+    ],
+    "SocketRocket": [
+
+    ],
+    "RCT-Folly/Fabric": [
+
+    ]
   }
 }

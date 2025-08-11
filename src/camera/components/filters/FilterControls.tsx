@@ -7,15 +7,16 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import CustomSlider from '../../../ui/CustomSlider';
+import type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
 import ImportFilterModal from './ImportFilterModal';
 import {
   ANIMATION_CONFIG,
@@ -23,6 +24,7 @@ import {
   FILTER_CATEGORIES,
   FILTER_PRESETS
 } from './constants';
+import NumberLineControl from './slider';
 import type {
   FilterCallback,
   FilterControlsProps,
@@ -189,42 +191,67 @@ const FilterCategories = memo<{
 FilterCategories.displayName = 'FilterCategories';
 
 /**
- * Composant pour les presets de filtres
+ * Modal pour les presets de filtres
  */
-const FilterPresetsList = memo<{
+const FilterPresetsModal = memo<{
+  visible: boolean;
+  onClose: () => void;
   onSelectPreset: (preset: FilterPreset) => void;
-}>(({ onSelectPreset }) => {
+}>(({ visible, onClose, onSelectPreset }) => {
   const renderPreset = useCallback(
     ({ item }: { item: FilterPreset }) => (
       <TouchableOpacity
-        style={styles.presetCard}
-        onPress={() => onSelectPreset(item)}
+        style={styles.presetModalCard}
+        onPress={() => {
+          onSelectPreset(item);
+          onClose();
+        }}
       >
-        <Text style={styles.presetName}>{item.name}</Text>
-        <Text style={styles.presetFilter}>
+        <Text style={styles.presetModalName}>{item.name}</Text>
+        <Text style={styles.presetModalFilter}>
           {AVAILABLE_FILTERS.find(f => f.name === item.filter)?.displayName}
+        </Text>
+        <Text style={styles.presetModalIntensity}>
+          Intensité: {Math.round(item.intensity * 100)}%
         </Text>
       </TouchableOpacity>
     ),
-    [onSelectPreset]
+    [onSelectPreset, onClose]
   );
 
   return (
-    <View style={styles.presetsContainer}>
-      <Text style={styles.presetsTitle}>Presets rapides</Text>
-      <FlatList
-        horizontal
-        data={FILTER_PRESETS}
-        renderItem={renderPreset}
-        keyExtractor={(item) => item.id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.presetsContent}
-      />
-    </View>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.presetModalBackdrop}>
+        <View style={styles.presetModalContainer}>
+          <View style={styles.presetModalHeader}>
+            <Text style={styles.presetModalTitle}>Presets de Filtres</Text>
+            <TouchableOpacity
+              style={styles.presetModalClose}
+              onPress={onClose}
+            >
+              <Text style={styles.presetModalCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={FILTER_PRESETS}
+            renderItem={renderPreset}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.presetModalContent}
+          />
+        </View>
+      </View>
+    </Modal>
   );
 });
 
-FilterPresetsList.displayName = 'FilterPresetsList';
+FilterPresetsModal.displayName = 'FilterPresetsModal';
 
 /**
  * Slider d'intensité optimisé
@@ -252,22 +279,16 @@ const IntensitySlider = memo<{
           <Text style={styles.intensityLabel}>Intensité</Text>
           <Text style={styles.intensityValue}>{Math.round(value * 100)}%</Text>
         </View>
-        <CustomSlider
+        <NumberLineControl
           value={value}
           onValueChange={throttledOnChange}
           onSlidingComplete={onComplete}
-          minimumValue={0}
-          maximumValue={1}
+          min={0}
+          max={1}
+          step={0.01}
           width={SCREEN_WIDTH - 80}
-          trackHeight={6}
-          thumbSize={24}
-          activeTrackColor={color}
-          inactiveTrackColor="rgba(255, 255, 255, 0.1)"
-          thumbColor="#FFFFFF"
-          accentColor={color}
-          showValue={false}
+          color={color}
           disabled={disabled}
-          style={styles.slider}
         />
       </View>
     );
@@ -307,6 +328,13 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
       return AVAILABLE_FILTERS.filter(f => f.category === selectedCategory);
     }, [selectedCategory]);
 
+    // Empêcher appels redondants (idempotence côté UI)
+    const lastRequestRef = useRef<{ name: string; intensity: number; paramsKey: string | null } | null>(null);
+    const makeParamsKey = useCallback((p?: AdvancedFilterParams) => {
+      if (!p) return null;
+      try { return JSON.stringify(p); } catch { return 'invalid'; }
+    }, []);
+
     // Callbacks mémorisés
     const handleFilterSelect = useCallback(
       async (filter: FilterInfo) => {
@@ -314,14 +342,17 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
 
         if (filter.name === 'none') {
           await onClearFilter();
-        } else if (filter.name === 'lut3d') {
-          setShowImport('lut3d');
-        } else if (filter.name === 'xmp') {
-          setShowImport('xmp');
+        } else if (filter.name === 'import') {
+          setShowImport('xmp'); // Par défaut, on ouvre en mode XMP
         } else {
           const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0;
           setLocalIntensity(intensity);
-          await onFilterChange(filter.name, intensity);
+          const req = { name: filter.name, intensity, paramsKey: null };
+          const prev = lastRequestRef.current;
+          if (!prev || prev.name !== req.name || prev.intensity !== req.intensity || prev.paramsKey !== req.paramsKey) {
+            lastRequestRef.current = req;
+            await onFilterChange(filter.name, intensity);
+          }
         }
       },
       [onFilterChange, onClearFilter, disabled]
@@ -334,7 +365,12 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
     const handleIntensityComplete = useCallback(
       (value: number) => {
         const targetName = currentFilter?.name ?? selectedFilter.name;
-        onFilterChange(targetName, value);
+        const req = { name: targetName, intensity: value, paramsKey: null };
+        const prev = lastRequestRef.current;
+        if (!prev || prev.name !== req.name || prev.intensity !== req.intensity || prev.paramsKey !== req.paramsKey) {
+          lastRequestRef.current = req;
+          onFilterChange(targetName, value);
+        }
       },
       [onFilterChange, selectedFilter.name, currentFilter?.name]
     );
@@ -342,10 +378,15 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
     const handlePresetSelect = useCallback(
       async (preset: FilterPreset) => {
         setLocalIntensity(preset.intensity);
-        await onFilterChange(preset.filter, preset.intensity, preset.params);
+        const req = { name: preset.filter, intensity: preset.intensity, paramsKey: makeParamsKey(preset.params) };
+        const prev = lastRequestRef.current;
+        if (!prev || prev.name !== req.name || prev.intensity !== req.intensity || prev.paramsKey !== req.paramsKey) {
+          lastRequestRef.current = req;
+          await onFilterChange(preset.filter, preset.intensity, preset.params);
+        }
         setShowPresets(false);
       },
-      [onFilterChange]
+      [onFilterChange, makeParamsKey]
     );
 
     // Rendu compact pour les petits espaces
@@ -368,14 +409,6 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
               />
             ))}
           </ScrollView>
-          {/* Modal d'import pour le mode compact */}
-          <ImportFilterModal
-            visible={Boolean(showImport)}
-            initialMode={showImport || undefined}
-            intensity={localIntensity}
-            onApply={onFilterChange}
-            onClose={() => setShowImport(false)}
-          />
         </View>
       );
     }
@@ -392,12 +425,6 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
               onPress={() => setShowPresets(!showPresets)}
             >
               <Text style={styles.headerButtonText}>⚡</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => setShowImport('xmp')}
-            >
-              <Text style={styles.headerButtonText}>↗️</Text>
             </TouchableOpacity>
             {onClose && (
               <TouchableOpacity
@@ -416,10 +443,12 @@ export const FilterControls: React.FC<FilterControlsProps> = memo(
           onSelectCategory={setSelectedCategory}
         />
 
-        {/* Presets */}
-        {showPresets && (
-          <FilterPresetsList onSelectPreset={handlePresetSelect} />
-        )}
+        {/* Modal Presets */}
+        <FilterPresetsModal
+          visible={showPresets}
+          onClose={() => setShowPresets(false)}
+          onSelectPreset={handlePresetSelect}
+        />
 
         {/* Liste des filtres */}
         <ScrollView
@@ -660,39 +689,80 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 
-  // Presets
-  presetsContainer: {
-    marginBottom: 12,
+  // Modal Presets
+  presetModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  presetsTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 8,
-    paddingHorizontal: 4,
+  presetModalContainer: {
+    backgroundColor: 'rgba(20, 20, 30, 0.98)',
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 20,
   },
-  presetsContent: {
-    paddingHorizontal: 4,
-    gap: 8,
+  presetModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  presetCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  presetName: {
-    fontSize: 12,
+  presetModalTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  presetModalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presetModalCloseText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  presetModalContent: {
+    padding: 16,
+    gap: 12,
+  },
+  presetModalCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  presetModalName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  presetModalFilter: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 2,
   },
-  presetFilter: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.6)',
+  presetModalIntensity: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontStyle: 'italic',
   },
 });
 

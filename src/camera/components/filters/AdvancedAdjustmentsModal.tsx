@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import CustomSlider from '../../../ui/CustomSlider';
+import NumberLineControl from './slider';
 import { buildAndSaveLUTCubeFromXMP } from './utils/xmp';
 
 export type HSLChannel = 'red'|'orange'|'yellow'|'green'|'aqua'|'blue'|'purple'|'magenta';
@@ -64,193 +64,236 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
   }, [channels, hslHue, hslSaturation, hslLuminance, tcMid1, tcMid2, tcMid3, stShadowHue, stShadowSat, stHighlightHue, stHighlightSat, stBalance]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Réglages avancés (HSL / ToneCurve / Split Toning)</Text>
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <Text style={styles.headerTitle}>Réglages avancés</Text>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <Text style={styles.sectionTitle}>HSL par canal</Text>
             {channels.map((c) => (
               <View key={c} style={styles.channelBlock}>
                 <Text style={styles.channelTitle}>{c.toUpperCase()}</Text>
-                <View style={styles.sliderGroup}>
-                  <View style={styles.sliderContainer}>
-                    <Text style={styles.sliderLabel}>Teinte</Text>
-                    <CustomSlider
-                      value={hslHue[c]}
-                      onValueChange={(v: number) => setHslHue((s) => ({ ...s, [c]: Math.round(v) }))}
-                      minimumValue={-100}
-                      maximumValue={100}
-                      width={200}
-                      trackHeight={4}
-                      thumbSize={18}
-                      activeTrackColor="#9B59B6"
-                      inactiveTrackColor="rgba(255,255,255,0.2)"
-                      thumbColor="#FFF"
-                      accentColor="#9B59B6"
-                      showValue
-                      valueFormatter={(v: number) => `${Math.round(v)}`}
-                    />
+
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Teinte</Text>
+                    <Text style={styles.controlValue}>{Math.round(hslHue[c])}</Text>
                   </View>
-                  <View style={styles.sliderContainer}>
-                    <Text style={styles.sliderLabel}>Saturation</Text>
-                    <CustomSlider
-                      value={hslSaturation[c]}
-                      onValueChange={(v: number) => setHslSaturation((s) => ({ ...s, [c]: Math.round(v) }))}
-                      minimumValue={-100}
-                      maximumValue={100}
-                      width={200}
-                      trackHeight={4}
-                      thumbSize={18}
-                      activeTrackColor="#2ECC71"
-                      inactiveTrackColor="rgba(255,255,255,0.2)"
-                      thumbColor="#FFF"
-                      accentColor="#2ECC71"
-                      showValue
-                      valueFormatter={(v: number) => `${Math.round(v)}`}
-                    />
+                  <NumberLineControl
+                    value={hslHue[c]}
+                    onValueChange={(v: number) => {
+                      console.log(`[AdvancedAdjustments] HSL Hue ${c}:`, v);
+                      setHslHue((prev) => ({ ...prev, [c]: v }));
+                    }}
+                    onSlidingComplete={(v: number) => {
+                      console.log(`[AdvancedAdjustments] HSL Hue ${c} Complete:`, v);
+                      setHslHue((prev) => ({ ...prev, [c]: v }));
+                    }}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    width={320}
+                    color="#9B59B6"
+                  />
+                </View>
+
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Saturation</Text>
+                    <Text style={styles.controlValue}>{Math.round(hslSaturation[c])}</Text>
                   </View>
-                  <View style={styles.sliderContainer}>
-                    <Text style={styles.sliderLabel}>Luminance</Text>
-                    <CustomSlider
-                      value={hslLuminance[c]}
-                      onValueChange={(v: number) => setHslLuminance((s) => ({ ...s, [c]: Math.round(v) }))}
-                      minimumValue={-100}
-                      maximumValue={100}
-                      width={200}
-                      trackHeight={4}
-                      thumbSize={18}
-                      activeTrackColor="#F1C40F"
-                      inactiveTrackColor="rgba(255,255,255,0.2)"
-                      thumbColor="#FFF"
-                      accentColor="#F1C40F"
-                      showValue
-                      valueFormatter={(v: number) => `${Math.round(v)}`}
-                    />
+                  <NumberLineControl
+                    value={hslSaturation[c]}
+                    onValueChange={(v: number) => setHslSaturation((prev) => ({ ...prev, [c]: v }))}
+                    onSlidingComplete={(v: number) => setHslSaturation((prev) => ({ ...prev, [c]: v }))}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    width={320}
+                    color="#2ECC71"
+                  />
+                </View>
+
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Luminance</Text>
+                    <Text style={styles.controlValue}>{Math.round(hslLuminance[c])}</Text>
                   </View>
+                  <NumberLineControl
+                    value={hslLuminance[c]}
+                    onValueChange={(v: number) => setHslLuminance((prev) => ({ ...prev, [c]: v }))}
+                    onSlidingComplete={(v: number) => setHslLuminance((prev) => ({ ...prev, [c]: v }))}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    width={320}
+                    color="#F1C40F"
+                  />
                 </View>
               </View>
             ))}
 
             <Text style={styles.sectionTitle}>ToneCurve</Text>
-            <CustomSlider value={tcMid1} onValueChange={setTcMid1} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v: number)=>`P2 Y ${Math.round(v)}`}/>
-            <CustomSlider value={tcMid2} onValueChange={setTcMid2} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v: number)=>`P3 Y ${Math.round(v)}`}/>
-            <CustomSlider value={tcMid3} onValueChange={setTcMid3} minimumValue={0} maximumValue={255} width={320} trackHeight={3} thumbSize={16} activeTrackColor="#3498DB" inactiveTrackColor="rgba(255,255,255,0.2)" thumbColor="#FFF" accentColor="#3498DB" showValue valueFormatter={(v: number)=>`P4 Y ${Math.round(v)}`}/>
+            <View style={styles.toneCurveBlock}>
+              <View style={styles.controlGroup}>
+                <View style={styles.controlHeader}>
+                  <Text style={styles.controlLabel}>Point 2 (Y)</Text>
+                  <Text style={styles.controlValue}>{Math.round(tcMid1)}</Text>
+                </View>
+                <NumberLineControl
+                  value={tcMid1}
+                  onValueChange={setTcMid1}
+                  onSlidingComplete={setTcMid1}
+                  min={0}
+                  max={255}
+                  step={1}
+                  width={360}
+                  color="#3498DB"
+                />
+              </View>
+              <View style={styles.controlGroup}>
+                <View style={styles.controlHeader}>
+                  <Text style={styles.controlLabel}>Point 3 (Y)</Text>
+                  <Text style={styles.controlValue}>{Math.round(tcMid2)}</Text>
+                </View>
+                <NumberLineControl
+                  value={tcMid2}
+                  onValueChange={setTcMid2}
+                  onSlidingComplete={setTcMid2}
+                  min={0}
+                  max={255}
+                  step={1}
+                  width={360}
+                  color="#3498DB"
+                />
+              </View>
+              <View style={styles.controlGroup}>
+                <View style={styles.controlHeader}>
+                  <Text style={styles.controlLabel}>Point 4 (Y)</Text>
+                  <Text style={styles.controlValue}>{Math.round(tcMid3)}</Text>
+                </View>
+                <NumberLineControl
+                  value={tcMid3}
+                  onValueChange={setTcMid3}
+                  onSlidingComplete={setTcMid3}
+                  min={0}
+                  max={255}
+                  step={1}
+                  width={360}
+                  color="#3498DB"
+                />
+              </View>
+            </View>
 
             <Text style={styles.sectionTitle}>Split Toning</Text>
             <View style={styles.splitToningBlock}>
               <View style={styles.splitSection}>
-                <Text style={styles.splitSectionTitle}>Ombres (Shadows)</Text>
-                <View style={styles.sliderContainer}>
-                  <Text style={styles.sliderLabel}>Teinte (Hue)</Text>
-                  <CustomSlider 
-                    value={stShadowHue} 
-                    onValueChange={setStShadowHue} 
-                    minimumValue={0} 
-                    maximumValue={360} 
-                    width={280} 
-                    trackHeight={4} 
-                    thumbSize={18} 
-                    activeTrackColor="#9B59B6" 
-                    inactiveTrackColor="rgba(255,255,255,0.2)" 
-                    thumbColor="#FFF" 
-                    accentColor="#9B59B6" 
-                    showValue 
-                    valueFormatter={(v: number) => `${Math.round(v)}°`}
+                <Text style={styles.splitSectionTitle}>Ombres</Text>
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Teinte (Hue)</Text>
+                    <Text style={styles.controlValue}>{Math.round(stShadowHue)}°</Text>
+                  </View>
+                  <NumberLineControl
+                    value={stShadowHue}
+                    onValueChange={setStShadowHue}
+                    onSlidingComplete={setStShadowHue}
+                    min={0}
+                    max={360}
+                    step={1}
+                    width={320}
+                    color="#9B59B6"
                   />
                 </View>
-                <View style={styles.sliderContainer}>
-                  <Text style={styles.sliderLabel}>Saturation</Text>
-                  <CustomSlider 
-                    value={stShadowSat} 
-                    onValueChange={setStShadowSat} 
-                    minimumValue={0} 
-                    maximumValue={100} 
-                    width={280} 
-                    trackHeight={4} 
-                    thumbSize={18} 
-                    activeTrackColor="#2ECC71" 
-                    inactiveTrackColor="rgba(255,255,255,0.2)" 
-                    thumbColor="#FFF" 
-                    accentColor="#2ECC71" 
-                    showValue 
-                    valueFormatter={(v: number) => `${Math.round(v)}%`}
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Saturation</Text>
+                    <Text style={styles.controlValue}>{Math.round(stShadowSat)}%</Text>
+                  </View>
+                  <NumberLineControl
+                    value={stShadowSat}
+                    onValueChange={setStShadowSat}
+                    onSlidingComplete={setStShadowSat}
+                    min={0}
+                    max={100}
+                    step={1}
+                    width={320}
+                    color="#2ECC71"
                   />
                 </View>
               </View>
-              
+
               <View style={styles.splitSection}>
-                <Text style={styles.splitSectionTitle}>Hautes lumières (Highlights)</Text>
-                <View style={styles.sliderContainer}>
-                  <Text style={styles.sliderLabel}>Teinte (Hue)</Text>
-                  <CustomSlider 
-                    value={stHighlightHue} 
-                    onValueChange={setStHighlightHue} 
-                    minimumValue={0} 
-                    maximumValue={360} 
-                    width={280} 
-                    trackHeight={4} 
-                    thumbSize={18} 
-                    activeTrackColor="#9B59B6" 
-                    inactiveTrackColor="rgba(255,255,255,0.2)" 
-                    thumbColor="#FFF" 
-                    accentColor="#9B59B6" 
-                    showValue 
-                    valueFormatter={(v: number) => `${Math.round(v)}°`}
+                <Text style={styles.splitSectionTitle}>Hautes lumières</Text>
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Teinte (Hue)</Text>
+                    <Text style={styles.controlValue}>{Math.round(stHighlightHue)}°</Text>
+                  </View>
+                  <NumberLineControl
+                    value={stHighlightHue}
+                    onValueChange={setStHighlightHue}
+                    onSlidingComplete={setStHighlightHue}
+                    min={0}
+                    max={360}
+                    step={1}
+                    width={320}
+                    color="#9B59B6"
                   />
                 </View>
-                <View style={styles.sliderContainer}>
-                  <Text style={styles.sliderLabel}>Saturation</Text>
-                  <CustomSlider 
-                    value={stHighlightSat} 
-                    onValueChange={setStHighlightSat} 
-                    minimumValue={0} 
-                    maximumValue={100} 
-                    width={280} 
-                    trackHeight={4} 
-                    thumbSize={18} 
-                    activeTrackColor="#2ECC71" 
-                    inactiveTrackColor="rgba(255,255,255,0.2)" 
-                    thumbColor="#FFF" 
-                    accentColor="#2ECC71" 
-                    showValue 
-                    valueFormatter={(v: number) => `${Math.round(v)}%`}
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Saturation</Text>
+                    <Text style={styles.controlValue}>{Math.round(stHighlightSat)}%</Text>
+                  </View>
+                  <NumberLineControl
+                    value={stHighlightSat}
+                    onValueChange={setStHighlightSat}
+                    onSlidingComplete={setStHighlightSat}
+                    min={0}
+                    max={100}
+                    step={1}
+                    width={320}
+                    color="#2ECC71"
                   />
                 </View>
               </View>
-              
+
               <View style={styles.balanceSection}>
                 <Text style={styles.splitSectionTitle}>Balance</Text>
-                <View style={styles.sliderContainer}>
-                  <Text style={styles.sliderLabel}>Balance Ombres ↔ Hautes lumières</Text>
-                  <CustomSlider 
-                    value={stBalance} 
-                    onValueChange={setStBalance} 
-                    minimumValue={-100} 
-                    maximumValue={100} 
-                    width={320} 
-                    trackHeight={4} 
-                    thumbSize={18} 
-                    activeTrackColor="#F39C12" 
-                    inactiveTrackColor="rgba(255,255,255,0.2)" 
-                    thumbColor="#FFF" 
-                    accentColor="#F39C12" 
-                    showValue 
-                    valueFormatter={(v: number) => `${Math.round(v)}`}
+                <View style={styles.controlGroup}>
+                  <View style={styles.controlHeader}>
+                    <Text style={styles.controlLabel}>Ombres ↔ Hautes lumières</Text>
+                    <Text style={styles.controlValue}>{Math.round(stBalance)}</Text>
+                  </View>
+                  <NumberLineControl
+                    value={stBalance}
+                    onValueChange={setStBalance}
+                    onSlidingComplete={setStBalance}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    width={360}
+                    color="#F39C12"
                   />
                 </View>
               </View>
             </View>
           </ScrollView>
-          <View style={styles.actions}>
-            <TouchableOpacity style={[styles.btn, styles.cancel]} onPress={onClose}><Text style={styles.btnText}>Annuler</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, styles.apply]} onPress={async () => {
-              const xmp = buildXmpLike;
-              const lutPath = await buildAndSaveLUTCubeFromXMP(xmp, 33);
-              await onApplyLUT(lutPath);
-              onClose();
-            }}>
-              <Text style={styles.btnText}>Appliquer</Text>
+          <View style={styles.footerActions}>
+            <TouchableOpacity style={[styles.actionButton, styles.cancel]} onPress={onClose}>
+              <Text style={styles.actionText}>Annuler</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.apply]}
+              onPress={async () => {
+                const xmp = buildXmpLike;
+                const lutPath = await buildAndSaveLUTCubeFromXMP(xmp, 33);
+                await onApplyLUT(lutPath);
+                onClose();
+              }}
+            >
+              <Text style={styles.actionText}>Appliquer</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -260,25 +303,140 @@ export const AdvancedAdjustmentsModal: React.FC<AdvancedAdjustmentsModalProps> =
 };
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  card: { width: '100%', maxWidth: 680, maxHeight: '90%', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#333' },
-  title: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  sectionTitle: { color: '#fff', fontSize: 12, fontWeight: '700', marginTop: 8, marginBottom: 4 },
-  channelBlock: { marginBottom: 16, padding: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 },
-  channelTitle: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
-  sliderGroup: { marginBottom: 8 },
-  sliderContainer: { marginBottom: 6 },
-  sliderLabel: { color: '#ccc', fontSize: 11, marginBottom: 4, fontWeight: '500' },
-  splitToningBlock: { marginTop: 8, padding: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 },
-  splitSection: { marginBottom: 16, padding: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6 },
-  splitSectionTitle: { color: '#fff', fontSize: 13, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
-  balanceSection: { padding: 10, backgroundColor: 'rgba(243,156,18,0.1)', borderRadius: 6 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
-  btn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, marginLeft: 12 },
-  cancel: { backgroundColor: '#333' },
-  apply: { backgroundColor: '#007AFF' },
-  btnText: { color: '#fff', fontWeight: '600' },
-  scrollContainer: { paddingBottom: 12 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 720,
+    maxHeight: '90%',
+    backgroundColor: 'rgba(20, 20, 30, 0.98)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 18,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  content: {
+    paddingBottom: 16,
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 10,
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  channelBlock: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  channelTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  controlGroup: {
+    marginBottom: 10,
+  },
+  controlHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    paddingHorizontal: 2,
+  },
+  controlLabel: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  controlValue: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    minWidth: 36,
+    textAlign: 'right',
+  },
+  toneCurveBlock: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  splitToningBlock: {
+    marginTop: 6,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  splitSection: {
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  splitSectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  balanceSection: {
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(243, 156, 18, 0.08)',
+  },
+  footerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    gap: 12,
+  },
+  actionButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  cancel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  apply: {
+    backgroundColor: '#007AFF',
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
 });
 
 export default AdvancedAdjustmentsModal;

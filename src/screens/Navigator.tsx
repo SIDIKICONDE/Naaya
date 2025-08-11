@@ -1,54 +1,33 @@
-import { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 import { VideoPreviewScreen } from '../videoLibrary/screens/VideoPreviewScreen';
-import { RealCameraViewScreen } from './RealCameraViewScreen';
-import { TeleprompterScreen } from './TeleprompterScreen';
-import { TextEditorScreen } from './TextEditorScreen';
 
-type AppRouteName = 'Camera' | 'Teleprompter' | 'Editeur' | 'Vidéos';
+import { HomeScreen } from './HomeScreen';
+import { RealCameraViewScreen } from './RealCameraViewScreen';
+
+import { TextEditorScreen } from './TextEditorScreen';
+import { routeBus } from './routeBus';
+import type { AppRouteName } from './routes';
 
 export const AppNavigator: React.FC = () => {
-  const [route, setRoute] = useState<AppRouteName>('Teleprompter');
+  const [route, setRoute] = useState<AppRouteName>('Home');
+
+  // Listen to external route events (e.g., from three-dots menu)
+  useEffect(() => {
+    const unsub = routeBus.subscribe((newRoute) => {
+      console.log('[Navigator] Route change:', newRoute);
+      setRoute(newRoute);
+    });
+    return () => { unsub(); };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.navbar}>
-        <TouchableOpacity
-          style={[styles.navButton, route === 'Camera' && styles.navButtonActive]}
-          onPress={() => setRoute('Camera')}
-        >
-          <Text style={[styles.navButtonText, route === 'Camera' && styles.navButtonTextActive]}>Caméra</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, route === 'Teleprompter' && styles.navButtonActive]}
-          onPress={() => setRoute('Teleprompter')}
-        >
-          <Text style={[styles.navButtonText, route === 'Teleprompter' && styles.navButtonTextActive]}>Prompteur</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, route === 'Editeur' && styles.navButtonActive]}
-          onPress={() => setRoute('Editeur')}
-        >
-          <Text style={[styles.navButtonText, route === 'Editeur' && styles.navButtonTextActive]}>Éditeur</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, route === 'Vidéos' && styles.navButtonActive]}
-          onPress={() => setRoute('Vidéos')}
-        >
-          <Text style={[styles.navButtonText, route === 'Vidéos' && styles.navButtonTextActive]}>Vidéos</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.screenContainer}>
-        {route === 'Camera' ? (
-          <RealCameraViewScreen />
-        ) : route === 'Teleprompter' ? (
-          <TeleprompterScreen />
-        ) : route === 'Editeur' ? (
-          <TextEditorScreen />
-        ) : (
-          <VideoPreviewScreen />
-        )}
+        {route === 'Home' && <HomeScreen />}
+        {route === 'Camera' && <RealCameraViewScreen />}
+        {route === 'Editeur' && <TextEditorScreen />}
+        {route === 'Vidéos' && <VideoPreviewScreen />}
       </View>
     </SafeAreaView>
   );

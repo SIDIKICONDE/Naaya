@@ -21,22 +21,56 @@
     "DEFINES_MODULE": "YES"
   },
   "dependencies": {
-    "React-jsi": [],
-    "React-jsiexecutor": [],
-    "hermes-engine": [],
-    "React-hermes": [],
-    "glog": [],
-    "boost": [],
-    "DoubleConversion": [],
-    "fast_float": [],
-    "fmt": [],
-    "RCT-Folly": [],
-    "SocketRocket": [],
-    "RCT-Folly/Fabric": [],
-    "React-domnativemodule": [],
-    "React-featureflagsnativemodule": [],
-    "React-microtasksnativemodule": [],
-    "React-idlecallbacksnativemodule": [],
-    "React-RCTFBReactNativeSpec": []
+    "React-jsi": [
+
+    ],
+    "React-jsiexecutor": [
+
+    ],
+    "hermes-engine": [
+
+    ],
+    "React-hermes": [
+
+    ],
+    "glog": [
+
+    ],
+    "boost": [
+
+    ],
+    "DoubleConversion": [
+
+    ],
+    "fast_float": [
+
+    ],
+    "fmt": [
+
+    ],
+    "RCT-Folly": [
+
+    ],
+    "SocketRocket": [
+
+    ],
+    "RCT-Folly/Fabric": [
+
+    ],
+    "React-domnativemodule": [
+
+    ],
+    "React-featureflagsnativemodule": [
+
+    ],
+    "React-microtasksnativemodule": [
+
+    ],
+    "React-idlecallbacksnativemodule": [
+
+    ],
+    "React-RCTFBReactNativeSpec": [
+
+    ]
   }
 }

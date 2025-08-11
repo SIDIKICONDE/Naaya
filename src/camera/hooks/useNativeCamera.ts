@@ -3,7 +3,7 @@
  * Performance pure - utilise directement le moteur C++ Naaya
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AdvancedFilterParams, FilterState } from '../../../specs/NativeCameraFiltersModule';
 import CameraFilters from '../../../specs/NativeCameraFiltersModule';
 import type { CameraDevice, PermissionResult } from '../../../specs/NativeCameraModule';
@@ -54,6 +54,17 @@ export function useNativeCamera(): UseNativeCameraReturn {
   // État des filtres
   const [availableFilters, setAvailableFilters] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<FilterState | null>(null);
+  const lastAppliedFilterRef = useRef<{ name: string; intensity: number; paramsKey: string | null } | null>(null);
+
+  const makeParamsKey = useCallback((p?: AdvancedFilterParams): string | null => {
+    if (!p) return null;
+    try {
+      // Clé stable pour comparaison (idempotence)
+      return JSON.stringify(p);
+    } catch {
+      return 'invalid';
+    }
+  }, []);
 
   /**
    * Charge la liste des dispositifs caméra
@@ -255,11 +266,19 @@ export function useNativeCamera(): UseNativeCameraReturn {
    */
   const setFilter = useCallback(async (name: string, intensity: number, params?: AdvancedFilterParams) => {
     try {
+      const nextKey = { name, intensity, paramsKey: makeParamsKey(params) };
+      const prev = lastAppliedFilterRef.current;
+      if (prev && prev.name === nextKey.name && prev.intensity === nextKey.intensity && prev.paramsKey === nextKey.paramsKey) {
+        // Déjà appliqué → éviter appel natif/rendu inutile
+        return true;
+      }
+
       console.log('[useNativeCamera] Application filtre:', name, 'intensité:', intensity);
       const success = params
         ? await CameraFilters.setFilterWithParams(name, intensity, params)
         : await CameraFilters.setFilter(name, intensity);
       if (success) {
+        lastAppliedFilterRef.current = nextKey;
         const filter = await CameraFilters.getFilter();
         setCurrentFilter(filter);
         console.log('[useNativeCamera] Filtre appliqué:', filter);
@@ -269,7 +288,7 @@ export function useNativeCamera(): UseNativeCameraReturn {
       console.error('[useNativeCamera] Erreur application filtre:', err);
       return false;
     }
-  }, []);
+  }, [makeParamsKey]);
 
   /**
    * Applique une LUT .cube via le moteur caméra

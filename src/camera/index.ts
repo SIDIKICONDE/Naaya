@@ -520,6 +520,12 @@ export default NativeCameraEngine;
 // Export des composants React
 export { AdvancedCameraControls } from './components/AdvancedCameraControls';
 export { NativeCamera } from './components/NativeCamera';
+
+// Export des hooks
 export { useNativeCamera } from './hooks/useNativeCamera';
 export { useNativeCameraCapture } from './hooks/useNativeCameraCapture';
+
+// Export des types
+export type { AdvancedCameraControlsProps } from './components/AdvancedCameraControls/types';
+export type { NativeCameraProps, NativeCameraRef } from './components/NativeCamera';
 

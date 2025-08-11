@@ -30,27 +30,71 @@
     ]
   },
   "dependencies": {
-    "React-runtimeexecutor": [],
-    "React-callinvoker": [],
-    "React-cxxreact": [],
-    "React-rendererdebug": [],
-    "React-utils": [],
-    "React-featureflags": [],
-    "React-timing": [],
-    "React-jsi": [],
-    "React-performancetimeline": [],
-    "React-rendererconsistency": [],
-    "React-debug": [],
-    "React-jsinspectortracing": [],
-    "hermes-engine": [],
-    "React-hermes": [],
-    "glog": [],
-    "boost": [],
-    "DoubleConversion": [],
-    "fast_float": [],
-    "fmt": [],
-    "RCT-Folly": [],
-    "SocketRocket": [],
-    "RCT-Folly/Fabric": []
+    "React-runtimeexecutor": [
+
+    ],
+    "React-callinvoker": [
+
+    ],
+    "React-cxxreact": [
+
+    ],
+    "React-rendererdebug": [
+
+    ],
+    "React-utils": [
+
+    ],
+    "React-featureflags": [
+
+    ],
+    "React-timing": [
+
+    ],
+    "React-jsi": [
+
+    ],
+    "React-performancetimeline": [
+
+    ],
+    "React-rendererconsistency": [
+
+    ],
+    "React-debug": [
+
+    ],
+    "React-jsinspectortracing": [
+
+    ],
+    "hermes-engine": [
+
+    ],
+    "React-hermes": [
+
+    ],
+    "glog": [
+
+    ],
+    "boost": [
+
+    ],
+    "DoubleConversion": [
+
+    ],
+    "fast_float": [
+
+    ],
+    "fmt": [
+
+    ],
+    "RCT-Folly": [
+
+    ],
+    "SocketRocket": [
+
+    ],
+    "RCT-Folly/Fabric": [
+
+    ]
   }
 }

@@ -16,8 +16,7 @@ import {
 } from 'react-native';
 import type { AdvancedFilterParams, FilterState } from '../../../../../specs/NativeCameraFiltersModule';
 import { ModernAdvancedControls } from '../../VideoControl/ModernAdvancedControls';
-import { AdvancedFilterControls } from '../../filters/AdvancedFilterControls';
-import CompactFilterControls from '../../filters/CompactFilterControls';
+import { AdvancedAdjustmentsModal, FilterControls } from '../../filters';
 import { createFlashItems, createTimerItems, useFloatingSubmenu } from '../hooks/useFloatingSubmenu';
 import type { CameraMode, FlashMode } from '../types';
 import { FloatingSubmenu } from './FloatingSubmenu';
@@ -39,8 +38,11 @@ const ICONS = {
   SWITCH_CAMERA: '🔄',
   FILTER: '🔍',
   SLIDERS: '🎛️',
+  ADJUSTMENTS: '🎨',
   VIDEO: '🎥',
   ZOOM: '🔍',
+  SYNC: '🔗',
+  PROMPTER: '📜',
 };
 
 export interface ThreeDotsMenuProps {
@@ -104,6 +106,7 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState(false);
   const [showFilterControls, setShowFilterControls] = useState(false);
+  const [showAdjustments, setShowAdjustments] = useState(false);
 
 
 
@@ -201,11 +204,27 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
 
   const handleFiltersOpen = () => {
     console.log('[ThreeDotsMenu] handleFiltersOpen: ouverture du modal filtres');
-    // Ouvrir immédiatement le modal filtres et fermer le menu sans délai
+    console.log('[ThreeDotsMenu] Props filtres - onFilterChange:', !!onFilterChange, 'onClearFilter:', !!onClearFilter);
     console.log('[ThreeDotsMenu] setShowFilterControls(true)');
     setShowFilterControls(true);
     setIsMenuOpen(false);
   };
+
+  const handleAdjustmentsOpen = () => {
+    console.log('[ThreeDotsMenu] handleAdjustmentsOpen: ouverture du modal ajustements');
+    setShowAdjustments(true);
+    setIsMenuOpen(false);
+  };
+
+  const handleApplyLUT = async (lutPath: string) => {
+    console.log('[ThreeDotsMenu] handleApplyLUT: application LUT', lutPath);
+    if (onFilterChange) {
+      await onFilterChange(`lut3d:${lutPath}`, 1.0);
+    }
+    setShowAdjustments(false);
+  };
+
+
 
 
 
@@ -228,6 +247,8 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       action: handleTimerSubmenu,
       hasSubmenu: false,
     },
+
+
     {
       id: 'settings',
       icon: ICONS.SETTINGS,
@@ -247,6 +268,16 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
       label: 'Filtres',
       action: handleFiltersOpen,
     },
+    {
+      id: 'adjustments',
+      icon: ICONS.ADJUSTMENTS,
+      label: 'Ajustements',
+      action: handleAdjustmentsOpen,
+    },
+
+
+
+
 
     {
       id: 'zoomReset',
@@ -379,29 +410,27 @@ export const ThreeDotsMenu: React.FC<ThreeDotsMenuProps> = ({
             </View>
 
             <ScrollView style={styles.filterScroll} showsVerticalScrollIndicator={false}>
-              <View style={styles.filterSection}>
-                <CompactFilterControls
-                  currentFilter={currentFilter || null}
-                  onFilterChange={(name, intensity) => onFilterChange(name, intensity)}
-                  onClearFilter={onClearFilter}
-                  disabled={false}
-                  showLabels={true}
-                  style={styles.compactFilterControls}
-                />
-              </View>
-
               <View style={styles.advancedSection}>
-                <AdvancedFilterControls
+                <FilterControls
                   currentFilter={currentFilter || null}
                   onFilterChange={(name, intensity, params) => onFilterChange(name, intensity, params)}
+                  onClearFilter={onClearFilter}
                   disabled={false}
-                  visible={true}
-                  autoActivateOnEmpty={false}
+                  compact={true}
                 />
               </View>
             </ScrollView>
           </SafeAreaView>
         </Modal>
+      )}
+
+      {/* Modal d'ajustements avancés (HSL, ToneCurve, Split Toning) */}
+      {showAdjustments && (
+        <AdvancedAdjustmentsModal
+          visible={showAdjustments}
+          onClose={() => setShowAdjustments(false)}
+          onApplyLUT={handleApplyLUT}
+        />
       )}
 
       {/* Audio → utilise les paramètres avancés (ModernAdvancedControls) */}
@@ -451,14 +480,10 @@ const styles = StyleSheet.create({
   filterScroll: {
     flex: 1,
   },
-  filterSection: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
   advancedSection: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   modalContainer: {
     flex: 1,
@@ -587,27 +612,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   filterModalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   filterModalClose: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   filterModalCloseText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
     fontWeight: '600',
   },
-  compactFilterControls: {
-    backgroundColor: 'transparent',
-  },
+
 });

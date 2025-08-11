@@ -42,8 +42,14 @@
     "ios/**/*.h"
   ],
   "dependencies": {
-    "React": [],
-    "React-Core": [],
-    "React-callinvoker": []
+    "React": [
+
+    ],
+    "React-Core": [
+
+    ],
+    "React-callinvoker": [
+
+    ]
   }
 }

@@ -4,8 +4,7 @@
  */
 
 import type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
-import type { FilterPreset } from './types';
-import type { FilterInfo } from './types';
+import type { FilterInfo, FilterPreset } from './types';
 
 // Filtres disponibles avec catégorisation et informations techniques
 export const AVAILABLE_FILTERS: readonly FilterInfo[] = Object.freeze([
@@ -34,28 +33,16 @@ export const AVAILABLE_FILTERS: readonly FilterInfo[] = Object.freeze([
     technicalInfo: 'HSL + Courbes + Teinte/Saturation'
   },
   {
-    name: 'xmp',
-    displayName: 'Lightroom',
-    description: 'Import de presets Adobe Lightroom',
-    icon: '📸',
+    name: 'import',
+    displayName: 'Import',
+    description: 'Importer presets Lightroom (XMP) ou LUT 3D (.cube)',
+    icon: '📁',
     category: 'professional',
     hasIntensity: true,
     defaultIntensity: 1.0,
     color: '#31A8FF',
-    previewGradient: ['#31A8FF', '#7CC5FF'],
-    technicalInfo: 'Compatible XMP/DNG Process Version 5'
-  },
-  {
-    name: 'lut3d',
-    displayName: 'LUT 3D',
-    description: 'Tables de correspondance couleur 3D',
-    icon: '🎬',
-    category: 'professional',
-    hasIntensity: true,
-    defaultIntensity: 1.0,
-    color: '#9B59B6',
-    previewGradient: ['#9B59B6', '#C39BD3'],
-    technicalInfo: 'Format .cube (17x17x17 à 65x65x65)'
+    previewGradient: ['#31A8FF', '#9B59B6'],
+    technicalInfo: 'XMP Lightroom + LUT .cube (17x17x17 à 65x65x65)'
   },
   {
     name: 'sepia',
@@ -175,23 +162,129 @@ export const FILTER_PRESETS: readonly FilterPreset[] = Object.freeze([
     id: 'portrait',
     name: 'Portrait',
     filter: 'color_controls',
-    intensity: 0.6,
-    params: { brightness: 0.1, contrast: 1.1, saturation: 0.9, warmth: 0.2 },
+    intensity: 1.0,
+    params: { 
+      brightness: 0.1, 
+      contrast: 1.1, 
+      saturation: 0.9, 
+      warmth: 0.2,
+      hue: 0,
+      gamma: 1.0,
+      tint: 0,
+      exposure: 0,
+      shadows: 0,
+      highlights: 0,
+      vignette: 0,
+      grain: 0
+    },
   },
   {
     id: 'landscape',
-    name: 'Paysage',
+    name: 'Landscape',
     filter: 'color_controls',
-    intensity: 0.7,
-    params: { saturation: 1.2, contrast: 1.15, shadows: 0.1, highlights: -0.1 },
+    intensity: 1.0,
+    params: { 
+      brightness: 0.05, 
+      contrast: 1.2, 
+      saturation: 1.1, 
+      warmth: -0.1,
+      hue: 0,
+      gamma: 1.0,
+      tint: 0,
+      exposure: 0,
+      shadows: 0,
+      highlights: 0,
+      vignette: 0,
+      grain: 0
+    },
   },
   {
-    id: 'night',
-    name: 'Nuit',
+    id: 'vintage',
+    name: 'Vintage',
     filter: 'color_controls',
-    intensity: 0.65,
-    params: { exposure: 0.3, shadows: 0.2, contrast: 1.2, grain: 0.3 },
+    intensity: 1.0,
+    params: { 
+      brightness: -0.1, 
+      contrast: 1.3, 
+      saturation: 0.7, 
+      warmth: 0.4,
+      hue: 15,
+      gamma: 1.1,
+      tint: 0.1,
+      exposure: -0.2,
+      shadows: 0.2,
+      highlights: -0.1,
+      vignette: 0.3,
+      grain: 0.2
+    },
   },
-]);
+  {
+    id: 'monochrome',
+    name: 'Monochrome',
+    filter: 'color_controls',
+    intensity: 1.0,
+    params: { 
+      brightness: 0, 
+      contrast: 1.4, 
+      saturation: 0, 
+      warmth: 0,
+      hue: 0,
+      gamma: 1.0,
+      tint: 0,
+      exposure: 0,
+      shadows: 0.1,
+      highlights: -0.1,
+      vignette: 0,
+      grain: 0.1
+    },
+  },
+  {
+    id: 'dramatic',
+    name: 'Dramatic',
+    filter: 'color_controls',
+    intensity: 1.0,
+    params: { 
+      brightness: -0.2, 
+      contrast: 1.5, 
+      saturation: 0.8, 
+      warmth: 0,
+      hue: 0,
+      gamma: 1.2,
+      tint: 0,
+      exposure: -0.3,
+      shadows: 0.4,
+      highlights: -0.2,
+      vignette: 0.2,
+      grain: 0.1
+    },
+  },
+] as const);
+
+// Couleurs modernes pour les curseurs et contrôles
+export const SLIDER_COLORS = {
+  primary: '#4A90E2',      // Bleu moderne principal
+  secondary: '#7B68EE',    // Violet pour les contrôles secondaires
+  accent: '#00D4AA',       // Vert-bleu pour les accents
+  warning: '#FF9500',      // Orange pour les avertissements
+  success: '#34C759',      // Vert pour les succès
+  danger: '#FF3B30',       // Rouge pour les erreurs
+  neutral: '#8E8E93',      // Gris neutre
+  light: 'rgba(255, 255, 255, 0.8)',
+  dark: 'rgba(0, 0, 0, 0.8)',
+} as const;
+
+// Couleurs des tracks de curseurs
+export const TRACK_COLORS = {
+  active: SLIDER_COLORS.primary,
+  inactive: 'rgba(255, 255, 255, 0.15)',
+  disabled: 'rgba(255, 255, 255, 0.08)',
+} as const;
+
+// Couleurs des thumbs de curseurs
+export const THUMB_COLORS = {
+  default: '#FFFFFF',
+  primary: SLIDER_COLORS.primary,
+  secondary: SLIDER_COLORS.secondary,
+} as const;
 
 

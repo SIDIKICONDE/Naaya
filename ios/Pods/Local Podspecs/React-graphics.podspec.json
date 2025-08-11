@@ -34,18 +34,44 @@
     "CLANG_CXX_LANGUAGE_STANDARD": "c++20"
   },
   "dependencies": {
-    "React-jsi": [],
-    "React-jsiexecutor": [],
-    "React-utils": [],
-    "hermes-engine": [],
-    "React-hermes": [],
-    "glog": [],
-    "boost": [],
-    "DoubleConversion": [],
-    "fast_float": [],
-    "fmt": [],
-    "RCT-Folly": [],
-    "SocketRocket": [],
-    "RCT-Folly/Fabric": []
+    "React-jsi": [
+
+    ],
+    "React-jsiexecutor": [
+
+    ],
+    "React-utils": [
+
+    ],
+    "hermes-engine": [
+
+    ],
+    "React-hermes": [
+
+    ],
+    "glog": [
+
+    ],
+    "boost": [
+
+    ],
+    "DoubleConversion": [
+
+    ],
+    "fast_float": [
+
+    ],
+    "fmt": [
+
+    ],
+    "RCT-Folly": [
+
+    ],
+    "SocketRocket": [
+
+    ],
+    "RCT-Folly/Fabric": [
+
+    ]
   }
 }

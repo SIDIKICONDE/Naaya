@@ -2,7 +2,7 @@
  * Contrôles de filtres compacts optimisés pour les petits espaces
  * Version minimaliste avec performances maximales
  */
-import React, { memo, useCallback, useMemo, useRef } from 'react';
+import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   FlatList,
@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ImportFilterModal } from './ImportFilterModal';
 import { AVAILABLE_FILTERS } from './constants';
 import type { FilterControlsProps, FilterInfo } from './types';
 
@@ -114,6 +115,8 @@ CompactFilterButton.displayName = 'CompactFilterButton';
  */
 const CompactFilterControls: React.FC<FilterControlsProps> = memo(
   ({ currentFilter, onFilterChange, onClearFilter, disabled = false, style }) => {
+    const [showImport, setShowImport] = useState<'xmp' | 'lut3d' | false>(false);
+    
     // Mémorisation du filtre sélectionné
     const selectedFilter = useMemo(() => {
       if (!currentFilter) return AVAILABLE_FILTERS[0];
@@ -128,12 +131,14 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
 
         if (filter.name === 'none') {
           await onClearFilter();
+        } else if (filter.name === 'import') {
+          setShowImport('xmp');
         } else {
           const intensity = filter.hasIntensity ? filter.defaultIntensity : 1.0;
           await onFilterChange(filter.name, intensity);
         }
       },
-      [onFilterChange, onClearFilter, disabled]
+      [onFilterChange, onClearFilter, disabled, setShowImport]
     );
 
     // Rendu optimisé avec FlatList
@@ -231,6 +236,14 @@ const CompactFilterControls: React.FC<FilterControlsProps> = memo(
             )}
           </View>
         )}
+        
+        <ImportFilterModal
+          visible={Boolean(showImport)}
+          initialMode={showImport || undefined}
+          intensity={1.0}
+          onApply={onFilterChange}
+          onClose={() => setShowImport(false)}
+        />
       </View>
     );
   }

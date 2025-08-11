@@ -1,6 +1,6 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, View, Text } from 'react-native';
-import { TextEditor } from '@/editeur/TextEditor';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { TextEditor } from '../editeur';
 
 export const TextEditorScreen: React.FC = () => {
   return (

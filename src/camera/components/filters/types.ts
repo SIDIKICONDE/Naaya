@@ -10,8 +10,7 @@ import type { AdvancedFilterParams, FilterState } from '../../../../specs/Native
 export type FilterName = 
   | 'none'
   | 'color_controls'
-  | 'xmp'
-  | 'lut3d'
+  | 'import'
   | 'sepia'
   | 'noir'
   | 'monochrome'

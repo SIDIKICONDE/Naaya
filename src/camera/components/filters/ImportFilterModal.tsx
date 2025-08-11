@@ -1,6 +1,6 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import DocumentPicker from '@react-native-documents/picker';
+import React, { memo, useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
 import RNFS from 'react-native-fs';
 import type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
 import { processXMPToFilter } from './utils/xmp';
@@ -13,77 +13,86 @@ export interface ImportFilterModalProps {
   onClose: () => void;
 }
 
-/**
- * Modal unique pour importer un preset Lightroom (XMP) ou une LUT 3D (.cube)
- */
 export const ImportFilterModal: React.FC<ImportFilterModalProps> = memo(({ visible, initialMode, intensity, onApply, onClose }) => {
   const [isBusy, setIsBusy] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  const pickOptions = useMemo(() => ({
-    presentationStyle: 'fullScreen' as const,
-    copyTo: 'cachesDirectory' as const,
-  }), []);
+  console.log('[ImportFilterModal] Render:', { visible, initialMode });
 
   const ensureLocalFilePath = useCallback(async (uri?: string | null) => {
     if (!uri) throw new Error('URI de fichier invalide');
-    // Normaliser file:// vers chemin
     if (uri.startsWith('file://')) {
       return uri.replace('file://', '');
     }
-    // Fallback: certains environnements retournent déjà un chemin absolu
     return uri;
   }, []);
 
   const handleImportXmp = useCallback(async () => {
     try {
+      console.log('[ImportFilterModal] Début import XMP');
       setIsBusy(true);
       setErrorText(null);
-      const doc = await DocumentPicker.pickSingle({
-        ...pickOptions,
+      const docs = await DocumentPicker.pick({
         type: [DocumentPicker.types.allFiles],
+        allowMultiSelection: false,
       });
 
+      if (docs.length === 0) {
+        console.log('[ImportFilterModal] Aucun fichier sélectionné');
+        return;
+      }
+
+      const doc = docs[0];
+      console.log('[ImportFilterModal] Fichier XMP sélectionné:', doc);
       const path = await ensureLocalFilePath((doc as any).fileCopyUri || doc.uri);
       const xmp = await RNFS.readFile(path, 'utf8');
       const result = await processXMPToFilter(xmp);
       if ((result as any).type === 'lut') {
         const cubePath = (result as { type: 'lut'; path: string }).path;
+        console.log('[ImportFilterModal] Conversion XMP -> LUT:', cubePath);
         await onApply(`lut3d:${cubePath}`, intensity);
       } else {
         const params = (result as { type: 'params'; params: AdvancedFilterParams }).params;
+        console.log('[ImportFilterModal] Application paramètres XMP:', params);
         await onApply('color_controls', intensity, params);
       }
       onClose();
     } catch (e: any) {
-      if (!DocumentPicker.isCancel(e)) {
-        setErrorText(String(e?.message || e));
-      }
+      console.error('[ImportFilterModal] Erreur import XMP:', e);
+      setErrorText(String(e?.message || e));
     } finally {
       setIsBusy(false);
     }
-  }, [pickOptions, ensureLocalFilePath, onApply, intensity, onClose]);
+  }, [ensureLocalFilePath, onApply, intensity, onClose]);
 
   const handleImportCube = useCallback(async () => {
     try {
+      console.log('[ImportFilterModal] Début import LUT .cube');
       setIsBusy(true);
       setErrorText(null);
-      const doc = await DocumentPicker.pickSingle({
-        ...pickOptions,
+      const docs = await DocumentPicker.pick({
         type: [DocumentPicker.types.allFiles],
+        allowMultiSelection: false,
       });
 
+      if (docs.length === 0) {
+        console.log('[ImportFilterModal] Aucun fichier sélectionné');
+        return;
+      }
+
+      const doc = docs[0];
+      console.log('[ImportFilterModal] Fichier .cube sélectionné:', doc);
       const path = await ensureLocalFilePath((doc as any).fileCopyUri || doc.uri);
+      console.log('[ImportFilterModal] Application LUT:', path);
       await onApply(`lut3d:${path}`, intensity);
       onClose();
     } catch (e: any) {
-      if (!DocumentPicker.isCancel(e)) {
-        setErrorText(String(e?.message || e));
-      }
+      console.error('[ImportFilterModal] Erreur import LUT:', e);
+      setErrorText(String(e?.message || e));
     } finally {
       setIsBusy(false);
     }
-  }, [pickOptions, ensureLocalFilePath, onApply, intensity, onClose]);
+  }, [ensureLocalFilePath, onApply, intensity, onClose]);
 
   const xmpHint = 'XMP Lightroom (Process Version 2012+). Si avancé (HSL/ToneCurve), conversion automatique en LUT 3D (.cube).';
   const cubeHint = 'LUT 3D au format .cube (17–65). Utilisé tel quel.';
@@ -153,45 +162,44 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   btn: {
-    borderRadius: 10,
-    padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#333',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   xmp: {
-    backgroundColor: 'rgba(49, 168, 255, 0.10)',
-    borderColor: 'rgba(49, 168, 255, 0.25)'
+    backgroundColor: '#6A0DAD',
   },
   cube: {
-    backgroundColor: 'rgba(155, 89, 182, 0.10)',
-    borderColor: 'rgba(155, 89, 182, 0.25)'
+    backgroundColor: '#FF4500',
   },
   btnTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 4,
   },
   hint: {
-    color: '#ccc',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
+    textAlign: 'center',
   },
   footer: {
-    marginTop: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 20,
+    gap: 10,
   },
   cancel: {
-    paddingHorizontal: 12,
     paddingVertical: 8,
+    paddingHorizontal: 15,
     borderRadius: 8,
-    backgroundColor: '#333',
   },
   cancelText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
   },
 });
 

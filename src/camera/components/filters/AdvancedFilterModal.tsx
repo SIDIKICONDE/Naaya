@@ -4,20 +4,20 @@
  */
 import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type { AdvancedFilterParams } from '../../../../specs/NativeCameraFiltersModule';
-import CustomSlider from '../../../ui/CustomSlider';
 import { ANIMATION_CONFIG, DEFAULT_FILTER_PARAMS } from './constants';
+import NumberLineControl from './slider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -252,20 +252,15 @@ const AdjustmentSlider = memo<{
             )}
           </View>
         </View>
-        <CustomSlider
+        <NumberLineControl
           value={value}
           onValueChange={handleChange}
-          minimumValue={config.min}
-          maximumValue={config.max}
+          onSlidingComplete={handleChange}
+          min={config.min}
+          max={config.max}
+          step={config.step}
           width={SCREEN_WIDTH - 80}
-          trackHeight={4}
-          thumbSize={20}
-          activeTrackColor={isModified ? '#007AFF' : 'rgba(255,255,255,0.3)'}
-          inactiveTrackColor="rgba(255,255,255,0.1)"
-          thumbColor="#FFFFFF"
-          accentColor="#007AFF"
-          showValue={false}
-          style={styles.adjustmentSlider}
+          color={isModified ? '#007AFF' : 'rgba(255,255,255,0.3)'}
         />
       </Animated.View>
     );

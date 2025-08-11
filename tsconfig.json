@@ -17,7 +17,6 @@
     "paths": {
       "@Audio/*": ["src/audio/*"],
       "@audio/*": ["src/audio/*"],
-      "@teleprompter/*": ["src/teleprompter/*"],
       "@ui/*": ["src/ui/*"],
       "@screens/*": ["src/screens/*"],
       "@components/*": ["src/camera/components/*"],
@@ -28,5 +27,5 @@
     "App.tsx",
     "src/**/*",
     "specs/**/*"
-, "src/camera/components/VideoControl/.tsx"  ]
+  ]
 }

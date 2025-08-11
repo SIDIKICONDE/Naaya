@@ -1,7 +1,7 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Pressable, Animated, Easing, PanResponder, PanResponderInstance, Vibration, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { TINT_PRESETS } from '@teleprompter/constants';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, PanResponder, PanResponderInstance, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
+import { TINT_PRESETS } from './constants';
 
 export interface ColorPickerPopoverProps {
   visible: boolean;

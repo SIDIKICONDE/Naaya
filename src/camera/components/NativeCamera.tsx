@@ -11,6 +11,7 @@ import type { CameraDevice } from '../../../specs/NativeCameraModule';
 import { useNativeCamera } from '../hooks/useNativeCamera';
 import { useNativeCameraCapture } from '../hooks/useNativeCameraCapture';
 
+
 // Types pour les props du composant
 export interface NativeCameraProps {
   style?: any;
@@ -135,7 +136,8 @@ export const NativeCamera = forwardRef<NativeCameraRef, NativeCameraProps>(({
         camera.startCamera().catch(console.error);
       }
     }
-  }, [camera, autoStart]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera.isReady, camera.permissions?.camera, camera.isActive, camera.currentDevice, autoStart]);
 
   // Gestion des permissions manquantes
   useEffect(() => {

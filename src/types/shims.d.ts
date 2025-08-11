@@ -4,7 +4,7 @@
 
 declare module '@react-native-community/slider' {
   import * as React from 'react';
-  import { ColorValue, StyleProp, ViewStyle } from 'react-native';
+    import { ColorValue, StyleProp, ViewStyle } from 'react-native';
 
   export interface SliderProps {
     value?: number;
@@ -25,7 +25,7 @@ declare module '@react-native-community/slider' {
 
 declare module 'lucide-react-native' {
   import * as React from 'react';
-  import { ColorValue } from 'react-native';
+    import { ColorValue } from 'react-native';
 
   export interface IconProps {
     size?: number | string;
@@ -96,7 +96,7 @@ declare module 'react-native-svg' {
 // Shim minimal pour react-native-gesture-handler si les types manquent
 declare module 'react-native-gesture-handler' {
   import * as React from 'react';
-  import { ViewProps, ViewStyle } from 'react-native';
+    import { ViewProps, ViewStyle } from 'react-native';
 
   export const GestureHandlerRootView: React.ComponentType<ViewProps>;
   export const GestureDetector: React.ComponentType<{
@@ -142,7 +142,7 @@ declare module 'react-native-gesture-handler' {
 // Déclaration de types pour react-native-linear-gradient
 declare module 'react-native-linear-gradient' {
   import * as React from 'react';
-  import { ViewProps } from 'react-native';
+    import { ViewProps } from 'react-native';
   
   export interface LinearGradientProps extends ViewProps {
     colors: string[];
@@ -155,6 +155,30 @@ declare module 'react-native-linear-gradient' {
   }
   
   export default class LinearGradient extends React.Component<LinearGradientProps> {}
+}
+
+// Déclaration minimale pour react-native-document-picker si types manquants
+declare module 'react-native-document-picker' {
+  namespace DocumentPicker {
+    type DirectoryPath = 'documentDirectory' | 'cachesDirectory' | 'downloadsDirectory' | 'picturesDirectory' | 'musicDirectory' | 'moviesDirectory';
+    interface PickOptions {
+      type?: string[];
+      allowMultiSelection?: boolean;
+      presentationStyle?: 'fullScreen' | 'pageSheet' | 'formSheet' | 'overFullScreen' | 'overCurrentContext' | 'popover' | 'none';
+      copyTo?: DirectoryPath;
+    }
+    interface PickedDocument {
+      uri: string;
+      name?: string | null;
+      size?: number | null;
+      fileCopyUri?: string | null;
+      type?: string | null;
+    }
+    const types: { [k: string]: string } & { allFiles: string };
+    function pickSingle(options?: PickOptions): Promise<PickedDocument>;
+    function isCancel(err: unknown): boolean;
+  }
+  export = DocumentPicker;
 }
 
 

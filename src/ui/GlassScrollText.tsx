@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, ViewStyle, TextStyle, Platform, LayoutChangeEvent } from 'react-native';
+import { LayoutChangeEvent, Platform, ScrollView, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 export interface GlassScrollTextProps {
   text: string;
@@ -22,6 +22,8 @@ export interface GlassScrollTextProps {
   columnGap?: number;
   textAlign?: 'left' | 'center' | 'justify';
   splitStrategy?: 'balanced' | 'byParagraph';
+  onSettingsPress?: () => void;
+  showSettingsIcon?: boolean;
 }
 
 /**
@@ -50,6 +52,8 @@ export const GlassScrollText: React.FC<GlassScrollTextProps> = memo(({
   columnGap = 24,
   textAlign = 'left',
   splitStrategy = 'balanced',
+  onSettingsPress,
+  showSettingsIcon = true,
 }) => {
   const scrollRef = useRef<ScrollView | null>(null);
   const [colLeftText, colRightText] = useMemo((): [string, string] => {
@@ -108,6 +112,17 @@ export const GlassScrollText: React.FC<GlassScrollTextProps> = memo(({
       {/* Fallback "Blur" visuel (sans dépendance) */}
       {Platform.OS === 'ios' && (
         <View style={[styles.iosBlurOverlay, { opacity: Math.min(1, Math.max(0, blurIntensity / 100)) }]} />
+      )}
+
+      {/* Icône de réglages */}
+      {showSettingsIcon && (
+        <TouchableOpacity 
+          style={styles.settingsIcon} 
+          onPress={onSettingsPress || (() => console.log('Settings pressed'))}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.settingsIconText}>⚙️</Text>
+        </TouchableOpacity>
       )}
 
       {/* Contenu scrollable */}
@@ -201,6 +216,21 @@ const styles = StyleSheet.create({
   },
   columnFlex: {
     flex: 1,
+  },
+  settingsIcon: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  settingsIconText: {
+    fontSize: 20,
   },
 });
 

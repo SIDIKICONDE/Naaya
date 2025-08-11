@@ -38,25 +38,63 @@
     ]
   },
   "dependencies": {
-    "React-Core": [],
-    "React-jsi": [],
-    "React-jsitooling": [],
-    "React-jsinspector": [],
-    "React-jsinspectorcdp": [],
-    "React-jsinspectortracing": [],
-    "React-RuntimeCore": [],
-    "React-RuntimeApple": [],
-    "hermes-engine": [],
-    "React-RuntimeHermes": [],
-    "React-hermes": [],
-    "glog": [],
-    "boost": [],
-    "DoubleConversion": [],
-    "fast_float": [],
-    "fmt": [],
-    "RCT-Folly": [],
-    "SocketRocket": [],
-    "RCT-Folly/Fabric": []
+    "React-Core": [
+
+    ],
+    "React-jsi": [
+
+    ],
+    "React-jsitooling": [
+
+    ],
+    "React-jsinspector": [
+
+    ],
+    "React-jsinspectorcdp": [
+
+    ],
+    "React-jsinspectortracing": [
+
+    ],
+    "React-RuntimeCore": [
+
+    ],
+    "React-RuntimeApple": [
+
+    ],
+    "hermes-engine": [
+
+    ],
+    "React-RuntimeHermes": [
+
+    ],
+    "React-hermes": [
+
+    ],
+    "glog": [
+
+    ],
+    "boost": [
+
+    ],
+    "DoubleConversion": [
+
+    ],
+    "fast_float": [
+
+    ],
+    "fmt": [
+
+    ],
+    "RCT-Folly": [
+
+    ],
+    "SocketRocket": [
+
+    ],
+    "RCT-Folly/Fabric": [
+
+    ]
   },
   "exclude_files": "RCTJscInstanceFactory.{h,mm}"
 }

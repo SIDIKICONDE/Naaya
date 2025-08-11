@@ -3,9 +3,11 @@
  */
 
 // Composants principaux
+export { AdvancedAdjustmentsModal } from './AdvancedAdjustmentsModal';
 export { AdvancedFilterModal } from './AdvancedFilterModal';
 export { default as CompactFilterControls } from './CompactFilterControls';
 export { FilterControls } from './FilterControls';
+export { default as NumberLineControl } from './slider';
 
 // Types
 export type {

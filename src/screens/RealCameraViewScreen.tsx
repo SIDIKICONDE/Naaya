@@ -5,15 +5,17 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  PermissionsAndroid,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import { NativeCameraEngine } from '../camera';
-import { Platform, PermissionsAndroid, Dimensions } from 'react-native';
 import { RecordingBar } from '../camera/components/AdvancedCameraControls/components/RecordingBar';
 import { ThreeDotsMenu } from '../camera/components/AdvancedCameraControls/components/ThreeDotsMenu';
 import type { FlashMode, RecordingState, ThemeConfig } from '../camera/components/AdvancedCameraControls/types';
@@ -22,6 +24,8 @@ import type { NativeCameraRef } from '../camera/components/NativeCamera';
 import { NativeCamera } from '../camera/components/NativeCamera';
 import type { AdvancedRecordingOptions } from '../camera/components/VideoControl/types';
 import { useNativeCamera } from '../camera/hooks/useNativeCamera';
+
+import { routeBus } from './routeBus';
 
 
 export const RealCameraViewScreen: React.FC = () => {
@@ -58,10 +62,15 @@ export const RealCameraViewScreen: React.FC = () => {
     albumName: 'Naaya',
   });
 
+
+
+
   // Countdown UI pour timer
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+
 
   // Hooks filtres (utilise le module natif CameraFilters)
   const { currentFilter, setFilter, clearFilter, switchDevice, currentDevice } = useNativeCamera();
@@ -120,10 +129,19 @@ export const RealCameraViewScreen: React.FC = () => {
         // Reset du zoom via la ref caméra
         cameraRef.current?.setZoomLevel(1.0);
         break;
+      case 'teleprompter':
+        console.log('[RealCameraViewScreen] Navigation vers Teleprompteur');
+        routeBus.emit('Teleprompteur');
+        break;
+
+
+
       default:
         console.warn('[RealCameraViewScreen] Action non gérée:', action);
     }
   }, [handleSwitchCamera]);
+
+
 
   // Nettoyage à la fermeture de l'écran
   useEffect(() => {
@@ -512,6 +530,7 @@ export const RealCameraViewScreen: React.FC = () => {
           )}
         </NativeCamera>
       </View>
+
     </SafeAreaView>
   );
 };

@@ -34,23 +34,57 @@
     ]
   },
   "dependencies": {
-    "React-jsi": [],
-    "React-jsiexecutor": [],
-    "RCTRequired": [],
-    "RCTTypeSafety": [],
-    "React-Core": [],
-    "React-NativeModulesApple": [],
-    "ReactCommon": [],
-    "hermes-engine": [],
-    "React-hermes": [],
-    "glog": [],
-    "boost": [],
-    "DoubleConversion": [],
-    "fast_float": [],
-    "fmt": [],
-    "RCT-Folly": [],
-    "SocketRocket": [],
-    "RCT-Folly/Fabric": []
+    "React-jsi": [
+
+    ],
+    "React-jsiexecutor": [
+
+    ],
+    "RCTRequired": [
+
+    ],
+    "RCTTypeSafety": [
+
+    ],
+    "React-Core": [
+
+    ],
+    "React-NativeModulesApple": [
+
+    ],
+    "ReactCommon": [
+
+    ],
+    "hermes-engine": [
+
+    ],
+    "React-hermes": [
+
+    ],
+    "glog": [
+
+    ],
+    "boost": [
+
+    ],
+    "DoubleConversion": [
+
+    ],
+    "fast_float": [
+
+    ],
+    "fmt": [
+
+    ],
+    "RCT-Folly": [
+
+    ],
+    "SocketRocket": [
+
+    ],
+    "RCT-Folly/Fabric": [
+
+    ]
   },
   "script_phases": [
     {
