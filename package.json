@@ -7,7 +7,12 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "analyze:bundle": "node src/optimization/bundle-analyzer.js",
+    "profile": "react-native start --profile",
+    "check:memory": "jest --detectLeaks",
+    "build:android:release": "cd android && ./gradlew assembleRelease",
+    "build:ios:release": "cd ios && xcodebuild -workspace Naaya.xcworkspace -scheme Naaya -configuration Release"
   },
   "dependencies": {
     "@babel/runtime-corejs3": "^7.28.2",

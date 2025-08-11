@@ -3,7 +3,7 @@
  * Interface moderne et performante pour Naaya
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -22,9 +22,21 @@ import type { NativeCameraRef } from '../camera/components/NativeCamera';
 import { NativeCamera } from '../camera/components/NativeCamera';
 import type { AdvancedRecordingOptions } from '../camera/components/VideoControl/types';
 import { useNativeCamera } from '../camera/hooks/useNativeCamera';
+import { useDebounce, useThrottle } from '../optimization/react-performance';
+import { useSafeTimer, useMemoryOptimization, useMountedState } from '../optimization/memory-management';
 
 
 export const RealCameraViewScreen: React.FC = () => {
+  // Hooks de gestion mémoire
+  const isMounted = useMountedState();
+  const { setTimeout, setInterval, clearTimer } = useSafeTimer();
+  useMemoryOptimization(() => {
+    // Libérer la mémoire en cas d'avertissement
+    if (cameraRef.current) {
+      cameraRef.current.stopRecording?.();
+    }
+  });
+
   // Refs
   const cameraRef = useRef<NativeCameraRef>(null);
 
@@ -61,13 +73,43 @@ export const RealCameraViewScreen: React.FC = () => {
   // Countdown UI pour timer
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Hooks filtres (utilise le module natif CameraFilters)
   const { currentFilter, setFilter, clearFilter, switchDevice, currentDevice } = useNativeCamera();
   
+  // Optimisation: debounce les options avancées pour éviter les re-rendus excessifs
+  const debouncedAdvancedOptions = useDebounce(advancedOptions, 300);
+  
+  // Optimisation: mémoriser les dimensions calculées
+  const recordingDimensions = useMemo(() => {
+    if (gridAspect === 'none') {
+      return { width: advancedOptions.width, height: advancedOptions.height };
+    }
+    
+    const screenWidth = Dimensions.get('window').width;
+    const screenHeight = Dimensions.get('window').height;
+    
+    const aspectRatios = {
+      '1:1': 1,
+      '4:3': 4 / 3,
+      '16:9': 16 / 9,
+      '2.39:1': 2.39,
+      '9:16': 9 / 16,
+    };
+    
+    const ratio = aspectRatios[gridAspect];
+    let width = screenWidth;
+    let height = screenWidth / ratio;
+    
+    if (height > screenHeight) {
+      height = screenHeight;
+      width = screenHeight * ratio;
+    }
+    
+    return { width: Math.round(width), height: Math.round(height) };
+  }, [gridAspect, advancedOptions.width, advancedOptions.height]);
 
-  // Gestion du basculement de caméra
+  // Gestion du basculement de caméra - déjà optimisé avec useCallback
   const handleSwitchCamera = useCallback(async () => {
     try {
       console.log('[RealCameraViewScreen] Basculement de caméra demandé');
@@ -150,35 +192,6 @@ export const RealCameraViewScreen: React.FC = () => {
     );
   }, []);
 
-  // Calculer les dimensions selon le ratio choisi
-  const getRecordingDimensions = useCallback(() => {
-    if (gridAspect === 'none') {
-      return { width: advancedOptions.width, height: advancedOptions.height };
-    }
-
-    const parseRatio = (preset: typeof gridAspect): number => {
-      switch (preset) {
-        case '1:1': return 1;
-        case '4:3': return 4 / 3;
-        case '16:9': return 16 / 9;
-        case '2.39:1': return 2.39;
-        case '9:16': return 9 / 16;
-        default: return 16 / 9; // fallback
-      }
-    };
-
-    const targetRatio = parseRatio(gridAspect);
-    const baseHeight = 1080; // Base haute qualité
-    const width = Math.round(baseHeight * targetRatio);
-    
-    // Assurer que les dimensions sont paires (requis pour certains codecs)
-    const evenWidth = width % 2 === 0 ? width : width + 1;
-    
-    console.log(`[RealCameraViewScreen] Format ${gridAspect}: ${evenWidth}x${baseHeight}`);
-    
-    return { width: evenWidth, height: baseHeight };
-  }, [gridAspect, advancedOptions.width, advancedOptions.height]);
-
   // Gestion de l'enregistrement
   const startRecordingFlow = useCallback(async () => {
     try {
@@ -228,7 +241,7 @@ export const RealCameraViewScreen: React.FC = () => {
       } catch {}
 
       // Utiliser les dimensions selon le format choisi
-      const { width, height } = getRecordingDimensions();
+      const { width, height } = recordingDimensions;
 
       type NativeOrientation = 'auto' | 'portrait' | 'portraitUpsideDown' | 'landscapeLeft' | 'landscapeRight';
       const resolveOrientation = (): NativeOrientation => {
@@ -270,7 +283,7 @@ export const RealCameraViewScreen: React.FC = () => {
       Alert.alert('Enregistrement', 'Une erreur est survenue lors de la capture');
       setRecordingState('idle');
     }
-  }, [advancedOptions, getRecordingDimensions]);
+  }, [advancedOptions, recordingDimensions]);
 
   const handleRecordPress = useCallback(async () => {
     try {
@@ -280,20 +293,16 @@ export const RealCameraViewScreen: React.FC = () => {
           if (isCountdownActive) return; // éviter double déclenchement
           setIsCountdownActive(true);
           setCountdown(t);
-          if (countdownTimerRef.current) {
-            clearInterval(countdownTimerRef.current);
-            countdownTimerRef.current = null;
-          }
-          countdownTimerRef.current = setInterval(async () => {
+          
+          const countdownInterval = setInterval(async () => {
             setCountdown((prev) => {
               if (prev <= 1) {
-                if (countdownTimerRef.current) {
-                  clearInterval(countdownTimerRef.current);
-                  countdownTimerRef.current = null;
-                }
+                clearTimer(countdownInterval);
                 setIsCountdownActive(false);
                 // Démarrer l'enregistrement après le compte à rebours
-                startRecordingFlow();
+                if (isMounted()) {
+                  startRecordingFlow();
+                }
                 return 0;
               }
               return prev - 1;
@@ -345,31 +354,26 @@ export const RealCameraViewScreen: React.FC = () => {
   // const handlePausePress = useCallback(() => {}, []);
 
   // Suivi de la progression enregistrement (durée)
-  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (recordingState === 'recording') {
       // Mettre à jour toutes les 500ms
-      progressTimerRef.current = setInterval(async () => {
+      const progressInterval = setInterval(async () => {
         try {
-          const { duration } = await NativeCameraEngine.getRecordingProgress();
-          setRecordingDuration(Math.floor(duration || 0));
+          if (isMounted()) {
+            const { duration } = await NativeCameraEngine.getRecordingProgress();
+            setRecordingDuration(Math.floor(duration || 0));
+          }
         } catch (error) {
           console.error('[RealCameraViewScreen] Error getting recording progress:', error);
         }
       }, 500);
-      return () => {
-        if (progressTimerRef.current) {
-          clearInterval(progressTimerRef.current);
-          progressTimerRef.current = null;
-        }
-      };
+      
+      return () => clearTimer(progressInterval);
+    } else {
+      // Reset duration quand pas en enregistrement
+      setRecordingDuration(0);
     }
-    // Nettoyage si on sort de l'état recording
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-  }, [recordingState]);
+  }, [recordingState, isMounted, setInterval, clearTimer]);
 
   // Synchroniser le timer local avec la valeur native au montage
   useEffect(() => {
@@ -383,15 +387,7 @@ export const RealCameraViewScreen: React.FC = () => {
     })();
   }, []);
 
-  // Nettoyage du countdown à l'unmount
-  useEffect(() => {
-    return () => {
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-    };
-  }, []);
+
 
   // Configuration du thème
   const theme: ThemeConfig = {
