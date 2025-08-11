@@ -1,14 +1,33 @@
-import { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { VideoPreviewScreen } from '../videoLibrary/screens/VideoPreviewScreen';
+import React, { lazy, Suspense } from 'react';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RealCameraViewScreen } from './RealCameraViewScreen';
-import { TeleprompterScreen } from './TeleprompterScreen';
-import { TextEditorScreen } from './TextEditorScreen';
+
+// Lazy loading des écrans non critiques
+const TeleprompterScreen = lazy(() => import('./TeleprompterScreen'));
+const TextEditorScreen = lazy(() => import('./TextEditorScreen'));
+const ProfileScreen = lazy(() => import('./ProfileScreen'));
+const LoginScreen = lazy(() => import('./LoginScreen'));
+
+// Composant de chargement pendant le lazy loading
+const LoadingScreen = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color="#007AFF" />
+  </View>
+);
+
+// Wrapper pour les écrans lazy loaded
+const LazyScreen = ({ Screen }: { Screen: React.LazyExoticComponent<any> }) => (
+  <Suspense fallback={<LoadingScreen />}>
+    <Screen />
+  </Suspense>
+);
 
 type AppRouteName = 'Camera' | 'Teleprompter' | 'Editeur' | 'Vidéos';
 
 export const AppNavigator: React.FC = () => {
-  const [route, setRoute] = useState<AppRouteName>('Teleprompter');
+  const [route, setRoute] = React.useState<AppRouteName>('Teleprompter');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -43,9 +62,9 @@ export const AppNavigator: React.FC = () => {
         {route === 'Camera' ? (
           <RealCameraViewScreen />
         ) : route === 'Teleprompter' ? (
-          <TeleprompterScreen />
+          <LazyScreen Screen={TeleprompterScreen} />
         ) : route === 'Editeur' ? (
-          <TextEditorScreen />
+          <LazyScreen Screen={TextEditorScreen} />
         ) : (
           <VideoPreviewScreen />
         )}
@@ -87,6 +106,12 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
   },
 });
 
